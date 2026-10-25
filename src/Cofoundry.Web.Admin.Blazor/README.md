@@ -3,13 +3,22 @@
 A Blazor (Interactive Server) port of the AngularJS admin in `Cofoundry.Web.Admin`. It is designed to be
 installed **alongside** the AngularJS admin while modules are migrated one at a time.
 
-> **Status: first slice, not yet compiled or run.** This was written without a .NET SDK available, so it has
-> never been built. Expect a round of compile fixes on first build. Only the shell and the Pages module exist.
+> **Status: first slice.** Builds cleanly and the Pages module (list, filter, create, details/edit, publish,
+> unpublish, change URL, duplicate) has been smoke-tested in `Dev.Sandbox`. Only the shell and Pages exist.
 
 ## Installing side-by-side
 
 Reference this project from your website next to `Cofoundry.Web.Admin`. Cofoundry's startup tasks, route
 registrations and DI registrations are discovered automatically, so no extra `Program.cs` code is needed.
+
+The host project must also set `RequiresAspNetWebAssets`. The SDK only serves `_framework/blazor.web.js`
+when the host itself contains `.razor` files, so without it the admin renders a blank page:
+
+```xml
+<PropertyGroup>
+  <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
+</PropertyGroup>
+```
 
 * The Blazor admin lives under **`/admin-next`** (the AngularJS admin stays at `/admin`).
 * Sign-in/out is still handled by the AngularJS admin's MVC `auth` controller, which both admins share.

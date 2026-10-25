@@ -1,3 +1,4 @@
+using Cofoundry.Web.Auth.Internal;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,13 @@ public class AdminBlazorServiceConfigurationTask : IStartupServiceConfigurationT
             .AddInteractiveServerComponents();
 
         mvcBuilder.Services.AddCascadingAuthenticationState();
+
+        mvcBuilder.Services.AddAuthorization(options =>
+        {
+            options.AddPolicy(AdminBlazorAuthorizeAttribute.PolicyName, policy => policy
+                .AddAuthenticationSchemes(AuthenticationSchemeNames.UserArea(CofoundryAdminUserArea.Code))
+                .AddRequirements(new UserAreaAuthorizationRequirement(CofoundryAdminUserArea.Code)));
+        });
     }
 }
 

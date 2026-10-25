@@ -35,7 +35,7 @@ else
 
                 <FormFieldText Title="Title" MaxLength="300"
                                Description="A few words descriptive page title, e.g. 'About the team'. Google SERP typically shows 50-60 characters"
-                               Value="_command.Title" ValueChanged="OnTitleChanged"
+                               Value="@_command.Title" ValueChanged="OnTitleChanged"
                                ValueExpression="() => _command.Title" />
 
                 <FormFieldDropdown TValue="int" Title="Page Template" Options="_templateOptions" Required="true"
@@ -63,7 +63,7 @@ else
                 }
                 else
                 {
-                    <FormFieldDropdown TValue="string?" Title="Route Format" Options="_routingRules" Required="true"
+                    <FormFieldDropdown TValue="string" Title="Route Format" Options="_routingRules" Required="true"
                                        DefaultItemText="Please choose" @bind-Value="_command.CustomEntityRoutingRule" />
                 }
 

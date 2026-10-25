@@ -1,7 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <PropertyGroup>
+    <!-- The Blazor admin's .razor files live in a referenced library, so the SDK won't add blazor.web.js unless asked. -->
+    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.Imaging.SkiaSharp\Cofoundry.Plugins.Imaging.SkiaSharp\Cofoundry.Plugins.Imaging.SkiaSharp.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Cofoundry.Web.Admin.Blazor\Cofoundry.Web.Admin.Blazor.csproj" />
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Web.Admin\Cofoundry.Web.Admin.csproj" />
   </ItemGroup>
 

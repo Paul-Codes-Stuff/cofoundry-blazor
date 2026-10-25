@@ -1,4 +1,6 @@
-@* Mirrors the modal markup and class behaviour of the AngularJS cmsModalDialogContainer directive. *@
+@* Mirrors the modal markup and class behaviour of the AngularJS cmsModalDialogContainer directive.
+   Rendered into the layout's outlet; if two dialogs are open at once only the newest is shown. *@
+<SectionContent SectionName="@SectionName">
 <div class="modal @SizeCssClass is-root-modal @ShowCssClass">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -19,8 +21,11 @@
     </div>
 </div>
 <div class="modal-background @SizeCssClass @ShowCssClass" @onclick="OnClose"></div>
+</SectionContent>
 
 @code {
+    public const string SectionName = "admin-modals";
+
     private bool _show;
 
     /// <summary>

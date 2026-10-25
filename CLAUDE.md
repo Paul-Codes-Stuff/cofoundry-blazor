@@ -39,12 +39,20 @@ Read `src/Cofoundry.Web.Admin.Blazor/README.md` first: it has the status, what i
 - Pages under `Components/Pages` get `[AdminBlazorAuthorize]` from that folder's `_Imports.razor`. Do not put
   it in the root `_Imports.razor`: it would land on `App.razor` and break the signed-out view.
 - Modal CSS keeps dialogs transparent until `modal--show` is added; `ModalDialog` does this after first render.
+- **A bare name passed to a `string` component parameter is a literal.** `Value="_command.Title"` sends the
+  text "_command.Title"; write `Value="@_command.Title"`. Non-string and generic parameters are C# already.
+- **Some `cms-*` directives changed the DOM at runtime** (e.g. `cmsTableContainer` adds `class="table"` to its
+  `<table>`). Read the directive's JS, not just its `.html`, and put that markup in the Razor directly.
+- **Never use `[Authorize(AuthenticationSchemes = ...)]` on components**: `AuthorizeRouteView` throws. The
+  admin scheme lives in the `AdminBlazorAuthorizeAttribute.PolicyName` policy instead.
+- Dialogs render through a `SectionOutlet` outside `.content` (see `AdminLayout`), else the nav covers them.
+- The host needs `<RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>` or `blazor.web.js` 404s.
 
 ## Status and next steps
 
 - **Ported:** shell/nav, shared UI components, Pages module (list, create, details, change URL, duplicate).
-- **Not yet compiled by Claude** (written without a .NET SDK). Build with `dotnet build
-  src/Cofoundry.Web.Admin.Blazor` and fix errors first, then verify in a browser.
+- **Builds and runs.** Smoke-tested in `samples/src/Dev/Dev.Sandbox` (http://localhost:5006/admin-next/pages):
+  list, filter, create, edit, publish/unpublish, change URL and duplicate all work. Delete not yet exercised.
 - **Next:** Images module (unblocks the OpenGraph image picker), then Roles and Users (unblocks page access
   rules). The Visual Editor stays on the MVC site.
 - No tests yet.

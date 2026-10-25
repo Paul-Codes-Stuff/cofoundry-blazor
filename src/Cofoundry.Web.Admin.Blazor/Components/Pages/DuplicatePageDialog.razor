@@ -24,7 +24,7 @@
 
                     <FormFieldText Title="Title" MaxLength="70"
                                    Description="A few words descriptive page title, e.g. 'About the team'."
-                                   Value="_command.Title" ValueChanged="OnTitleChanged"
+                                   Value="@_command.Title" ValueChanged="OnTitleChanged"
                                    ValueExpression="() => _command.Title" />
 
                     @if (_locales.Count > 1)
@@ -43,7 +43,7 @@
                     }
                     else
                     {
-                        <FormFieldDropdown TValue="string?" Title="Route Format" Options="_routingRules" Required="true"
+                        <FormFieldDropdown TValue="string" Title="Route Format" Options="_routingRules" Required="true"
                                            @bind-Value="_command.CustomEntityRoutingRule" />
                     }
 

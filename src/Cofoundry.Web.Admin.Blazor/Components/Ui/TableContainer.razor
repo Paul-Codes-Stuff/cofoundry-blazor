@@ -1,3 +1,4 @@
+@* The child <table> needs class="table": the AngularJS directive added it to the DOM at runtime. *@
 <div class="table-cont @(IsLoading ? "loading" : string.Empty)">
     <div class="table-wrap">@ChildContent</div>
 </div>
