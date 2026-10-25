@@ -1,0 +1,18 @@
+@page "/admin-next/auth/logout"
+@inject IAdvancedContentRepository ContentRepository
+@inject NavigationManager Navigation
+
+@* Port of AuthController.Logout. Like the original it signs out on GET, so the nav can use a plain link. *@
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await ContentRepository
+            .WithContext<CofoundryAdminUserArea>()
+            .Users()
+            .Authentication()
+            .SignOutAsync();
+
+        Navigation.NavigateTo(AdminBlazorRoutes.Login);
+    }
+}

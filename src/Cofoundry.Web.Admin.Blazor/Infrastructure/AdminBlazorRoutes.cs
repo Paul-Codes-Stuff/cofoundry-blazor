@@ -29,20 +29,39 @@ public static class AdminBlazorRoutes
 
     public static string PageDetails(int pageId) => $"{Pages}/{pageId}";
 
-    /// <summary>
-    /// Authentication currently stays with the AngularJS admin's MVC auth controller,
-    /// which is shared during the transition. <paramref name="adminDirectoryName"/> is
-    /// the <see cref="AdminSettings.DirectoryName"/> of that admin.
-    /// </summary>
-    public static string Login(string adminDirectoryName, string? returnUrl = null)
+    public const string Login = Root + "/auth/login";
+    public const string Logout = Root + "/auth/logout";
+
+    public static string LoginWithReturnUrl(string? returnUrl)
     {
-        var url = $"/{adminDirectoryName}/auth/login";
-        if (!string.IsNullOrEmpty(returnUrl))
-        {
-            url += "?returnUrl=" + Uri.EscapeDataString(returnUrl);
-        }
-        return url;
+        return string.IsNullOrEmpty(returnUrl) ? Login : $"{Login}?ReturnUrl={Uri.EscapeDataString(returnUrl)}";
     }
 
-    public static string Logout(string adminDirectoryName) => $"/{adminDirectoryName}/auth/logout";
+    /// <summary>
+    /// True if <paramref name="url"/> is a path on this site, so it is safe to redirect to after
+    /// sign-in. Rejects absolute and protocol-relative urls ("//host", "/\host").
+    /// </summary>
+    public static bool IsLocalUrl(string? url)
+    {
+        return !string.IsNullOrEmpty(url)
+            && url[0] == '/'
+            && (url.Length == 1 || (url[1] != '/' && url[1] != '\\'));
+    }
+
+    /// <summary>
+    /// Pages that still live in the AngularJS admin's MVC controllers. Each takes the
+    /// <see cref="AdminSettings.DirectoryName"/> of that admin.
+    /// </summary>
+    public static class Mvc
+    {
+        public static string Setup(string adminDirectoryName) => $"/{adminDirectoryName}/setup";
+
+        public static string ForgotPassword(string adminDirectoryName) => $"/{adminDirectoryName}/auth/forgot-password";
+
+        public static string ChangePassword(string adminDirectoryName, string? returnUrl)
+        {
+            var url = $"/{adminDirectoryName}/auth/change-password";
+            return string.IsNullOrEmpty(returnUrl) ? url : $"{url}?ReturnUrl={Uri.EscapeDataString(returnUrl)}";
+        }
+    }
 }

@@ -94,8 +94,9 @@ can compare the two side by side.
   dialog's left edge under the nav and clicks time out, that outlet has been lost.
 - **A favicon 404 appears on every page.** The sandbox has no `/favicon.ico`. Ignore it. The AngularJS
   admin also logs a 404 for `ajax-loader.gif`, which is a bug in its own CSS.
-- **Signing in through `/admin-next/...` lands you on the AngularJS dashboard**, because the shared login
-  ignores the return URL. The driver navigates to its own URL afterwards.
+- **Sign-in/out pages are static SSR, not interactive.** `/admin-next/auth/login` is a real form POST,
+  so wait with `waitForNavigation`, not `settle()`. To test them signed out, open a fresh context with
+  `page.context().browser().newContext({ baseURL })`, because the driver's own context is already signed in.
 
 ## Troubleshooting
 

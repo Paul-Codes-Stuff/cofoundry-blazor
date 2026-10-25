@@ -1,0 +1,160 @@
+@page "/admin-next/auth/login"
+@inject IAdvancedContentRepository ContentRepository
+@inject NavigationManager Navigation
+@inject AdminSettings AdminSettings
+
+@* Port of AuthController.Login and Login.cshtml from the AngularJS admin. Forgotten/changed passwords
+   still go to that admin's MVC pages. *@
+
+<PageTitle>Sign In | Admin</PageTitle>
+
+<h1>Cofoundry</h1>
+
+<div class="wrap">
+    <EditForm EditContext="_editContext" FormName="admin-sign-in" OnValidSubmit="SignInAsync" class="form-horizontal" id="MainForm">
+        <DataAnnotationsValidator />
+
+        <fieldset>
+            <div class="control-group">
+                <label for="Username" class="control-label">Email</label>
+                <div class="controls">
+                    <InputText type="email" id="Username" maxlength="150" tabindex="1" @bind-Value="Input.Username" />
+                    @foreach (var message in _editContext.GetValidationMessages(() => Input.Username))
+                    {
+                        <span class="help-block">@message</span>
+                    }
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="Password" class="control-label">Password</label>
+                <a id="forgotPasswordLink" class="login-alt-cta" href="@AdminBlazorRoutes.Mvc.ForgotPassword(AdminSettings.DirectoryName)" tabindex="5">Forgotten your password?</a>
+                <div class="controls">
+                    <InputText type="password" id="Password" tabindex="2" @bind-Value="Input.Password" />
+                    @foreach (var message in _editContext.GetValidationMessages(() => Input.Password))
+                    {
+                        <span class="help-block">@message</span>
+                    }
+                </div>
+            </div>
+
+            <label class="checkbox" for="RememberMe">
+                <InputCheckbox id="RememberMe" class="check" tabindex="3" @bind-Value="Input.RememberMe" /> Remember me
+            </label>
+
+            <div class="actions">
+                <input type="submit" class="btn main-cta btn-primary" value="Sign In" tabindex="4" />
+            </div>
+        </fieldset>
+    </EditForm>
+</div>
+<a href="/" tabindex="6">&lt; Back to @_applicationName</a>
+
+@code {
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromForm] private SignInModel Input { get; set; } = default!;
+
+    private IAdvancedContentRepository _repository = default!;
+    private EditContext _editContext = default!;
+    private ValidationMessageStore _messages = default!;
+    private string? _applicationName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new();
+        _editContext = new EditContext(Input);
+        _messages = new ValidationMessageStore(_editContext);
+        _editContext.OnValidationRequested += (_, _) => _messages.Clear();
+        _repository = ContentRepository.WithContext<CofoundryAdminUserArea>();
+
+        var internalSettings = await _repository.ExecuteQueryAsync(new GetSettingsQuery<InternalSettings>());
+        if (!internalSettings.IsSetup)
+        {
+            Navigation.NavigateTo(AdminBlazorRoutes.Mvc.Setup(AdminSettings.DirectoryName));
+            return;
+        }
+
+        if (HttpMethods.IsGet(HttpContext.Request.Method) && await _repository.Users().Current().IsSignedIn().ExecuteAsync())
+        {
+            Navigation.NavigateTo(GetRedirectUrl());
+            return;
+        }
+
+        var siteSettings = await _repository.ExecuteQueryAsync(new GetSettingsQuery<GeneralSiteSettings>());
+        _applicationName = siteSettings.ApplicationName;
+    }
+
+    private async Task SignInAsync()
+    {
+        UserCredentialsAuthenticationResult authResult;
+        try
+        {
+            authResult = await _repository
+                .Users()
+                .Authentication()
+                .AuthenticateCredentials(new AuthenticateUserCredentialsQuery()
+                {
+                    Username = Input.Username,
+                    Password = Input.Password,
+                    UserAreaCode = CofoundryAdminUserArea.Code,
+                    PropertyToValidate = nameof(Input.Password)
+                })
+                .ExecuteAsync();
+        }
+        catch (ValidationException ex)
+        {
+            AddPasswordError(ex.ValidationResult?.ErrorMessage ?? ex.Message);
+            return;
+        }
+
+        if (!authResult.IsSuccess || authResult.User == null)
+        {
+            AddPasswordError(authResult.Error?.Message ?? "Invalid username or password.");
+            return;
+        }
+
+        if (authResult.User.RequirePasswordChange)
+        {
+            Navigation.NavigateTo(AdminBlazorRoutes.Mvc.ChangePassword(AdminSettings.DirectoryName, GetValidReturnUrl()));
+            return;
+        }
+
+        // Unlike the AngularJS admin, which always remembered the user, this honours the checkbox.
+        await _repository
+            .Users()
+            .Authentication()
+            .SignInAuthenticatedUserAsync(new SignInAuthenticatedUserCommand()
+            {
+                UserId = authResult.User.UserId,
+                RememberUser = Input.RememberMe
+            });
+
+        Navigation.NavigateTo(GetRedirectUrl());
+    }
+
+    private void AddPasswordError(string message)
+    {
+        _messages.Add(() => Input.Password, message);
+        _editContext.NotifyValidationStateChanged();
+    }
+
+    private string? GetValidReturnUrl() => AdminBlazorRoutes.IsLocalUrl(ReturnUrl) ? ReturnUrl : null;
+
+    private string GetRedirectUrl() => GetValidReturnUrl() ?? AdminBlazorRoutes.Dashboard;
+
+    private sealed class SignInModel
+    {
+        [Required]
+        [EmailAddress(ErrorMessage = "Please use a valid email address")]
+        [Display(Name = "Email")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Please provide your password")]
+        public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; }
+    }
+}

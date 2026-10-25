@@ -1,0 +1,4 @@
+@* Sign-in/out set and clear the auth cookie, which needs a real HTTP request, so these pages are
+   rendered as static SSR (see App.razor). They must stay usable when signed out, so no auth attribute. *@
+@layout LoginLayout
+@attribute [ExcludeFromInteractiveRouting]

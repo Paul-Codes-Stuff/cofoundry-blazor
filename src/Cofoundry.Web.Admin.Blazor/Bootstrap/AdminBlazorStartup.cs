@@ -1,4 +1,5 @@
 using Cofoundry.Web.Auth.Internal;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +25,25 @@ public class AdminBlazorServiceConfigurationTask : IStartupServiceConfigurationT
                 .AddAuthenticationSchemes(AuthenticationSchemeNames.UserArea(CofoundryAdminUserArea.Code))
                 .AddRequirements(new UserAreaAuthorizationRequirement(CofoundryAdminUserArea.Code)));
         });
+
+        // The admin cookie scheme challenges to the AngularJS admin's login page. Send requests for the
+        // Blazor admin to its own login instead, keeping the original handler (which also handles ajax).
+        mvcBuilder.Services.PostConfigure<CookieAuthenticationOptions>(
+            AuthenticationSchemeNames.UserArea(CofoundryAdminUserArea.Code),
+            options =>
+            {
+                var redirectToLogin = options.Events.OnRedirectToLogin;
+                options.Events.OnRedirectToLogin = context =>
+                {
+                    var request = context.Request;
+                    if (request.Path.StartsWithSegments(AdminBlazorRoutes.Root, StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.RedirectUri = AdminBlazorRoutes.LoginWithReturnUrl(request.PathBase + request.Path + request.QueryString);
+                    }
+
+                    return redirectToLogin(context);
+                };
+            });
     }
 }
 

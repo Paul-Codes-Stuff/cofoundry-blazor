@@ -21,7 +21,8 @@ when the host itself contains `.razor` files, so without it the admin renders a 
 ```
 
 * The Blazor admin lives under **`/admin-next`** (the AngularJS admin stays at `/admin`).
-* Sign-in/out is still handled by the AngularJS admin's MVC `auth` controller, which both admins share.
+* Sign-in/out is at `/admin-next/auth/login` and `/logout`. Signed-out requests to `/admin-next/...` are sent
+  there; `/admin/...` still uses the MVC login. Forgot/reset/change password still use the MVC pages.
 * The nav lists every permitted module. Modules not yet ported link to their AngularJS admin URL; ported ones
   link to the Blazor page (see `PortedModuleUrls` in `Components/Layout/AdminNav.razor`).
 
@@ -45,6 +46,9 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
 ## Ported so far
 
 * Shell: layout, permitted-module nav, auth
+* Sign in / sign out (static SSR pages in `Components/Auth`, with the same setup, return-URL and
+  password-change redirects as the MVC controller). Unlike the MVC login, "Remember me" is honoured:
+  unticked gives a browser-session cookie, ticked a persistent one
 * Shared UI: page layout, buttons, form + fields (text, text area, checkbox, dropdown, tags, read-only, container),
   table, pager, status/warning messages, time-ago, audit data, modal + confirm dialog
 * Dashboard: at `/admin-next/dashboard` and the `/admin-next` root. It shows the site's
@@ -57,7 +61,8 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
 * OpenGraph image picker (needs the Images module)
 * Page/directory access rules editor (needs user areas + the shared access editor)
 * Visual editor (stays on the MVC site; links use `?mode=edit`)
-* After sign-in the shared MVC login sends users to the AngularJS dashboard, not `/admin-next`
+* Forgot password, reset password (emailed links are built by the MVC route library) and forced password
+  change are still the MVC pages
 * The footer doesn't show the Cofoundry version, which the AngularJS layout does
 * Server-side validation messages are shown in the form status area, not against individual fields
 * No tests yet

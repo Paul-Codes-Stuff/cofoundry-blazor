@@ -10,7 +10,9 @@ Read `src/Cofoundry.Web.Admin.Blazor/README.md` first: it has the status, what i
 - **Coexistence:** the Blazor admin is a clean replacement but is routed under **`/admin-next`** so both admins
   can be installed side-by-side during the migration. The AngularJS admin stays at `/admin`. Do not modify
   `Cofoundry.Web.Admin` except to read it.
-- **Auth:** sign-in/out still goes through the AngularJS admin's MVC `auth` controller (shared for now).
+- **Auth:** sign-in/out is ported (`Components/Auth`, `/admin-next/auth/login|logout`). These pages are static
+  SSR (`[ExcludeFromInteractiveRouting]`) because they set the auth cookie; `App.razor` picks the render mode
+  per page. Forgot/reset/change password still use the MVC `auth` controller's pages.
 - **Data access:** components call the domain layer in-process through `IAdminBlazorExecutor`
   (`Infrastructure/AdminBlazorExecutor.cs`), not the `/admin/api` controllers. Each call runs in its own DI
   scope seeded with the circuit's signed-in user (`CircuitAwareUserSessionService`), because Cofoundry's

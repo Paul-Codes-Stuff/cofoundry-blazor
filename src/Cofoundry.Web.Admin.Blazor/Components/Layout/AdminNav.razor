@@ -1,7 +1,6 @@
 @implements IDisposable
 @inject IAdminBlazorExecutor Executor
 @inject NavigationManager Navigation
-@inject AdminSettings AdminSettings
 
 <nav class="main-nav fix">
     <a href="/" class="home"><i></i></a>
@@ -45,7 +44,7 @@
     </ol>
 
     <div class="logout">
-        <a href="@AdminBlazorRoutes.Logout(AdminSettings.DirectoryName)">Sign Out</a>
+        <a href="@AdminBlazorRoutes.Logout">Sign Out</a>
     </div>
 
     <div class="view-site">

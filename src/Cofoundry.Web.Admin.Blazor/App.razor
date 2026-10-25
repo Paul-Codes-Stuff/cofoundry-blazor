@@ -9,10 +9,10 @@
 
     <link rel="stylesheet" href="_content/Cofoundry.Web.Admin.Blazor/css/shared.css" />
 
-    <HeadOutlet @rendermode="AdminRenderMode" />
+    <HeadOutlet @rendermode="PageRenderMode" />
 </head>
 <body>
-    <Routes @rendermode="AdminRenderMode" />
+    <Routes @rendermode="PageRenderMode" />
 
     <script src="_framework/blazor.web.js"></script>
 </body>
@@ -22,4 +22,10 @@
     // Prerendering is off: it would run every page's data loading twice (once for the HTTP
     // request and once when the circuit starts) for no benefit in an authenticated tool.
     private static readonly IComponentRenderMode AdminRenderMode = new InteractiveServerRenderMode(prerender: false);
+
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    // Pages marked [ExcludeFromInteractiveRouting] (sign-in/out) render as static SSR, because they
+    // set or clear the auth cookie and so need a real HTTP request, which a circuit doesn't have.
+    private IComponentRenderMode? PageRenderMode => HttpContext.AcceptsInteractiveRouting() ? AdminRenderMode : null;
 }

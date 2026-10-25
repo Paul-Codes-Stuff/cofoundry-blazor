@@ -1,4 +1,3 @@
-@inject AdminSettings AdminSettings
 @inject NavigationManager Navigation
 
 <Router AppAssembly="typeof(App).Assembly">
@@ -8,7 +7,7 @@
                 <LayoutView Layout="typeof(AdminLayout)">
                     <p class="message warning perm">
                         You are not signed in or do not have access to this page.
-                        <a href="@AdminBlazorRoutes.Login(AdminSettings.DirectoryName, Navigation.ToBaseRelativePath(Navigation.Uri))">Sign in</a>
+                        <a href="@AdminBlazorRoutes.LoginWithReturnUrl(new Uri(Navigation.Uri).PathAndQuery)" data-enhance-nav="false">Sign in</a>
                     </p>
                 </LayoutView>
             </NotAuthorized>
