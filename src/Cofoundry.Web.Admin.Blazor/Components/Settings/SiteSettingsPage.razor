@@ -1,0 +1,183 @@
+@page "/admin-next/settings"
+@using Cofoundry.Core.Caching
+@using Microsoft.Extensions.DependencyInjection
+@inject IAdminBlazorExecutor Executor
+
+<PageTitle>Site Settings | Admin</PageTitle>
+
+<PageHeader Title="Site Settings" />
+
+@if (_general == null || _seo == null)
+{
+    <PageBody ContentType="form"><TableContainer IsLoading="true" /></PageBody>
+}
+else
+{
+    <AdminForm Model="_general" EditMode="_editMode" IsLoading="_isLoading" OnValidSubmit="SaveAsync">
+
+        @if (!_editMode)
+        {
+            <PageActions>
+                @if (_canUpdate)
+                {
+                    <AdminButton Text="Edit" Class="main-cta" Disabled="_isLoading" OnClick="BeginEdit" />
+                    <AdminButton Text="Clear Cache" Disabled="_isLoading" OnClick="ClearCacheAsync" />
+                }
+            </PageActions>
+        }
+        else
+        {
+            <PageActions>
+                <AdminButtonSubmit Text="Save" IsLoading="_isLoading" Disabled="_isLoading" />
+                <AdminButton Text="Cancel" Disabled="_isLoading" OnClick="CancelEdit" />
+            </PageActions>
+        }
+
+        <PageBody ContentType="form">
+
+            <FormStatus Errors="_errors" SuccessMessage="@_message" />
+
+            <FormSection Title="General">
+
+                <FormFieldText Title="Application Name" MaxLength="100" @bind-Value="_general.ApplicationName" />
+
+                <FormFieldCheckbox Title="Allow Automatic Updates"
+                                   Description="If this is disabled then any attempt to update the database automatically will cause an error. Switch this off when a website is live and is not being actively developed to prevent accidental database changes."
+                                   @bind-Value="_general.AllowAutomaticUpdates" />
+
+            </FormSection>
+
+            <FormSection Title="Seo">
+
+                <FormFieldTextArea Title="Robots.txt"
+                                   Description="This file gives instructions about this site to search engines and other robots."
+                                   @bind-Value="_seo.RobotsTxt" />
+
+                <FormFieldTextArea Title="Humans.txt"
+                                   Description="A TXT file that contains information about the different people who have contributed to building the website."
+                                   @bind-Value="_seo.HumansTxt" />
+
+            </FormSection>
+
+        </PageBody>
+
+    </AdminForm>
+}
+
+@code {
+    private GeneralSiteSettings? _generalSettings;
+    private SeoSettings? _seoSettings;
+    private UpdateGeneralSiteSettingsCommand? _general;
+    private UpdateSeoSettingsCommand? _seo;
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private string? _message;
+    private bool _canUpdate;
+    private bool _editMode;
+    private bool _isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _canUpdate = await Executor.WithServicesAsync(services => services
+            .GetRequiredService<IPermissionValidationService>()
+            .HasPermissionAsync<GeneralSettingsUpdatePermission>());
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _generalSettings = await Executor.QueryAsync(new GetSettingsQuery<GeneralSiteSettings>());
+        _seoSettings = await Executor.QueryAsync(new GetSettingsQuery<SeoSettings>());
+        ResetCommands();
+        _editMode = false;
+    }
+
+    private void ResetCommands()
+    {
+        _general = new UpdateGeneralSiteSettingsCommand
+        {
+            ApplicationName = _generalSettings!.ApplicationName ?? string.Empty,
+            AllowAutomaticUpdates = _generalSettings.AllowAutomaticUpdates
+        };
+
+        _seo = new UpdateSeoSettingsCommand
+        {
+            RobotsTxt = _seoSettings!.RobotsTxt,
+            HumansTxt = _seoSettings.HumansTxt
+        };
+    }
+
+    private void BeginEdit()
+    {
+        _editMode = true;
+        _errors = [];
+        _message = null;
+    }
+
+    private void CancelEdit()
+    {
+        _editMode = false;
+        ResetCommands();
+        _errors = [];
+    }
+
+    private async Task SaveAsync()
+    {
+        _isLoading = true;
+        _errors = [];
+        _message = null;
+
+        try
+        {
+            // Two commands, as in the AngularJS admin: general settings, then SEO.
+            var result = await Executor.ExecuteAsync(_general!);
+
+            if (result.Succeeded)
+            {
+                result = await Executor.ExecuteAsync(_seo!);
+            }
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+
+            await LoadAsync();
+            _message = "Changes were saved successfully";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Port of CacheApiController.Delete. That endpoint only required an admin user; the button was
+    /// shown to users who can update settings, so the same permission is enforced here.
+    /// </summary>
+    private async Task ClearCacheAsync()
+    {
+        _isLoading = true;
+        _errors = [];
+        _message = null;
+
+        try
+        {
+            await Executor.WithServicesAsync(async services =>
+            {
+                await services.GetRequiredService<IPermissionValidationService>()
+                    .EnforcePermissionAsync(new GeneralSettingsUpdatePermission());
+                services.GetRequiredService<IObjectCacheFactory>().Clear();
+                return true;
+            });
+
+            await LoadAsync();
+            _message = "Cache cleared";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

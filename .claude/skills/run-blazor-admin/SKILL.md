@@ -1,6 +1,6 @@
 ---
 name: run-blazor-admin
-description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete).
+description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings).
 ---
 
 # Run the Blazor admin
@@ -51,6 +51,7 @@ export NODE_PATH="$TEMP/blazor-admin-pw/node_modules" ADMIN_USER='<admin email>'
 node .claude/skills/run-blazor-admin/driver.js smoke                               # Pages module end-to-end
 node .claude/skills/run-blazor-admin/driver.js shot admin-next/pages/new create-form   # one screenshot + page text
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/assets-step.js  # Images + Documents
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/settings-step.js  # Site Settings
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
 ```
 
@@ -61,6 +62,8 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
 - **`assets-step.js`** uploads a small PNG, a 4000x2000 PNG (checks it's resized in the browser to 3200x1600)
   and a .txt document, then edits, replaces the file, filters and deletes them. The test files are drawn on a
   canvas in the page, so there are no fixtures. It cleans up after itself when it passes.
+- **`settings-step.js`** checks the Help toggle, cancel, required validation, saving (verified through
+  `/robots.txt`) and Clear Cache. It appends a marker to robots.txt and then restores the original value.
 - **`run`** loads a module of the form `module.exports = async (page, c) => { ... }`. `page` is a
   Playwright page with `baseURL` already set. `c` provides `settle()`, `shot(name)`, `step(name, fn)`,
   `btn(scope, text)`, `field(scope, label)`, `rows()` and `status()`. See `driver.js`.

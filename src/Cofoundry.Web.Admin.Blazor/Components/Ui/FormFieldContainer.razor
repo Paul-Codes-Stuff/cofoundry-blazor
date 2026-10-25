@@ -8,10 +8,7 @@
             <div>@ChildContent</div>
         </div>
     </div>
-    @if (!string.IsNullOrEmpty(Description))
-    {
-        <p class="help-inline"><small>@Description</small></p>
-    }
+    <FieldHelp Text="@Description" />
 </div>
 
 @code {

@@ -39,6 +39,8 @@ public static class AdminBlazorRoutes
 
     public static string DocumentDetails(int documentAssetId) => $"{Documents}/{documentAssetId}";
 
+    public const string Settings = Root + "/settings";
+
     public const string Login = Root + "/auth/login";
     public const string Logout = Root + "/auth/logout";
 

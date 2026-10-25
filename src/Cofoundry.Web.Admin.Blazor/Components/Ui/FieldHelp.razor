@@ -1,0 +1,25 @@
+@implements IDisposable
+
+@* The help text under a field. Hidden by the admin css until its FormSection's "Help" button is
+   clicked; registering with the section is what makes that button appear (as cmsFormSection did by
+   searching its DOM for .help-inline). *@
+@if (!string.IsNullOrEmpty(Text))
+{
+    <p class="help-inline"><small>@Text</small></p>
+}
+
+@code {
+    [CascadingParameter] public FormSection? Section { get; set; }
+
+    [Parameter] public string? Text { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        Section?.SetHasHelp(this, !string.IsNullOrEmpty(Text));
+    }
+
+    public void Dispose()
+    {
+        Section?.SetHasHelp(this, false);
+    }
+}

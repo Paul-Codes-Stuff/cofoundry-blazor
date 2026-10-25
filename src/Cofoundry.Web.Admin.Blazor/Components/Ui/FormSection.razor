@@ -1,16 +1,50 @@
-<fieldset>
+<fieldset class="@(_showHelpers ? "show-helpers" : null)">
     <legend>
         @if (!string.IsNullOrEmpty(Title))
         {
             <span>@Title</span>
         }
-        <button class="toggle-helpers" type="button"><i class="fa fa-question-circle"></i> Help</button>
+        <button class="@ToggleCssClass" type="button" @onclick="() => _showHelpers = !_showHelpers">
+            <i class="fa fa-question-circle"></i> Help
+        </button>
     </legend>
-    <div>@ChildContent</div>
+    <CascadingValue Value="this" IsFixed="true">
+        <div>@ChildContent</div>
+    </CascadingValue>
 </fieldset>
 
 @code {
+    private readonly HashSet<FieldHelp> _helpers = [];
+    private bool _showHelpers;
+
     [Parameter] public string? Title { get; set; }
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    // The button only shows ("show") when a field in the section has help text.
+    private string ToggleCssClass => string.Join(' ', new[]
+    {
+        "toggle-helpers",
+        _helpers.Count > 0 ? "show" : null,
+        _showHelpers ? "active" : null
+    }.Where(c => c != null));
+
+    internal void SetHasHelp(FieldHelp helper, bool hasHelp)
+    {
+        var hadHelp = _helpers.Count > 0;
+
+        if (hasHelp)
+        {
+            _helpers.Add(helper);
+        }
+        else
+        {
+            _helpers.Remove(helper);
+        }
+
+        if (hadHelp != _helpers.Count > 0)
+        {
+            StateHasChanged();
+        }
+    }
 }

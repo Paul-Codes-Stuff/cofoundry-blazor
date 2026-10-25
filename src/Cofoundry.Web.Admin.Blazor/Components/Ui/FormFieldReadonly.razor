@@ -8,10 +8,7 @@
                 <div class="text-block-display-value">@Value</div>
             </div>
         </div>
-        @if (!string.IsNullOrEmpty(Description))
-        {
-            <p class="help-inline"><small>@Description</small></p>
-        }
+        <FieldHelp Text="@Description" />
     </div>
 }
 

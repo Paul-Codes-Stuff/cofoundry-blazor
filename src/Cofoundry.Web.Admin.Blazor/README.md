@@ -4,7 +4,7 @@ A Blazor (Interactive Server) port of the AngularJS admin in `Cofoundry.Web.Admi
 installed **alongside** the AngularJS admin while modules are migrated one at a time.
 
 > **Status: first slice.** Builds cleanly. The Dashboard, Pages (list, filter, create, details/edit, publish,
-> unpublish, change URL, duplicate), Images and Documents modules have been smoke-tested in `Dev.Sandbox`.
+> unpublish, change URL, duplicate), Images, Documents and Site Settings modules have been smoke-tested in `Dev.Sandbox`.
 
 ## Installing side-by-side
 
@@ -58,6 +58,7 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
   copy to draft, delete), change URL, duplicate
 * Images: list (filter by tags/width/height, paging), upload, details (edit, replace file, delete)
 * Documents: list (filter by tags/extension, paging), upload, details (edit, replace file, delete)
+* Site Settings: general + SEO settings (view, edit), clear cache
 
 ### File uploads
 
@@ -77,5 +78,7 @@ to a JPEG in the browser first (`wwwroot/js/image-upload.js`), and the title def
 * Forgot password, reset password (emailed links are built by the MVC route library) and forced password
   change are still the MVC pages
 * The footer doesn't show the Cofoundry version, which the AngularJS layout does
+* Required-field messages use the command's property name when it has no `[Display]` name (e.g. "The
+  ApplicationName field is required."); the AngularJS forms showed their own client-side wording
 * Server-side validation messages are shown in the form status area, not against individual fields
 * No tests yet

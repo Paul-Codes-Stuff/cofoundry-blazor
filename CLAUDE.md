@@ -70,6 +70,8 @@ Agreed direction, not yet done:
   admin scheme lives in the `AdminBlazorAuthorizeAttribute.PolicyName` policy instead.
 - Dialogs render through a `SectionOutlet` outside `.content` (see `AdminLayout`), else the nav covers them.
 - The host needs `<RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>` or `blazor.web.js` 404s.
+- Field help text goes through `FieldHelp`, which registers with the enclosing `FormSection` so its "Help"
+  button appears and toggles `show-helpers`. Don't hand-write `<p class="help-inline">`: it would stay hidden.
 - Uploads: buffer into `BufferedFileSource` (the domain reads files more than once). A field that sets its value
   itself must call `NotifyFieldChanged()`, and a page that changes another field in code (e.g. a title from the
   file name) calls `AdminForm.NotifyFieldChanged`, or a stale "required" message stays visible.
@@ -78,9 +80,9 @@ Agreed direction, not yet done:
 
 - **Ported:** shell/nav, sign in/out, shared UI components, Dashboard (`/admin-next` and `/admin-next/dashboard`),
   Pages (list, create, details, change URL, duplicate), Images and Documents (list, filter, upload, details,
-  replace file, delete).
+  replace file, delete), Site Settings (edit, clear cache).
 - **Builds and runs.** Smoke-tested in `samples/src/Dev/Dev.Sandbox` with the `run-blazor-admin` skill (`smoke`
-  for Pages, `assets-step.js` for Images/Documents). Page delete not yet exercised.
+  for Pages, `assets-step.js` for Images/Documents, `settings-step.js` for Site Settings). Page delete not yet exercised.
 - **Next:** the image picker dialog (OpenGraph image on pages), then Roles and Users (unblocks page access
   rules). The Visual Editor stays on the MVC site.
 - No tests yet.
