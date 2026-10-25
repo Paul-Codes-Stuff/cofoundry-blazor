@@ -75,48 +75,48 @@
                 {
                     <tr><td colspan="100" class="empty">Sorry, no pages could be found.</td></tr>
                 }
-                @foreach (var page in _result?.Items ?? [])
+                @foreach (var row in _result?.Items ?? [])
                 {
-                    <tr @key="page.PageId">
+                    <tr @key="row.PageId">
                         <td>
-                            <a href="@AdminBlazorRoutes.PageDetails(page.PageId)">@page.FullUrlPath</a><br />
-                            <span>@page.Title</span>
+                            <a href="@AdminBlazorRoutes.PageDetails(row.PageId)">@row.FullUrlPath</a><br />
+                            <span>@row.Title</span>
                         </td>
                         <td>
-                            <span>@GetPublishStatusLabel(page)</span>
+                            <span>@GetPublishStatusLabel(row)</span>
                             <br />
-                            @if (page.HasDraftVersion && page.PageType == PageType.Generic)
+                            @if (row.HasDraftVersion && row.PageType == PageType.Generic)
                             {
-                                <a href="@page.FullUrlPath">(Pending Draft)</a>
+                                <a href="@row.FullUrlPath">(Pending Draft)</a>
                             }
-                            else if (page.HasDraftVersion)
+                            else if (row.HasDraftVersion)
                             {
                                 <span>(Pending Draft)</span>
                             }
                         </td>
                         <td>
-                            @if (page.PublishDate.HasValue)
+                            @if (row.PublishDate.HasValue)
                             {
-                                <span title="@page.PublishDate.Value.ToString("D") at @page.PublishDate.Value.ToString("HH:mm:ss")">
-                                    @page.PublishDate.Value.ToString("d MMM yyyy HH:mm")
+                                <span title="@row.PublishDate.Value.ToString("D") at @row.PublishDate.Value.ToString("HH:mm:ss")">
+                                    @row.PublishDate.Value.ToString("d MMM yyyy HH:mm")
                                 </span>
                             }
                         </td>
                         <td class="lowPriority">
-                            <AuditDataCell AuditData="page.AuditData" />
+                            <AuditDataCell AuditData="row.AuditData" />
                         </td>
                         <td class="actions">
-                            @if (_permissions?.CanPublish == true && (!IsPublished(page) || page.HasDraftVersion))
+                            @if (_permissions?.CanPublish == true && (!IsPublished(row) || row.HasDraftVersion))
                             {
-                                <IconLink Icon="globe" Title="Publish" OnClick="() => ConfirmPublish(page.PageId)" />
+                                <IconLink Icon="globe" Title="Publish" OnClick="() => ConfirmPublish(row.PageId)" />
                             }
                             @if (_permissions?.CanUpdate == true)
                             {
-                                <IconLink Icon="pencil-square-o" Title="Edit" Href="@AdminBlazorRoutes.PageDetails(page.PageId)" />
+                                <IconLink Icon="pencil-square-o" Title="Edit" Href="@AdminBlazorRoutes.PageDetails(row.PageId)" />
                             }
-                            @if (page.PageType == PageType.Generic)
+                            @if (row.PageType == PageType.Generic)
                             {
-                                <IconLink Icon="external-link" Title="Browse to page" Href="@page.FullUrlPath" Target="_blank" />
+                                <IconLink Icon="external-link" Title="Browse to page" Href="@row.FullUrlPath" Target="_blank" />
                             }
                         </td>
                     </tr>

@@ -1,7 +1,7 @@
 <EditForm @ref="_editForm"
           Model="Model"
           OnValidSubmit="OnValidSubmit"
-          class="form-horizontal @CssClass @(EditMode ? "form-edit-on" : "form-edit-off") @(IsLoading ? "loading" : string.Empty)"
+          class="@FormCssClass"
           novalidate>
     <DataAnnotationsValidator />
 
@@ -12,6 +12,15 @@
 
 @code {
     private EditForm? _editForm;
+
+    // Component attributes can't mix text and C#, so the class list is built as one expression.
+    private string FormCssClass => string.Join(' ', new[]
+    {
+        "form-horizontal",
+        CssClass,
+        EditMode ? "form-edit-on" : "form-edit-off",
+        IsLoading ? "loading" : null
+    }.Where(c => !string.IsNullOrEmpty(c)));
 
     /// <summary>
     /// The object being edited, typically a domain command. Its data annotations drive client-side validation.
