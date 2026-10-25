@@ -3,6 +3,7 @@
 @* [Image] properties: cms-form-field-image-asset. The id may be an int or an int?; 0 means no image. *@
 <FormFieldImageAsset Id="@Field.Property.Name" Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
                      Required="Field.IsRequired" PreviewWidth="PreviewWidth" PreviewHeight="PreviewHeight"
+                     Filter="DataModelAssetFilters.Image(Field)"
                      @bind-Value="_binding.Value" />
 
 @code {

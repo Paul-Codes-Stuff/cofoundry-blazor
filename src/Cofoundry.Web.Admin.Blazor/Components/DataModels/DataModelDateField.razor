@@ -1,0 +1,71 @@
+@inherits DataModelFieldComponentBase
+@inject BrowserTimeZone BrowserTimeZone
+
+@* Date ([Date], [DateLocal]) and date and time ([DateAndTime], [DateAndTimeLocal], plain DateTime)
+   properties: cms-form-field-date, -date-local, -date-time and -date-time-local. The property can be a
+   DateTime, DateTimeOffset or string, and is stored in UTC. The "Local" variants are edited in the
+   browser's time zone, which the AngularJS admin got from the browser and we read with BrowserTimeZone. *@
+@if (_binding != null)
+{
+    <FormFieldDate Id="@Field.Property.Name" Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+                   InputType="InputType" Min="@_min" Max="@_max" Step="Field.GetAttribute<int?>(DataModelAttributes.Step)"
+                   @bind-Value="_binding.Value" />
+}
+
+@code {
+    private DataModelFieldBinding<DateTime?>? _binding;
+    private string? _min;
+    private string? _max;
+
+    private bool IsLocal => Field.Schema.DataTemplateName is "DateLocal" or "DateTimeLocal";
+
+    private bool HasTime => Field.Schema.DataTemplateName is "DateTime" or "DateTimeLocal";
+
+    private InputDateType InputType => HasTime ? InputDateType.DateTimeLocal : InputDateType.Date;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var timeZone = IsLocal ? await BrowserTimeZone.GetAsync() : TimeZoneInfo.Utc;
+
+        _binding = Field.Bind<DateTime?>(
+            emptyWhenDefault: true,
+            toEditor: utc => BrowserTimeZone.ToLocal(utc, timeZone),
+            fromEditor: local => ToStoredValue(local, timeZone));
+
+        if (Field.Schema.DataTemplateName == "DateTimeLocal")
+        {
+            // [DateAndTimeLocal] gives its range in UTC; the input wants the browser's time.
+            _min = FormatLocal(Field.GetAttribute<string>("MinUtc"), timeZone);
+            _max = FormatLocal(Field.GetAttribute<string>("MaxUtc"), timeZone);
+        }
+        else
+        {
+            _min = Field.GetAttribute<string>(DataModelAttributes.Min);
+            _max = Field.GetAttribute<string>(DataModelAttributes.Max);
+        }
+    }
+
+    /// <summary>
+    /// A date is midnight: UTC for [Date], the browser's midnight for [DateLocal].
+    /// </summary>
+    private DateTime? ToStoredValue(DateTime? local, TimeZoneInfo timeZone)
+    {
+        if (local.HasValue && !HasTime)
+        {
+            local = local.Value.Date;
+        }
+
+        return BrowserTimeZone.ToUtc(local, timeZone);
+    }
+
+    private static string? FormatLocal(string? utc, TimeZoneInfo timeZone)
+    {
+        if (!DateTime.TryParse(utc, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var value))
+        {
+            return null;
+        }
+
+        return BrowserTimeZone.ToLocal(value, timeZone)!.Value.ToString("yyyy-MM-ddTHH:mm", System.Globalization.CultureInfo.InvariantCulture);
+    }
+}

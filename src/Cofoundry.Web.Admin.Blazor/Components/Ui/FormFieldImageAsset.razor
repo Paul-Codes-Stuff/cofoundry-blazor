@@ -54,7 +54,7 @@
 
 @if (_isPickerOpen)
 {
-    <ImageAssetPickerDialog CurrentAsset="_previewAsset" OnSelected="OnSelectedAsync" OnCancel="() => _isPickerOpen = false" />
+    <ImageAssetPickerDialog CurrentAsset="_previewAsset" Filter="Filter" OnSelected="OnSelectedAsync" OnCancel="() => _isPickerOpen = false" />
 }
 
 @code {
@@ -68,6 +68,11 @@
     [Parameter] public IImageAssetRenderable? CurrentAsset { get; set; }
 
     [Parameter] public bool Required { get; set; }
+
+    /// <summary>
+    /// Restricts the images the picker offers, e.g. to a tag or a minimum size.
+    /// </summary>
+    [Parameter] public ImageAssetFilter? Filter { get; set; }
 
     [Parameter] public int PreviewWidth { get; set; } = 450;
 

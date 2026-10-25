@@ -1,0 +1,11 @@
+@inherits DataModelFieldComponentBase
+
+@* [Color] properties: cms-form-field-color. *@
+<FormFieldColor Id="@Field.Property.Name" Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+                @bind-Value="_binding.Value" />
+
+@code {
+    private DataModelFieldBinding<string?> _binding = default!;
+
+    protected override void OnParametersSet() => _binding = Field.Bind<string?>();
+}

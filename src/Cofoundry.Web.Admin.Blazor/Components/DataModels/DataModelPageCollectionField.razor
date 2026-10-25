@@ -1,0 +1,93 @@
+@using Cofoundry.Web.Admin.Blazor.Components.CustomEntities
+@using Cofoundry.Web.Admin.Blazor.Components.Pages
+@inherits IdCollectionFieldBase<PageSummary>
+
+@* [PageCollection] properties: cms-form-field-page-collection. A table of the chosen pages with a picker to
+   add or remove them. Orderable collections can be reordered by dragging rows; others are kept newest
+   first, as in the AngularJS field. *@
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label">@Field.Title:</label>
+        <div class="controls">
+            <TableContainer IsLoading="IsLoading">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Page</th>
+                            <th>Status</th>
+                            @if (ShowInput)
+                            {
+                                <th class="actions">Actions</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Items.Count == 0)
+                        {
+                            <tr><td colspan="100" class="empty">None</td></tr>
+                        }
+                        @foreach (var (row, index) in Items.Select((row, i) => (row, i)))
+                        {
+                            <tr @key="row.PageId"
+                                draggable="@(CanReorder ? "true" : null)"
+                                @ondragstart="() => DragStart(index)"
+                                @ondragover="() => { }"
+                                @ondragover:preventDefault="CanReorder"
+                                @ondrop="() => DropAsync(index)">
+                                <td>
+                                    <strong>
+                                        <a href="@AdminBlazorRoutes.PageDetails(row.PageId)" target="_blank" title="@row.Title">@row.FullUrlPath</a>
+                                    </strong>
+                                </td>
+                                <td>
+                                    <span>@CustomEntityLabels.PublishStatus(row.PublishStatus, row.PublishDate)</span>
+                                    @if (row.HasDraftVersion)
+                                    {
+                                        @(" ")<span>(Pending Draft)</span>
+                                    }
+                                </td>
+                                @if (ShowInput)
+                                {
+                                    <td class="actions">
+                                        <ButtonIcon Icon="trash-o" Title="Remove" OnClick="() => RemoveAsync(row)" />
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (ShowInput)
+                {
+                    <div class="collection-actions">
+                        <a href="" class="btn-icon" title="Add" @onclick="() => IsPickerOpen = true" @onclick:preventDefault>
+                            <i class="fa fa-plus-circle"></i>
+                        </a>
+                    </div>
+                }
+            </TableContainer>
+            <ValidationMessage For="() => Binding.Value" class="field-validation-error" />
+        </div>
+    </div>
+    <FieldHelp Text="@Field.Description" />
+</div>
+
+@if (IsPickerOpen)
+{
+    <PagePickerDialog SelectedIds="Ids" LocaleId="Field.Context.LocaleId" OnSelected="OnPickedAsync" OnCancel="() => IsPickerOpen = false" />
+}
+
+@code {
+    protected override bool IsOrderable => Field.GetAttribute<bool>("Orderable");
+
+    protected override Task<IReadOnlyDictionary<int, PageSummary>> QueryAsync(IReadOnlyCollection<int> ids)
+    {
+        return Executor.QueryAsync(new GetPageSummariesByIdRangeQuery(ids));
+    }
+
+    protected override int GetId(PageSummary item) => item.PageId;
+
+    protected override IEnumerable<PageSummary> Sort(IEnumerable<PageSummary> items)
+    {
+        return items.OrderByDescending(p => p.AuditData.CreateDate);
+    }
+}

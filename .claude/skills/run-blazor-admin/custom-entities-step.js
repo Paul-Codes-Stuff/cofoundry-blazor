@@ -1,7 +1,7 @@
-// Custom entities (phase 1: simple fields, image fields, unsupported placeholder) on the sandbox's
-// Authors (SIMAUT), Categories (SIMCAT), Blog Posts (SIMBLP) and Examples (SIMEXA, only opened: its nested
-// collections are covered by nested-data-models-step.js). Pickers, drafts, versions and publishing are in
-// custom-entity-pickers-step.js.
+// Custom entities (phase 1: simple fields and image fields) on the sandbox's Authors (SIMAUT),
+// Categories (SIMCAT) and Blog Posts (SIMBLP). Pickers, drafts, versions and publishing are in
+// custom-entity-pickers-step.js, nested data models (Examples) in nested-data-models-step.js and the other
+// field types in field-types-step.js.
 // Uploads an image, creates authors and a category, and deletes them all again.
 module.exports = async (page, c) => {
   const stamp = Date.now().toString(36);
@@ -114,7 +114,8 @@ module.exports = async (page, c) => {
 
   await c.step('setup: upload an image', async () => {
     await page.goto('/admin-next/images/new'); await c.settle();
-    await page.locator('.form-field-image-upload input[type=file]').setInputFiles({ name: `ce-thumb-${stamp}.png`, mimeType: 'image/png', buffer: await makePng(400, 300, '#3a8') });
+    // At least 460x460: the sandbox's [Image(MinWidth = 460, MinHeight = 460)] fields filter smaller images out of the picker.
+    await page.locator('.form-field-image-upload input[type=file]').setInputFiles({ name: `ce-thumb-${stamp}.png`, mimeType: 'image/png', buffer: await makePng(500, 500, '#3a8') });
     await page.waitForTimeout(1500);
     await c.btn('.page-actions', 'Save').click(); await c.settle(2000);
     if (!page.url().endsWith('/admin-next/images')) throw new Error('upload failed');
@@ -151,15 +152,6 @@ module.exports = async (page, c) => {
     await c.btn('.search-filter', 'Apply').click(); await c.settle(1000);
     const rows = await c.rows();
     if (rows.length !== 1 || !rows[0].includes(categoryName)) throw new Error(rows.join(' | '));
-  });
-
-  await c.step('unsupported fields show a placeholder', async () => {
-    // Example's TestApiOptionSelectList is a Dropdown, which isn't ported yet (phase 4). The placeholder
-    // also shows the field's validation messages; nested-data-models-step.js covers Example's collections.
-    await page.goto('/admin-next/custom-entities/SIMEXA/new'); await c.settle();
-    const text = await control('Test api option select list:').innerText();
-    if (!/This field type \(Dropdown\) can't be edited in this admin yet/.test(text)) throw new Error(text);
-    await c.shot('ce-6-unsupported');
   });
 
   await c.step('cleanup: delete entities and image', async () => {

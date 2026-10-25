@@ -1,0 +1,178 @@
+@using Cofoundry.Web.Admin.Blazor.Components.CustomEntities
+@inject IAdminBlazorExecutor Executor
+
+@* Port of PagePickerDialog in multi mode, used by the page collection field: clicks toggle pages in and
+   out of the selection and double-click selects and closes. *@
+<ModalDialog Title="Find Page" Size="large" OnClose="CancelAsync">
+
+    <PageActions>
+        <AdminButton Text="Ok" Class="main-cta" OnClick="OkAsync" />
+        <AdminButton Text="Cancel" OnClick="CancelAsync" />
+        <AdminButton Text="Filter" OnClick="() => _isFilterVisible = !_isFilterVisible" />
+
+        @if (_isFilterVisible)
+        {
+            <AdminForm Model="_filter" OnValidSubmit="ApplyFilter" CssClass="search-filter">
+                <FormSection Title="Filter this list">
+                    <FormFieldText Title="Text" @bind-Value="_filter.Text" />
+                </FormSection>
+                <div class="form-actions">
+                    <AdminButtonSubmit Text="Apply" />
+                    <AdminButton Text="Clear" OnClick="ClearFilter" />
+                </div>
+            </AdminForm>
+        }
+
+        <Pager PageNumber="_result?.PageNumber ?? 1" PageCount="_result?.PageCount ?? 0" OnPageChanged="GoToPage" />
+    </PageActions>
+
+    <PageBody>
+        <TableContainer IsLoading="_isLoading">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Page</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th class="actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_result != null && _result.Items.Count == 0)
+                    {
+                        <tr><td colspan="100" class="empty">Sorry, no pages could be found.</td></tr>
+                    }
+                    @foreach (var row in _result?.Items ?? [])
+                    {
+                        var isSelected = _selectedIds.Contains(row.PageId);
+
+                        <tr @key="row.PageId"
+                            class="@(isSelected ? "selected" : "selectable")"
+                            @onclick="() => Select(row.PageId)"
+                            @ondblclick="() => SelectAndCloseAsync(row.PageId)">
+                            <td>
+                                <strong>
+                                    <a href="@AdminBlazorRoutes.PageDetails(row.PageId)" target="_blank" title="@row.Title">@row.FullUrlPath</a>
+                                </strong>
+                            </td>
+                            <td>
+                                <span>@CustomEntityLabels.PublishStatus(row.PublishStatus, row.PublishDate)</span>
+                                @if (row.HasDraftVersion)
+                                {
+                                    @(" ")<span>(Pending Draft)</span>
+                                }
+                            </td>
+                            <td class="lowPriority"><AuditDataCell AuditData="row.AuditData" /></td>
+                            <td class="actions">
+                                <ButtonIcon Icon="@(isSelected ? "check-square-o" : "square-o")" Title="@(isSelected ? "Selected" : "Select")" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </TableContainer>
+    </PageBody>
+
+</ModalDialog>
+
+@code {
+    // The AngularJS SearchQuery default.
+    private const int DefaultPageSize = 30;
+
+    private readonly PickerFilter _filter = new();
+    private List<int> _selectedIds = [];
+    private SearchPageSummariesQuery _query = new();
+    private PagedQueryResult<PageSummary>? _result;
+    private bool _isFilterVisible;
+    private bool _isLoading;
+
+    /// <summary>
+    /// The collection's current ids.
+    /// </summary>
+    [Parameter] public IReadOnlyCollection<int> SelectedIds { get; set; } = [];
+
+    /// <summary>
+    /// Restricts the list to a locale, e.g. the locale of the entity being edited.
+    /// </summary>
+    [Parameter] public int? LocaleId { get; set; }
+
+    /// <summary>
+    /// Raised with the selected ids (in selection order) when "Ok" is clicked.
+    /// </summary>
+    [Parameter] public EventCallback<IReadOnlyList<int>> OnSelected { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _selectedIds = SelectedIds.ToList();
+        await ApplyFilter();
+    }
+
+    private async Task LoadGridAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _result = await Executor.QueryAsync(_query);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ApplyFilter()
+    {
+        _query = new SearchPageSummariesQuery
+        {
+            PageNumber = 1,
+            PageSize = DefaultPageSize,
+            Text = _filter.Text,
+            LocaleId = LocaleId
+        };
+
+        _isFilterVisible = false;
+        await LoadGridAsync();
+    }
+
+    private async Task ClearFilter()
+    {
+        _filter.Text = null;
+        await ApplyFilter();
+    }
+
+    private async Task GoToPage(int pageNumber)
+    {
+        _query.PageNumber = pageNumber;
+        await LoadGridAsync();
+    }
+
+    private void Select(int pageId)
+    {
+        if (!_selectedIds.Remove(pageId))
+        {
+            _selectedIds.Add(pageId);
+        }
+    }
+
+    private Task SelectAndCloseAsync(int pageId)
+    {
+        // A double-click arrives after the two clicks, which have toggled the row back off.
+        if (!_selectedIds.Contains(pageId))
+        {
+            _selectedIds.Add(pageId);
+        }
+
+        return OkAsync();
+    }
+
+    private Task OkAsync() => OnSelected.InvokeAsync(_selectedIds);
+
+    private Task CancelAsync() => OnCancel.InvokeAsync();
+
+    private sealed class PickerFilter
+    {
+        public string? Text { get; set; }
+    }
+}

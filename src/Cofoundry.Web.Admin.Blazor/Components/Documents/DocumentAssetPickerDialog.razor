@@ -1,0 +1,280 @@
+@inject IAdminBlazorExecutor Executor
+
+@* Port of DocumentAssetPickerDialog. In single mode a click selects one document and double-click selects
+   and closes. In multi mode (SelectedIds set) clicks toggle documents in and out of the selection. New
+   documents can be uploaded from the table's "+" action; the upload is selected and the dialog closes.
+   A preset Filter (from the field's attribute) is applied and can't be changed. *@
+<ModalDialog Title="Find a document" Size="large" OnClose="CancelAsync">
+
+    <PageActions>
+        <AdminButton Text="@(IsMultiMode ? "Ok" : "Select")" Class="main-cta" Disabled="!IsMultiMode && _selected == null" OnClick="OkAsync" />
+        <AdminButton Text="Cancel" OnClick="CancelAsync" />
+        <AdminButton Text="Filter" OnClick="() => _isFilterVisible = !_isFilterVisible" />
+
+        @if (_isFilterVisible)
+        {
+            <AdminForm Model="_filter" OnValidSubmit="ApplyFilter" CssClass="search-filter">
+                <FormSection Title="Filter this list">
+
+                    <FormFieldText Title="Tags" Disabled="Preset.Tags != null" @bind-Value="_filter.Tags" />
+                    @if (Preset.FileExtensions != null)
+                    {
+                        <FormFieldReadonly Title="File Extensions" Value="@Preset.FileExtensions" />
+                    }
+                    else
+                    {
+                        <FormFieldDropdown TValue="string" Title="Extension" Options="_fileTypes" DefaultItemText="Any"
+                                           Disabled="Preset.FileExtension != null" @bind-Value="_filter.FileExtension" />
+                    }
+
+                </FormSection>
+                <div class="form-actions">
+                    <AdminButtonSubmit Text="Apply" />
+                    <AdminButton Text="Clear" OnClick="ClearFilter" />
+                </div>
+            </AdminForm>
+        }
+
+        <Pager PageNumber="_result?.PageNumber ?? 1" PageCount="_result?.PageCount ?? 0" OnPageChanged="GoToPage" />
+    </PageActions>
+
+    <PageBody>
+        <TableContainer IsLoading="_isLoading">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>File</th>
+                        <th>Tags</th>
+                        <th>Modified</th>
+                        <th class="actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_result != null && _result.Items.Count == 0)
+                    {
+                        <tr><td colspan="100" class="empty">Sorry, no documents could be found.</td></tr>
+                    }
+                    @foreach (var document in _result?.Items ?? [])
+                    {
+                        var isSelected = IsSelected(document.DocumentAssetId);
+
+                        <tr @key="document.DocumentAssetId"
+                            class="@(isSelected ? "selected" : "selectable")"
+                            @onclick="() => Select(document)"
+                            @ondblclick="() => SelectAndCloseAsync(document)">
+                            <td>@document.Title</td>
+                            <td>
+                                <DocumentAssetLink Document="document" /><br />
+                                @StringUtilities.FormatBytes(document.FileSizeInBytes)
+                            </td>
+                            <td>
+                                <TagList Tags="document.Tags" />
+                            </td>
+                            <td class="lowPriority">
+                                <UpdatedAuditDataCell AuditData="document.AuditData" />
+                            </td>
+                            <td class="actions">
+                                <ButtonIcon Icon="@(isSelected ? "check-square-o" : "square-o")" Title="@(isSelected ? "Selected" : "Select")" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (_canCreate)
+            {
+                <div class="collection-actions">
+                    <a href="" class="btn-icon" title="Upload" @onclick="() => _isUploadOpen = true" @onclick:preventDefault>
+                        <i class="fa fa-plus-circle"></i>
+                    </a>
+                </div>
+            }
+        </TableContainer>
+    </PageBody>
+
+</ModalDialog>
+
+@if (_isUploadOpen)
+{
+    <UploadDocumentAssetDialog Filter="Preset" OnClosed="OnUploadClosedAsync" />
+}
+
+@code {
+    // The AngularJS SearchQuery default.
+    private const int DefaultPageSize = 30;
+
+    private readonly PickerFilter _filter = new();
+    private List<int> _selectedIds = [];
+    private SearchDocumentAssetSummariesQuery _query = new() { PageNumber = 1, PageSize = DefaultPageSize };
+    private PagedQueryResult<DocumentAssetSummary>? _result;
+    private IReadOnlyList<SelectOption<string>> _fileTypes = [];
+    private DocumentAssetSummary? _selected;
+    private bool _canCreate;
+    private bool _isFilterVisible;
+    private bool _isLoading;
+    private bool _isUploadOpen;
+
+    /// <summary>
+    /// Single mode: the document currently chosen in the field, highlighted as selected when the dialog opens.
+    /// </summary>
+    [Parameter] public DocumentAssetSummary? CurrentAsset { get; set; }
+
+    /// <summary>
+    /// Setting this opens the dialog in multi mode, with these documents selected (a collection field).
+    /// </summary>
+    [Parameter] public IReadOnlyCollection<int>? SelectedIds { get; set; }
+
+    /// <summary>
+    /// Restrictions from the field's attribute, applied to the list.
+    /// </summary>
+    [Parameter] public DocumentAssetFilter? Filter { get; set; }
+
+    /// <summary>
+    /// Single mode: called with the chosen document when "Select" is clicked (or a row double-clicked).
+    /// </summary>
+    [Parameter] public EventCallback<DocumentAssetSummary> OnSelected { get; set; }
+
+    /// <summary>
+    /// Multi mode: called with the selected ids, in selection order, when "Ok" is clicked.
+    /// </summary>
+    [Parameter] public EventCallback<IReadOnlyList<int>> OnSelectedIds { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private bool IsMultiMode => SelectedIds != null;
+
+    private DocumentAssetFilter Preset => Filter ?? DocumentAssetFilter.None;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _selected = CurrentAsset;
+        _selectedIds = SelectedIds?.ToList() ?? [];
+        _canCreate = (await CrudPermissions.LoadDocumentsAsync(Executor)).CanCreate;
+
+        var fileTypes = await Executor.QueryAsync(new GetAllDocumentAssetFileTypesQuery());
+        _fileTypes = fileTypes.Select(t => new SelectOption<string>(t.FileExtension, t.FileExtension)).ToList();
+
+        ResetFilter();
+        await ApplyFilter();
+    }
+
+    private async Task LoadGridAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _result = await Executor.QueryAsync(_query);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ApplyFilter()
+    {
+        _query = new SearchDocumentAssetSummariesQuery
+        {
+            PageNumber = 1,
+            PageSize = DefaultPageSize,
+            Tags = _filter.Tags,
+            FileExtension = string.IsNullOrEmpty(_filter.FileExtension) ? null : _filter.FileExtension,
+            FileExtensions = Preset.FileExtensions
+        };
+
+        _isFilterVisible = false;
+        await LoadGridAsync();
+    }
+
+    private async Task ClearFilter()
+    {
+        ResetFilter();
+        await ApplyFilter();
+    }
+
+    /// <summary>
+    /// Back to the preset restrictions, as the AngularJS SearchQuery reset to its default params.
+    /// </summary>
+    private void ResetFilter()
+    {
+        _filter.Tags = Preset.Tags;
+        _filter.FileExtension = Preset.FileExtension;
+    }
+
+    private async Task GoToPage(int pageNumber)
+    {
+        _query.PageNumber = pageNumber;
+        await LoadGridAsync();
+    }
+
+    private bool IsSelected(int documentAssetId)
+    {
+        return IsMultiMode ? _selectedIds.Contains(documentAssetId) : documentAssetId == _selected?.DocumentAssetId;
+    }
+
+    private void Select(DocumentAssetSummary document)
+    {
+        if (!IsMultiMode)
+        {
+            _selected = document;
+        }
+        else if (!_selectedIds.Remove(document.DocumentAssetId))
+        {
+            _selectedIds.Add(document.DocumentAssetId);
+        }
+    }
+
+    private Task SelectAndCloseAsync(DocumentAssetSummary document)
+    {
+        // A double-click arrives after the two clicks, which have toggled a multi-mode row back off.
+        if (IsMultiMode)
+        {
+            if (!_selectedIds.Contains(document.DocumentAssetId))
+            {
+                _selectedIds.Add(document.DocumentAssetId);
+            }
+        }
+        else
+        {
+            _selected = document;
+        }
+
+        return OkAsync();
+    }
+
+    private async Task OkAsync()
+    {
+        if (IsMultiMode)
+        {
+            await OnSelectedIds.InvokeAsync(_selectedIds);
+        }
+        else if (_selected != null)
+        {
+            await OnSelected.InvokeAsync(_selected);
+        }
+    }
+
+    private Task CancelAsync() => OnCancel.InvokeAsync();
+
+    private async Task OnUploadClosedAsync(int? documentAssetId)
+    {
+        _isUploadOpen = false;
+
+        if (!documentAssetId.HasValue)
+        {
+            return;
+        }
+
+        var document = await Executor.QueryAsync(new GetDocumentAssetDetailsByIdQuery(documentAssetId.Value));
+        if (document != null)
+        {
+            await SelectAndCloseAsync(document);
+        }
+    }
+
+    private sealed class PickerFilter
+    {
+        public string? Tags { get; set; }
+        public string? FileExtension { get; set; }
+    }
+}

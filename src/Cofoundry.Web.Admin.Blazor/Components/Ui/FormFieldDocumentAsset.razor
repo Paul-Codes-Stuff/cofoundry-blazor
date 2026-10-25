@@ -1,0 +1,101 @@
+@inherits FormFieldBase<int?>
+@inject IAdminBlazorExecutor Executor
+
+@* Port of cms-form-field-document-asset: a document id chosen with the "Find a document" picker dialog. *@
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label" for="@FieldId">@Title:</label>
+        <div class="controls">
+            <div>
+                @if (_previewAsset != null)
+                {
+                    <span><DocumentAssetLink Document="_previewAsset" /></span>
+                }
+                else
+                {
+                    <span>None</span>
+                }
+                @if (ShowInput)
+                {
+                    <span>
+                        @if (_previewAsset != null)
+                        {
+                            <ButtonIcon Icon="external-link" Title="Edit document" External="true"
+                                        Href="@AdminBlazorRoutes.DocumentDetails(_previewAsset.DocumentAssetId)" />
+                        }
+                        <ButtonIcon Icon="cog" Title="@ButtonText" Disabled="Disabled" OnClick="OpenPicker" />
+                        @if (_previewAsset != null && !Required)
+                        {
+                            <ButtonIcon Icon="trash-o" Title="Remove" Disabled="Disabled" OnClick="RemoveAsync" />
+                        }
+                    </span>
+                }
+            </div>
+            @if (ShowInput)
+            {
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+            }
+        </div>
+    </div>
+    <FieldHelp Text="@Description" />
+</div>
+
+@if (_isPickerOpen)
+{
+    <DocumentAssetPickerDialog CurrentAsset="_previewAsset" Filter="Filter" OnSelected="OnSelectedAsync" OnCancel="() => _isPickerOpen = false" />
+}
+
+@code {
+    private DocumentAssetSummary? _previewAsset;
+    private bool _isPickerOpen;
+
+    [Parameter] public bool Required { get; set; }
+
+    /// <summary>
+    /// Restricts the documents the picker offers, e.g. to a tag or a file type.
+    /// </summary>
+    [Parameter] public DocumentAssetFilter? Filter { get; set; }
+
+    private string ButtonText => Value.HasValue ? "Change" : "Select";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        base.OnParametersSet();
+
+        if (Value == _previewAsset?.DocumentAssetId)
+        {
+            return;
+        }
+
+        _previewAsset = Value.HasValue
+            ? await Executor.QueryAsync(new GetDocumentAssetDetailsByIdQuery(Value.Value))
+            : null;
+    }
+
+    private void OpenPicker()
+    {
+        if (!Disabled)
+        {
+            _isPickerOpen = true;
+        }
+    }
+
+    private async Task OnSelectedAsync(DocumentAssetSummary document)
+    {
+        _isPickerOpen = false;
+
+        if (document.DocumentAssetId != Value)
+        {
+            await SetAsync(document);
+        }
+    }
+
+    private Task RemoveAsync() => SetAsync(null);
+
+    private async Task SetAsync(DocumentAssetSummary? document)
+    {
+        _previewAsset = document;
+        await ValueChanged.InvokeAsync(document?.DocumentAssetId);
+        NotifyFieldChanged();
+    }
+}

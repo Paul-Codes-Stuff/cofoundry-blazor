@@ -1,0 +1,51 @@
+@inherits FormFieldBase<string?>
+
+@* Port of cms-form-field-radio-list. Values are strings; an optional field gets a "None" choice first,
+   whose value is "" (a radio without a value posts "on") and which is checked when there's no value. *@
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label">@Title:</label>
+        <div class="controls">
+            @if (ShowInput)
+            {
+                <InputRadioGroup TValue="string" Name="@FieldId" Value="@(Value ?? string.Empty)" ValueChanged="OnValueChanged" ValueExpression="ValueExpression">
+                    <ul>
+                        @if (!Required)
+                        {
+                            <li>
+                                <InputRadio id="@($"{FieldId}-NA")" Value="@string.Empty" disabled="@Disabled" />
+                                <label for="@($"{FieldId}-NA")">@(DefaultItemText ?? "None")</label>
+                            </li>
+                        }
+                        @foreach (var (option, index) in Options.Select((o, i) => (o, i)))
+                        {
+                            <li>
+                                <InputRadio id="@($"{FieldId}{index}")" Value="@option.Value" disabled="@Disabled" />
+                                <label for="@($"{FieldId}{index}")">@option.Text</label>
+                            </li>
+                        }
+                    </ul>
+                </InputRadioGroup>
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+            }
+            else
+            {
+                <div class="text-block-display-value">@(Options.FirstOrDefault(o => o.Value == Value)?.Text ?? "None")</div>
+            }
+        </div>
+    </div>
+    <FieldHelp Text="@Description" />
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<SelectOption<string?>> Options { get; set; } = [];
+
+    /// <summary>
+    /// Text of the empty choice offered when the field is optional. Defaults to "None".
+    /// </summary>
+    [Parameter] public string? DefaultItemText { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    private Task OnValueChanged(string? value) => ValueChanged.InvokeAsync(string.IsNullOrEmpty(value) ? null : value);
+}

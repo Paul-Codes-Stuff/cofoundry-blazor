@@ -1,0 +1,32 @@
+@inherits DataModelFieldComponentBase
+@inject AdminLookups Lookups
+
+@* [PageDirectory] properties: cms-form-field-directory-selector, a dropdown of every directory by url path. *@
+@if (_options == null)
+{
+    <FormFieldContainer Title="@Field.Title" Description="@Field.Description">
+        <div class="text-block-display-value">Loading...</div>
+    </FormFieldContainer>
+}
+else
+{
+    <FormFieldDropdown TValue="int?" Id="@Field.Property.Name" Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+                       Options="_options" DefaultItemText="None" Required="Field.IsRequired"
+                       @bind-Value="_binding.Value" />
+}
+
+@code {
+    private DataModelFieldBinding<int?> _binding = default!;
+    private IReadOnlyList<SelectOption<int?>>? _options;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _binding = Field.Bind<int?>(emptyWhenDefault: true);
+
+        if (_options == null)
+        {
+            var directories = await Lookups.GetDirectoryOptionsAsync();
+            _options = directories.Select(d => new SelectOption<int?>(d.Value, d.Text)).ToList();
+        }
+    }
+}

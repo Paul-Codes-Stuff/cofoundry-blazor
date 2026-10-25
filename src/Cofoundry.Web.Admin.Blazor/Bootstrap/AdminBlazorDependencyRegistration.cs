@@ -16,6 +16,7 @@ public class AdminBlazorDependencyRegistration : IDependencyRegistration
             .Register<IUserSessionService, CircuitAwareUserSessionService>(sessionServiceOptions)
             .Register<IAdminBlazorExecutor, AdminBlazorExecutor>(RegistrationOptions.Scoped())
             .Register<AdminLookups>(RegistrationOptions.Scoped())
+            .Register<BrowserTimeZone>(RegistrationOptions.Scoped())
             .RegisterAll<IDataModelFieldComponentRegistration>(RegistrationOptions.SingletonScope())
             .Register<DataModelFieldComponentRegistry>(RegistrationOptions.SingletonScope());
     }

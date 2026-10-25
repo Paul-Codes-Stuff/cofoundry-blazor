@@ -1,11 +1,13 @@
 @inject IAdminBlazorExecutor Executor
 
-@* Port of ImageAssetPickerDialog (single-select mode). Click a row to select it, double-click to
-   select and close. New images can be uploaded from the table's "+" action and are selected at once. *@
+@* Port of ImageAssetPickerDialog. In single mode a click selects one image and double-click selects and
+   closes. In multi mode (SelectedIds set) clicks toggle images in and out of the selection. New images can
+   be uploaded from the table's "+" action; the upload is selected and the dialog closes. A preset Filter
+   (from the field's attribute) is applied and can't be changed. *@
 <ModalDialog Title="Find an image" Size="large" OnClose="CancelAsync">
 
     <PageActions>
-        <AdminButton Text="Select" Class="main-cta" Disabled="_selected == null" OnClick="SelectAsync" />
+        <AdminButton Text="@(IsMultiMode ? "Ok" : "Select")" Class="main-cta" Disabled="!IsMultiMode && _selected == null" OnClick="OkAsync" />
         <AdminButton Text="Cancel" OnClick="CancelAsync" />
         <AdminButton Text="Filter" OnClick="() => _isFilterVisible = !_isFilterVisible" />
 
@@ -14,11 +16,23 @@
             <AdminForm Model="_filter" OnValidSubmit="ApplyFilter" CssClass="search-filter">
                 <FormSection Title="Filter this list">
 
-                    <FormFieldText Title="Tags" @bind-Value="_filter.Tags" />
-                    <FormFieldNumber Title="Width" Min="0" @bind-Value="_filter.Width" />
-                    <FormFieldNumber Title="Height" Min="0" @bind-Value="_filter.Height" />
-                    <FormFieldNumber Title="Min Width" Min="0" @bind-Value="_filter.MinWidth" />
-                    <FormFieldNumber Title="Min Height" Min="0" @bind-Value="_filter.MinHeight" />
+                    <FormFieldText Title="Tags" Disabled="Preset.Tags != null" @bind-Value="_filter.Tags" />
+                    @if (Preset.MinWidth == null)
+                    {
+                        <FormFieldNumber Title="Width" Min="0" Disabled="Preset.Width != null" @bind-Value="_filter.Width" />
+                    }
+                    @if (Preset.MinHeight == null)
+                    {
+                        <FormFieldNumber Title="Height" Min="0" Disabled="Preset.Height != null" @bind-Value="_filter.Height" />
+                    }
+                    @if (Preset.Width == null)
+                    {
+                        <FormFieldNumber Title="Min Width" Min="0" Disabled="Preset.MinWidth != null" @bind-Value="_filter.MinWidth" />
+                    }
+                    @if (Preset.Height == null)
+                    {
+                        <FormFieldNumber Title="Min Height" Min="0" Disabled="Preset.MinHeight != null" @bind-Value="_filter.MinHeight" />
+                    }
 
                 </FormSection>
                 <div class="form-actions">
@@ -51,11 +65,11 @@
                     }
                     @foreach (var image in _result?.Items ?? [])
                     {
-                        var isSelected = image.ImageAssetId == _selected?.ImageAssetId;
+                        var isSelected = IsSelected(image.ImageAssetId);
 
                         <tr @key="image.ImageAssetId"
                             class="@(isSelected ? "selected" : "selectable")"
-                            @onclick="() => _selected = image"
+                            @onclick="() => Select(image)"
                             @ondblclick="() => SelectAndCloseAsync(image)">
                             <td>
                                 <TableCellImage Image="image" />
@@ -93,7 +107,7 @@
 
 @if (_isUploadOpen)
 {
-    <UploadImageAssetDialog OnClosed="OnUploadClosedAsync" />
+    <UploadImageAssetDialog Filter="Preset" OnClosed="OnUploadClosedAsync" />
 }
 
 @code {
@@ -101,6 +115,7 @@
     private const int DefaultPageSize = 30;
 
     private readonly PickerFilter _filter = new();
+    private List<int> _selectedIds = [];
     private SearchImageAssetSummariesQuery _query = new() { PageNumber = 1, PageSize = DefaultPageSize };
     private PagedQueryResult<ImageAssetSummary>? _result;
     private IImageAssetRenderable? _selected;
@@ -110,22 +125,43 @@
     private bool _isUploadOpen;
 
     /// <summary>
-    /// The image currently chosen in the field, highlighted as selected when the dialog opens.
+    /// Single mode: the image currently chosen in the field, highlighted as selected when the dialog opens.
     /// </summary>
     [Parameter] public IImageAssetRenderable? CurrentAsset { get; set; }
 
     /// <summary>
-    /// Called with the chosen image when "Select" is clicked (or a row double-clicked).
+    /// Setting this opens the dialog in multi mode, with these images selected (a collection field).
+    /// </summary>
+    [Parameter] public IReadOnlyCollection<int>? SelectedIds { get; set; }
+
+    /// <summary>
+    /// Restrictions from the field's attribute, applied to the list and to uploads.
+    /// </summary>
+    [Parameter] public ImageAssetFilter? Filter { get; set; }
+
+    /// <summary>
+    /// Single mode: called with the chosen image when "Select" is clicked (or a row double-clicked).
     /// </summary>
     [Parameter] public EventCallback<IImageAssetRenderable> OnSelected { get; set; }
 
+    /// <summary>
+    /// Multi mode: called with the selected ids, in selection order, when "Ok" is clicked.
+    /// </summary>
+    [Parameter] public EventCallback<IReadOnlyList<int>> OnSelectedIds { get; set; }
+
     [Parameter] public EventCallback OnCancel { get; set; }
+
+    private bool IsMultiMode => SelectedIds != null;
+
+    private ImageAssetFilter Preset => Filter ?? ImageAssetFilter.None;
 
     protected override async Task OnInitializedAsync()
     {
         _selected = CurrentAsset;
+        _selectedIds = SelectedIds?.ToList() ?? [];
         _canCreate = (await CrudPermissions.LoadImagesAsync(Executor)).CanCreate;
-        await LoadGridAsync();
+        ResetFilter();
+        await ApplyFilter();
     }
 
     private async Task LoadGridAsync()
@@ -160,13 +196,20 @@
 
     private async Task ClearFilter()
     {
-        _filter.Tags = null;
-        _filter.Width = null;
-        _filter.Height = null;
-        _filter.MinWidth = null;
-        _filter.MinHeight = null;
-
+        ResetFilter();
         await ApplyFilter();
+    }
+
+    /// <summary>
+    /// Back to the preset restrictions, as the AngularJS SearchQuery reset to its default params.
+    /// </summary>
+    private void ResetFilter()
+    {
+        _filter.Tags = Preset.Tags;
+        _filter.Width = Preset.Width;
+        _filter.Height = Preset.Height;
+        _filter.MinWidth = Preset.MinWidth;
+        _filter.MinHeight = Preset.MinHeight;
     }
 
     private async Task GoToPage(int pageNumber)
@@ -175,18 +218,51 @@
         await LoadGridAsync();
     }
 
-    private async Task SelectAsync()
+    private bool IsSelected(int imageAssetId)
     {
-        if (_selected != null)
+        return IsMultiMode ? _selectedIds.Contains(imageAssetId) : imageAssetId == _selected?.ImageAssetId;
+    }
+
+    private void Select(IImageAssetRenderable image)
+    {
+        if (!IsMultiMode)
         {
-            await OnSelected.InvokeAsync(_selected);
+            _selected = image;
+        }
+        else if (!_selectedIds.Remove(image.ImageAssetId))
+        {
+            _selectedIds.Add(image.ImageAssetId);
         }
     }
 
-    private async Task SelectAndCloseAsync(IImageAssetRenderable image)
+    private Task SelectAndCloseAsync(IImageAssetRenderable image)
     {
-        _selected = image;
-        await SelectAsync();
+        // A double-click arrives after the two clicks, which have toggled a multi-mode row back off.
+        if (IsMultiMode)
+        {
+            if (!_selectedIds.Contains(image.ImageAssetId))
+            {
+                _selectedIds.Add(image.ImageAssetId);
+            }
+        }
+        else
+        {
+            _selected = image;
+        }
+
+        return OkAsync();
+    }
+
+    private async Task OkAsync()
+    {
+        if (IsMultiMode)
+        {
+            await OnSelectedIds.InvokeAsync(_selectedIds);
+        }
+        else if (_selected != null)
+        {
+            await OnSelected.InvokeAsync(_selected);
+        }
     }
 
     private Task CancelAsync() => OnCancel.InvokeAsync();

@@ -1,0 +1,95 @@
+@inject IAdminBlazorExecutor Executor
+
+@* Port of UploadDocumentAssetDialog, opened from the document picker's "Upload" action. *@
+<ModalDialog Title="Upload a document" Size="large" OnClose="() => OnClosed.InvokeAsync(null)">
+
+    <AdminForm @ref="_form" Model="_command" IsLoading="_isSaving" OnValidSubmit="UploadAsync">
+
+        <PageActions>
+            <AdminButtonSubmit Text="Upload" IsLoading="_isSaving" Disabled="_isSaving" />
+            <AdminButton Text="Cancel" Disabled="_isSaving" OnClick="() => OnClosed.InvokeAsync(null)" />
+        </PageActions>
+
+        <PageBody>
+
+            <FormStatus Errors="_errors" />
+
+            @if (Filter?.HasFileTypeRestrictions == true)
+            {
+                <WarningMessage>The document field you are assigning to has restrictions. If you are unsure, cancel this dialog and check the filters menu.</WarningMessage>
+            }
+
+            <FormSection Title="Document details">
+
+                <FormFieldDocumentUpload Title="File"
+                                         Value="_command.File"
+                                         ValueChanged="OnFileChanged"
+                                         ValueExpression="() => _command.File"
+                                         Disabled="_isSaving" />
+
+                <FormFieldText Title="Title" MaxLength="130"
+                               Description="A short descriptive title e.g. 'Today's Menu' or 'Directions to our office'."
+                               @bind-Value="_command.Title" />
+
+                <FormFieldTextArea Title="Description" @bind-Value="_command.Description" />
+
+                <FormFieldTags Title="CMS Tags" @bind-Value="_command.Tags" />
+
+            </FormSection>
+
+        </PageBody>
+
+    </AdminForm>
+
+</ModalDialog>
+
+@code {
+    private AdminForm? _form;
+    private readonly AddDocumentAssetCommand _command = new();
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private bool _isSaving;
+
+    /// <summary>
+    /// The picker's preset filter. File type restrictions are shown as a warning.
+    /// </summary>
+    [Parameter] public DocumentAssetFilter? Filter { get; set; }
+
+    /// <summary>
+    /// Called with the new document's id once uploaded, or null if the dialog was cancelled.
+    /// </summary>
+    [Parameter] public EventCallback<int?> OnClosed { get; set; }
+
+    private void OnFileChanged(IFileSource? file)
+    {
+        _command.File = file!;
+
+        if (file != null)
+        {
+            _command.Title = StringUtilities.TitleFromFileName(file.FileName);
+            _form?.NotifyFieldChanged(() => _command.Title);
+        }
+    }
+
+    private async Task UploadAsync()
+    {
+        _isSaving = true;
+        _errors = [];
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(_command);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+
+            await OnClosed.InvokeAsync(_command.OutputDocumentAssetId);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

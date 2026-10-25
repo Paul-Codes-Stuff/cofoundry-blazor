@@ -1,6 +1,6 @@
 ---
 name: run-blazor-admin
-description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker; roles and permissions; users create, deactivate, reset password, delete; directories; page and directory access rules; page templates; custom entities, dynamic data-model fields, custom entity pickers, versions and ordering, nested data models).
+description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker; roles and permissions; users create, deactivate, reset password, delete; directories; page and directory access rules; page templates; custom entities, dynamic data-model fields, custom entity pickers, versions and ordering, nested data models; every data-model field type: dates and times in the browser's time zone, option lists, image/document/page/directory pickers, the html editor).
 ---
 
 # Run the Blazor admin
@@ -59,6 +59,7 @@ node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-adm
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/custom-entities-step.js  # Custom Entities
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/custom-entity-pickers-step.js  # pickers, versions
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/nested-data-models-step.js  # nested models, ordering
+BROWSER_TZ=America/New_York node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/field-types-step.js  # every field type
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
 ```
 
@@ -88,8 +89,8 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
 - **`custom-entities-step.js`** covers the sandbox's Authors, Categories, Blog Posts and Examples: the custom
   title term, create/edit/cancel/duplicate/delete with dynamic text, text area and image fields, data-model
   validation (`[Required]` and the schema's required non-nullable image id), [PreviewImage]/[PreviewDescription]
-  list columns, and the unsupported-field placeholder (Example's Dropdown, until phase 4 ports it). Field labels come from MVC metadata, so their casing varies
-  ("Short description:"); the step matches labels case-insensitively. It deletes what it creates.
+  list columns. Field labels come from MVC metadata, so their casing varies ("Short description:"); the step
+  matches labels case-insensitively. It deletes what it creates.
 - **`custom-entity-pickers-step.js`** creates authors, categories and an image, then a Blog Post (the only
   sandbox type that doesn't auto-publish) through the Author selector (search as you type, Enter, inline Add)
   and the Categories collection (picker, drag to reorder, remove). It then covers publish, draft + discard, a
@@ -103,6 +104,17 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   drag-reorder, MinItems validation, saving and editing. Then it duplicates the Example and reorders the two
   with Change Ordering, checking the list order. It deletes what it creates. With stacked dialogs,
   `.modal` matches every open dialog: use `page.locator('.modal').last()` for the top one.
+- **`field-types-step.js`** fills every field of the sandbox's dev-only **Field Tests** entity (code `SIMFLD`,
+  `Cofoundry/CustomEntities/FieldTests`, one property per field type) and checks what the domain stored through
+  the AngularJS admin's api (`/admin/api/custom-entities/{id}`, `data.latestVersion.model`). It covers dates and
+  times, option lists (enum, `IListOptionSource` and api sources), the asset pickers' preset filters and upload
+  warnings, image/document uploads from the pickers, collections (multi-select, drag, remove), page and
+  directory fields, the TinyMCE html editor (typing into its iframe, inserting an uploaded image) and the
+  unsupported-field placeholder. Run it with `BROWSER_TZ` set to a zone that isn't UTC (the driver passes it to
+  the browser as `timezoneId`), or the "Local" date fields don't actually convert. The page fields use existing
+  pages, so run `smoke` once first on a fresh database. It deletes the entity and the assets it uploads.
+  `c.btn('.modal', ...)` finds the **bottom** dialog's button when dialogs are stacked, and a click on it times
+  out under the overlay: scope to `.modal` `.last()` instead.
 - **`run`** loads a module of the form `module.exports = async (page, c) => { ... }`. `page` is a
   Playwright page with `baseURL` already set. `c` provides `settle()`, `shot(name)`, `step(name, fn)`,
   `btn(scope, text)`, `field(scope, label)`, `rows()` and `status()`. See `driver.js`.

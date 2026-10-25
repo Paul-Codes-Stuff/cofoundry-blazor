@@ -1,0 +1,31 @@
+@inherits FormFieldBase<string?>
+
+@* Port of cms-form-field-color: a native colour input with a swatch showing the hex value. The format
+   is validated by the model's [Color] attribute. *@
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label" for="@FieldId">@Title:</label>
+        <div class="controls">
+            @if (ShowInput)
+            {
+                <InputText id="@FieldId"
+                           type="color"
+                           Value="@Value"
+                           ValueChanged="ValueChanged"
+                           ValueExpression="ValueExpression"
+                           disabled="@Disabled" />
+                <span class="color-box edit" style="@SwatchStyle">@Value</span>
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+            }
+            else
+            {
+                <span class="color-box" style="@SwatchStyle">@Value</span>
+            }
+        </div>
+    </div>
+    <FieldHelp Text="@Description" />
+</div>
+
+@code {
+    private string? SwatchStyle => string.IsNullOrEmpty(Value) ? null : $"background-color:{Value}";
+}

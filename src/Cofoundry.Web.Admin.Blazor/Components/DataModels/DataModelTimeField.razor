@@ -1,0 +1,13 @@
+@inherits DataModelFieldComponentBase
+
+@* [Time] properties (TimeSpan or string): cms-form-field-time. *@
+<FormFieldTime Id="@Field.Property.Name" Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+               Min="@(Field.GetAttribute<string>(DataModelAttributes.Min))" Max="@(Field.GetAttribute<string>(DataModelAttributes.Max))"
+               Step="Field.GetAttribute<int?>(DataModelAttributes.Step)"
+               @bind-Value="_binding.Value" />
+
+@code {
+    private DataModelFieldBinding<TimeOnly?> _binding = default!;
+
+    protected override void OnParametersSet() => _binding = Field.Bind<TimeOnly?>();
+}

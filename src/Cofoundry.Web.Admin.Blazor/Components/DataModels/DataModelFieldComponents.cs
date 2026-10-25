@@ -43,6 +43,7 @@ public class DefaultDataModelFieldComponentRegistration : IDataModelFieldCompone
         yield return new("Url", typeof(DataModelTextField));
         yield return new("EmailAddress", typeof(DataModelTextField));
         yield return new("MultilineText", typeof(DataModelTextAreaField));
+        yield return new("Html", typeof(DataModelHtmlField));
 
         yield return new("Boolean", typeof(DataModelCheckboxField));
 
@@ -53,7 +54,27 @@ public class DefaultDataModelFieldComponentRegistration : IDataModelFieldCompone
             yield return new(name, typeof(DataModelNumberField));
         }
 
+        // Dates. A DateTime property without an attribute gets the "DateTime" template, as in the AngularJS admin.
+        foreach (var name in new[] { "Date", "DateLocal", "DateTime", "DateTimeLocal" })
+        {
+            yield return new(name, typeof(DataModelDateField));
+        }
+
+        yield return new("Time", typeof(DataModelTimeField));
+
+        yield return new("Dropdown", typeof(DataModelDropdownField));
+        yield return new("RadioList", typeof(DataModelRadioListField));
+        yield return new("CheckboxList", typeof(DataModelCheckboxListField));
+        yield return new("Color", typeof(DataModelColorField));
+
         yield return new("ImageAsset", typeof(DataModelImageField));
+        yield return new("ImageAssetCollection", typeof(DataModelImageCollectionField));
+        yield return new("DocumentAsset", typeof(DataModelDocumentField));
+        yield return new("DocumentAssetCollection", typeof(DataModelDocumentCollectionField));
+
+        yield return new("PageSelector", typeof(DataModelPageSelectorField));
+        yield return new("PageCollection", typeof(DataModelPageCollectionField));
+        yield return new("DirectorySelector", typeof(DataModelDirectorySelectorField));
 
         yield return new("CustomEntitySelector", typeof(DataModelCustomEntitySelectorField));
         yield return new("CustomEntityCollection", typeof(DataModelCustomEntityCollectionField));

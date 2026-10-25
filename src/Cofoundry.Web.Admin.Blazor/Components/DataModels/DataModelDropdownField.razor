@@ -1,0 +1,27 @@
+@inherits DataModelListFieldBase
+
+@* [SelectList] properties: cms-form-field-dropdown. *@
+@if (Options == null)
+{
+    <FormFieldContainer Title="@Field.Title" Description="@Field.Description">
+        <div class="text-block-display-value">@(LoadError ?? "Loading...")</div>
+    </FormFieldContainer>
+}
+else
+{
+    <FormFieldDropdown TValue="string" Id="@Field.Property.Name" Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+                       Options="Options" DefaultItemText="@(DefaultItemText ?? string.Empty)" Required="Field.IsRequired"
+                       @bind-Value="_binding.Value" />
+}
+
+@code {
+    private DataModelFieldBinding<string?> _binding = default!;
+
+    protected override Task OnParametersSetAsync()
+    {
+        // The empty option posts "", which a string property should store as null.
+        _binding = Field.Bind<string?>(fromEditor: value => string.IsNullOrEmpty(value) ? null : value);
+
+        return base.OnParametersSetAsync();
+    }
+}

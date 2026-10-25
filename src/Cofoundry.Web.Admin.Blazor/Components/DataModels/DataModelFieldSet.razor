@@ -77,12 +77,14 @@
     {
         _messages!.Clear();
 
-        var results = new List<ValidationResult>();
-        Validator.TryValidateObject(Model, new ValidationContext(Model), results, validateAllProperties: true);
+        // Model level rules, which name the properties they apply to.
+        var modelResults = Model is IValidatableObject validatable
+            ? validatable.Validate(new ValidationContext(Model)).ToList()
+            : [];
 
         foreach (var field in _fields)
         {
-            AddMessages(field, results.Where(r => r.MemberNames.Contains(field.Property.Name)));
+            AddMessages(field, ValidateField(field).Concat(modelResults.Where(r => r.MemberNames.Contains(field.Property.Name))));
         }
 
         _editContext!.NotifyValidationStateChanged();
@@ -97,17 +99,31 @@
             return;
         }
 
-        var results = new List<ValidationResult>();
-        var context = new ValidationContext(Model) { MemberName = field.Property.Name };
-        Validator.TryValidateProperty(field.Property.GetValue(Model), context, results);
-
         foreach (var binding in field.Bindings)
         {
             _messages!.Clear(binding.FieldIdentifier);
         }
 
-        AddMessages(field, results);
+        AddMessages(field, ValidateField(field));
         _editContext!.NotifyValidationStateChanged();
+    }
+
+    /// <summary>
+    /// Validates one property's attributes. Messages use the schema's display name ("Date as string"), as
+    /// the MVC model validation behind the AngularJS admin's api did, rather than the property name.
+    /// </summary>
+    private List<ValidationResult> ValidateField(DataModelField field)
+    {
+        var results = new List<ValidationResult>();
+        var context = new ValidationContext(Model)
+        {
+            MemberName = field.Property.Name,
+            DisplayName = field.Title
+        };
+
+        Validator.TryValidateProperty(field.Property.GetValue(Model), context, results);
+
+        return results;
     }
 
     private void AddMessages(DataModelField field, IEnumerable<ValidationResult> results)

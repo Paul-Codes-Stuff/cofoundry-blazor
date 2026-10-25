@@ -1,0 +1,74 @@
+@inherits IdCollectionFieldBase<DocumentAssetRenderDetails>
+
+@* [DocumentCollection] properties: cms-form-field-document-asset-collection. A table of the chosen documents
+   in the collection's order; the picker opens in multi mode with the attribute's restrictions applied. *@
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label">@Field.Title:</label>
+        <div class="controls">
+            <TableContainer IsLoading="IsLoading">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>File</th>
+                            @if (ShowInput)
+                            {
+                                <th class="actions">Actions</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Items.Count == 0)
+                        {
+                            <tr><td colspan="100" class="empty">None</td></tr>
+                        }
+                        @foreach (var (document, index) in Items.Select((document, i) => (document, i)))
+                        {
+                            <tr @key="document.DocumentAssetId"
+                                draggable="@(CanReorder ? "true" : null)"
+                                @ondragstart="() => DragStart(index)"
+                                @ondragover="() => { }"
+                                @ondragover:preventDefault="CanReorder"
+                                @ondrop="() => DropAsync(index)">
+                                <td><DocumentAssetLink Document="document" /></td>
+                                @if (ShowInput)
+                                {
+                                    <td class="actions">
+                                        <ButtonIcon Icon="external-link" Title="Edit document" External="true"
+                                                    Href="@AdminBlazorRoutes.DocumentDetails(document.DocumentAssetId)" />
+                                        <ButtonIcon Icon="trash-o" Title="Remove" OnClick="() => RemoveAsync(document)" />
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (ShowInput)
+                {
+                    <div class="collection-actions">
+                        <a href="" class="btn-icon" title="Add" @onclick="() => IsPickerOpen = true" @onclick:preventDefault>
+                            <i class="fa fa-plus-circle"></i>
+                        </a>
+                    </div>
+                }
+            </TableContainer>
+            <ValidationMessage For="() => Binding.Value" class="field-validation-error" />
+        </div>
+    </div>
+    <FieldHelp Text="@Field.Description" />
+</div>
+
+@if (IsPickerOpen)
+{
+    <DocumentAssetPickerDialog SelectedIds="Ids" Filter="DataModelAssetFilters.Document(Field)"
+                               OnSelectedIds="OnPickedAsync" OnCancel="() => IsPickerOpen = false" />
+}
+
+@code {
+    protected override Task<IReadOnlyDictionary<int, DocumentAssetRenderDetails>> QueryAsync(IReadOnlyCollection<int> ids)
+    {
+        return Executor.QueryAsync(new GetDocumentAssetRenderDetailsByIdRangeQuery(ids));
+    }
+
+    protected override int GetId(DocumentAssetRenderDetails asset) => asset.DocumentAssetId;
+}

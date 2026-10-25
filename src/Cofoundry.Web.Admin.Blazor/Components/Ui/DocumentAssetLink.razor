@@ -1,9 +1,11 @@
+@inject IDocumentAssetRouteLibrary DocumentRouteLibrary
+
 @* Port of cms-document-asset: a download link labelled with the file name. *@
 @if (Document != null)
 {
-    <a href="@Document.DownloadUrl">@Document.FileName.@Document.FileExtension</a>
+    <a href="@DocumentRouteLibrary.DocumentAssetDownload(Document)">@Document.FileName.@Document.FileExtension</a>
 }
 
 @code {
-    [Parameter] public DocumentAssetSummary? Document { get; set; }
+    [Parameter] public IDocumentAssetRenderable? Document { get; set; }
 }

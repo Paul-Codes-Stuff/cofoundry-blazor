@@ -1,0 +1,26 @@
+@inherits DataModelListFieldBase
+
+@* [CheckboxList] properties (a collection of the option values): cms-form-field-checkbox-list. *@
+@if (Options == null)
+{
+    <FormFieldContainer Title="@Field.Title" Description="@Field.Description">
+        <div class="text-block-display-value">@(LoadError ?? "Loading...")</div>
+    </FormFieldContainer>
+}
+else
+{
+    <FormFieldCheckboxList Id="@Field.Property.Name" Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+                           Options="Options" NoValueText="@(Field.GetAttribute<string>("NoValueText") ?? "None")"
+                           @bind-Value="_binding.Value" />
+}
+
+@code {
+    private DataModelFieldBinding<IReadOnlyList<string>?> _binding = default!;
+
+    protected override Task OnParametersSetAsync()
+    {
+        _binding = Field.Bind<IReadOnlyList<string>?>();
+
+        return base.OnParametersSetAsync();
+    }
+}

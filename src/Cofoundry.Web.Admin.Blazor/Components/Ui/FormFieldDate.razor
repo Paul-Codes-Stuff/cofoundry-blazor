@@ -1,0 +1,58 @@
+@inherits FormFieldBase<DateTime?>
+
+@* Port of cms-form-field-date, -date-local, -date-time and -date-time-local: a native date or
+   datetime-local input. The value is shown and edited as given; time zone conversion is the caller's
+   job (see BrowserTimeZone). *@
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label" for="@FieldId">@Title:</label>
+        <div class="controls">
+            @if (ShowInput)
+            {
+                <InputDate id="@FieldId"
+                           TValue="DateTime?"
+                           Type="InputType"
+                           Value="Value"
+                           ValueChanged="ValueChanged"
+                           ValueExpression="ValueExpression"
+                           disabled="@Disabled"
+                           min="@Min"
+                           max="@Max"
+                           step="@Step" />
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+            }
+            else if (Value.HasValue)
+            {
+                <div class="text-block-display-value">@DisplayValue</div>
+            }
+            else
+            {
+                <div class="text-block-display-value">None</div>
+            }
+        </div>
+    </div>
+    <FieldHelp Text="@Description" />
+</div>
+
+@code {
+    /// <summary>
+    /// Date for a date only, DateTimeLocal for a date and time (the html "datetime-local" input).
+    /// </summary>
+    [Parameter] public InputDateType InputType { get; set; } = InputDateType.Date;
+
+    /// <summary>
+    /// The html min attribute, in the input's format ("yyyy-MM-dd" or "yyyy-MM-ddTHH:mm").
+    /// </summary>
+    [Parameter] public string? Min { get; set; }
+
+    [Parameter] public string? Max { get; set; }
+
+    /// <summary>
+    /// The html step attribute in seconds (days for a date input). Under 60 lets seconds be entered.
+    /// </summary>
+    [Parameter] public int? Step { get; set; }
+
+    private string DisplayValue => InputType == InputDateType.Date
+        ? Value!.Value.ToString("D")
+        : Value!.Value.ToString("D") + " " + Value.Value.ToString(Step < 60 ? "HH:mm:ss" : "HH:mm");
+}

@@ -1,0 +1,167 @@
+@using System.Net
+@inject IAdminBlazorExecutor Executor
+@inject IImageAssetRouteLibrary ImageRouteLibrary
+
+@* Port of ImageAssetEditorDialog, opened by the html editor's image button: picks an image and its alt
+   text and size, and returns the <img> html to insert. Opened on a selected image, it starts from that
+   image's settings. *@
+<ModalDialog Title="Insert an image" Size="large" OnClose="() => OnCancel.InvokeAsync()">
+
+    <AdminForm Model="_command" OnValidSubmit="InsertAsync">
+
+        <PageActions>
+            <AdminButtonSubmit Text="Insert" />
+            <AdminButton Text="Cancel" OnClick="() => OnCancel.InvokeAsync()" />
+        </PageActions>
+
+        <PageBody ContentType="form">
+
+            <FormSection Title="Properties">
+
+                <FormFieldImageAsset Title="Image" Required="true"
+                                     Value="_command.ImageAssetId"
+                                     ValueChanged="OnImageChangedAsync"
+                                     ValueExpression="() => _command.ImageAssetId" />
+
+                <FormFieldText Title="Alt tag" MaxLength="255"
+                               Description="A sentence that best describes the image."
+                               @bind-Value="_command.AltTag" />
+
+                <FormFieldText Title="Width" MaxLength="10"
+                               Description="Specify a width in px or %. If you would like this image to scale with the page size, enter a width of 100% and height of auto."
+                               @bind-Value="_command.Width" />
+
+                <FormFieldText Title="Height" MaxLength="10"
+                               Description="Enter auto in here if you would like the height to respect the ratio"
+                               @bind-Value="_command.Height" />
+
+            </FormSection>
+
+        </PageBody>
+
+    </AdminForm>
+
+</ModalDialog>
+
+@code {
+    private readonly InsertImageCommand _command = new();
+    private IImageAssetRenderable? _image;
+
+    /// <summary>
+    /// The image selected in the editor, or an empty one to insert a new image.
+    /// </summary>
+    [Parameter, EditorRequired] public SelectedImage Image { get; set; } = default!;
+
+    /// <summary>
+    /// Called with the &lt;img&gt; html to insert.
+    /// </summary>
+    [Parameter] public EventCallback<string> OnInsert { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _command.ImageAssetId = Image.ImageAssetId;
+        _command.AltTag = Image.Alt;
+        _command.Width = Image.Width;
+        _command.Height = Image.Height;
+
+        if (_command.ImageAssetId.HasValue)
+        {
+            _image = await Executor.QueryAsync(new GetImageAssetRenderDetailsByIdQuery(_command.ImageAssetId.Value));
+        }
+    }
+
+    private async Task OnImageChangedAsync(int? imageAssetId)
+    {
+        _command.ImageAssetId = imageAssetId;
+        _image = imageAssetId.HasValue
+            ? await Executor.QueryAsync(new GetImageAssetRenderDetailsByIdQuery(imageAssetId.Value))
+            : null;
+
+        // As in the AngularJS dialog, choosing an image replaces the alt text with its title.
+        if (_image != null)
+        {
+            _command.AltTag = string.IsNullOrEmpty(_image.Title) ? _image.FileName : _image.Title;
+        }
+    }
+
+    private async Task InsertAsync()
+    {
+        if (_image == null)
+        {
+            return;
+        }
+
+        var width = ParseUnits(_command.Width);
+        var height = ParseUnits(_command.Height);
+
+        // With no size the image scales to the width of its container.
+        if (width == null && height == null)
+        {
+            width = "100%";
+            height = "auto";
+        }
+
+        // Percentages use the original image; pixel sizes ask for a resized one.
+        var isPercent = (width ?? string.Empty).Contains('%') || (height ?? string.Empty).Contains('%');
+        var path = isPercent
+            ? ImageRouteLibrary.ImageAsset(_image)
+            : ImageRouteLibrary.ImageAsset(_image, ParsePixels(width), ParsePixels(height));
+
+        var style = string.Join(" ", new[] { ("width", width), ("height", height) }
+            .Where(s => s.Item2 != null)
+            .Select(s => $"{s.Item1}: {s.Item2};"));
+
+        var html = $"<img src=\"{WebUtility.HtmlEncode(path)}\" alt=\"{WebUtility.HtmlEncode(_command.AltTag ?? string.Empty)}\" "
+            + $"data-image-asset-id=\"{_image.ImageAssetId}\" style=\"{WebUtility.HtmlEncode(style)}\" />";
+
+        await OnInsert.InvokeAsync(html);
+    }
+
+    /// <summary>
+    /// A number on its own is pixels.
+    /// </summary>
+    private static string? ParseUnits(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        value = value.Trim();
+
+        return value.Contains("px") || value.Contains('%') || value.Contains("auto") ? value : value + "px";
+    }
+
+    private static int? ParsePixels(string? value)
+    {
+        return int.TryParse(value?.Replace("px", string.Empty), out var pixels) ? pixels : null;
+    }
+
+    /// <summary>
+    /// What html-editor.js reads from the image selected in the editor.
+    /// </summary>
+    public sealed class SelectedImage
+    {
+        public int? ImageAssetId { get; set; }
+
+        public string? Alt { get; set; }
+
+        public string? Width { get; set; }
+
+        public string? Height { get; set; }
+    }
+
+    private sealed class InsertImageCommand
+    {
+        [Required(ErrorMessage = "The Image field is required.")]
+        public int? ImageAssetId { get; set; }
+
+        public string? AltTag { get; set; }
+
+        public string? Width { get; set; }
+
+        public string? Height { get; set; }
+    }
+}

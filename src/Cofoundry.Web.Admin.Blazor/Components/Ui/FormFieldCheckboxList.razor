@@ -1,0 +1,63 @@
+@inherits FormFieldBase<IReadOnlyList<string>?>
+
+@* Port of cms-form-field-checkbox-list: one checkbox per option, bound to the list of checked values
+   (kept in the options' order, as the AngularJS field did). *@
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label">@Title:</label>
+        <div class="controls">
+            @if (ShowInput)
+            {
+                <ul>
+                    @foreach (var (option, index) in Options.Select((o, i) => (o, i)))
+                    {
+                        <li>
+                            <input type="checkbox" id="@($"{FieldId}{index}")" disabled="@Disabled"
+                                   checked="@IsChecked(option)" @onchange="e => ToggleAsync(option, e.Value is true)" />
+                            <label for="@($"{FieldId}{index}")">@option.Text</label>
+                        </li>
+                    }
+                </ul>
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+            }
+            else if (Value?.Count > 0)
+            {
+                <div class="checkbox-display-value">
+                    <ul>
+                        @foreach (var option in Options.Where(IsChecked))
+                        {
+                            <li>@option.Text</li>
+                        }
+                    </ul>
+                </div>
+            }
+            else
+            {
+                <div class="text-block-display-value">@NoValueText</div>
+            }
+        </div>
+    </div>
+    <FieldHelp Text="@Description" />
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<SelectOption<string?>> Options { get; set; } = [];
+
+    /// <summary>
+    /// Shown in read-only mode when nothing is checked.
+    /// </summary>
+    [Parameter] public string? NoValueText { get; set; }
+
+    private bool IsChecked(SelectOption<string?> option) => Value?.Contains(option.Value!) == true;
+
+    private async Task ToggleAsync(SelectOption<string?> option, bool isChecked)
+    {
+        var selected = Options
+            .Where(o => o == option ? isChecked : IsChecked(o))
+            .Select(o => o.Value!)
+            .ToList();
+
+        await ValueChanged.InvokeAsync(selected);
+        NotifyFieldChanged();
+    }
+}

@@ -1,0 +1,187 @@
+@inherits FormFieldBase<string?>
+@inject IJSRuntime JSRuntime
+
+@* Port of cms-form-field-html: a TinyMCE editor (wwwroot/js/html-editor.js) in edit mode and the rendered
+   html otherwise. The "cfimage" toolbar button opens ImageAssetEditorDialog. *@
+<div class="control-group form-field-text-area">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label" for="@_editorId">@Title:</label>
+        <div class="controls">
+            @if (ShowInput)
+            {
+                @* TinyMCE replaces the textarea with its own markup, so Blazor mustn't re-render inside it. *@
+                <div @key="_editorId">
+                    <textarea id="@_editorId" @ref="_textArea" disabled="@Disabled"></textarea>
+                </div>
+                @if (_loadError != null)
+                {
+                    <div class="field-validation-error">@_loadError</div>
+                }
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+            }
+            else if (!string.IsNullOrEmpty(Value))
+            {
+                <div class="text-block-display-value ta-text">@((MarkupString)Value)</div>
+            }
+            else
+            {
+                <div class="text-block-display-value">None</div>
+            }
+        </div>
+    </div>
+    <FieldHelp Text="@Description" />
+</div>
+
+@if (_imageDialogImage != null)
+{
+    <ImageAssetEditorDialog Image="_imageDialogImage" OnInsert="InsertImageAsync" OnCancel="() => _imageDialogImage = null" />
+}
+
+@code {
+    private readonly string _editorId = "html-editor-" + Guid.NewGuid().ToString("N");
+    private ElementReference _textArea;
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<FormFieldHtml>? _dotNetRef;
+    private bool _isEditorOpen;
+    private string? _editorValue;
+    private string? _loadError;
+    private ImageAssetEditorDialog.SelectedImage? _imageDialogImage;
+
+    /// <summary>
+    /// TinyMCE toolbar definition, e.g. "formatselect | bold italic". See <see cref="HtmlEditorToolbars"/>.
+    /// </summary>
+    [Parameter] public string Toolbar { get; set; } = HtmlEditorToolbars.Parse(null, null);
+
+    /// <summary>
+    /// The editor's minimum height in rows of text.
+    /// </summary>
+    [Parameter] public int Rows { get; set; } = 20;
+
+    /// <summary>
+    /// A relative path to a json file of TinyMCE options, fetched in the browser.
+    /// </summary>
+    [Parameter] public string? ConfigPath { get; set; }
+
+    /// <summary>
+    /// TinyMCE options applied last, e.g. from an IHtmlEditorConfigSource.
+    /// </summary>
+    [Parameter] public IReadOnlyDictionary<string, object>? Options { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        base.OnParametersSet();
+
+        if (ShowInput && _isEditorOpen && _module != null && Value != _editorValue)
+        {
+            // The value was changed from outside the editor.
+            _editorValue = Value;
+            await _module.InvokeVoidAsync("setContent", _editorId, Value ?? string.Empty);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (ShowInput && !_isEditorOpen)
+        {
+            await OpenEditorAsync();
+        }
+        else if (!ShowInput && _isEditorOpen)
+        {
+            _isEditorOpen = false;
+
+            if (_module != null)
+            {
+                await _module.InvokeVoidAsync("destroy", _editorId);
+            }
+        }
+    }
+
+    private async Task OpenEditorAsync()
+    {
+        _isEditorOpen = true;
+        _editorValue = Value;
+        _dotNetRef ??= DotNetObjectReference.Create(this);
+
+        try
+        {
+            _module ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", AdminAssetPaths.HtmlEditorScript);
+            await _module.InvokeVoidAsync("init", _textArea, AdminAssetPaths.TinyMceScript, new
+            {
+                defaults = new Dictionary<string, object>
+                {
+                    ["toolbar"] = Toolbar,
+                    // The AngularJS field also listed "imagetools", which its TinyMCE build doesn't include.
+                    ["plugins"] = "link image media fullscreen code",
+                    ["content_css"] = AdminAssetPaths.TinyMceContentCss,
+                    ["menubar"] = false,
+                    ["min_height"] = Rows * 16,
+                    ["browser_spellcheck"] = true,
+                    ["convert_urls"] = false
+                },
+                custom = Options
+            }, ConfigPath, _dotNetRef);
+            await _module.InvokeVoidAsync("setContent", _editorId, Value ?? string.Empty);
+        }
+        catch (JSException ex)
+        {
+            _loadError = $"The html editor could not be loaded: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnEditorChanged(string html)
+    {
+        var value = string.IsNullOrEmpty(html) ? null : html;
+
+        // A blur can arrive after the form has left edit mode, e.g. from clicking Cancel.
+        if (!_isEditorOpen || !ShowInput || value == _editorValue)
+        {
+            return;
+        }
+
+        _editorValue = value;
+        await ValueChanged.InvokeAsync(value);
+        NotifyFieldChanged();
+    }
+
+    [JSInvokable]
+    public void OnImageButton(ImageAssetEditorDialog.SelectedImage? image)
+    {
+        _imageDialogImage = image ?? new ImageAssetEditorDialog.SelectedImage();
+        StateHasChanged();
+    }
+
+    private async Task InsertImageAsync(string html)
+    {
+        _imageDialogImage = null;
+
+        if (_module != null)
+        {
+            await _module.InvokeVoidAsync("insertContent", _editorId, html);
+        }
+    }
+
+    protected override void OnDisposing()
+    {
+        if (_module != null)
+        {
+            _ = DestroyAsync(_module);
+        }
+
+        _dotNetRef?.Dispose();
+    }
+
+    private async Task DestroyAsync(IJSObjectReference module)
+    {
+        try
+        {
+            await module.InvokeVoidAsync("destroy", _editorId);
+            await module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit has gone, and the editor with it.
+        }
+    }
+}

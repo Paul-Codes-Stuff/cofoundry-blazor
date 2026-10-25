@@ -1,0 +1,37 @@
+@inherits DataModelFieldComponentBase
+@inject IAdminBlazorExecutor Executor
+
+@* [Page] properties: cms-form-field-page-selector, a search-as-you-type dropdown of pages by url path. *@
+<FormFieldFilteredDropdown Id="@Field.Property.Name" Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+                           Search="SearchAsync" GetText="GetTextAsync" Href="@DetailsHref"
+                           @bind-Value="_binding.Value" />
+
+@code {
+    // ui-select asked for 20 results per search.
+    private const int SearchPageSize = 20;
+
+    private DataModelFieldBinding<int?> _binding = default!;
+
+    private string? DetailsHref => _binding.Value is int id ? AdminBlazorRoutes.PageDetails(id) : null;
+
+    protected override void OnParametersSet() => _binding = Field.Bind<int?>(emptyWhenDefault: true);
+
+    private async Task<IReadOnlyList<SelectOption<int>>> SearchAsync(string? text)
+    {
+        var result = await Executor.QueryAsync(new SearchPageSummariesQuery
+        {
+            Text = text,
+            PageNumber = 1,
+            PageSize = SearchPageSize
+        });
+
+        return result.Items.Select(p => new SelectOption<int>(p.PageId, p.FullUrlPath)).ToList();
+    }
+
+    private async Task<string?> GetTextAsync(int pageId)
+    {
+        var pages = await Executor.QueryAsync(new GetPageSummariesByIdRangeQuery([pageId]));
+
+        return pages.GetValueOrDefault(pageId)?.FullUrlPath;
+    }
+}

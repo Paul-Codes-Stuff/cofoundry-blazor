@@ -1,0 +1,20 @@
+@using System.Collections
+@inherits DataModelFieldComponentBase
+
+@* [Html] properties: cms-form-field-html, a TinyMCE editor with the attribute's toolbars, rows and config. *@
+<FormFieldHtml Id="@Field.Property.Name" Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+               Toolbar="@Toolbar" Rows="Rows" ConfigPath="@(Field.GetAttribute<string>("ConfigPath"))"
+               Options="@(Field.GetAttribute<IReadOnlyDictionary<string, object>>("Options"))"
+               @bind-Value="_binding.Value" />
+
+@code {
+    private DataModelFieldBinding<string?> _binding = default!;
+
+    private int Rows => Field.GetAttribute<int?>(DataModelAttributes.Rows) is > 0 and var rows ? rows : 20;
+
+    private string Toolbar => HtmlEditorToolbars.Parse(
+        Field.GetAttribute<object>("Toolbars") is IEnumerable presets and not string ? presets.Cast<object>().Select(p => p.ToString()!) : null,
+        Field.GetAttribute<string>("CustomToolbar"));
+
+    protected override void OnParametersSet() => _binding = Field.Bind<string?>();
+}

@@ -85,21 +85,23 @@ Agreed direction, not yet done:
   replace file, delete), Site Settings (edit, clear cache), image picker (OpenGraph image on pages), Roles
   (permissions editor), Users (per user area: list, create, edit, reset password, delete), Directories (list,
   create, details, change URL, delete), page/directory access rules (`Components/AccessRules`) and Page
-  Templates (read-only list and details), Custom Entities phases 1 to 3 (list, create, details, versions,
-  Change Ordering, with the dynamic data-model form in `Components/DataModels`: text, text area, checkbox,
-  number, image, custom entity selector and collection, and nested data model (single and multi-type)
-  collection fields, an unsupported-field placeholder, and the `IDataModelFieldComponentRegistration`
-  extension point).
+  Templates (read-only list and details), Custom Entities phases 1 to 4 (list, create, details, versions,
+  Change Ordering, with the dynamic data-model form in `Components/DataModels`: every field type except
+  `[CustomEntityMultiTypeCollection]`, which only page blocks use. That includes dates/times in the browser's
+  time zone (`BrowserTimeZone`), option lists (api sources fetched in the browser), image/document/page
+  collections and pickers with preset filters, directory selector, the TinyMCE html editor (AngularJS admin's
+  4.4.3 build, `wwwroot/lib/tinymce`), an unsupported-field placeholder, and the
+  `IDataModelFieldComponentRegistration` extension point).
 - **Builds and runs.** Smoke-tested in `samples/src/Dev/Dev.Sandbox` with the `run-blazor-admin` skill (`smoke`
   for Pages, `assets-step.js` for Images/Documents, `settings-step.js` for Site Settings, `image-picker-step.js` for the picker, `roles-users-step.js` for Roles
-  and Users, `access-rules-step.js` for Directories and access rules, `page-templates-step.js` for Page Templates, `custom-entities-step.js`, `custom-entity-pickers-step.js` and `nested-data-models-step.js` for Custom Entities). Page delete not yet exercised.
+  and Users, `access-rules-step.js` for Directories and access rules, `page-templates-step.js` for Page Templates, `custom-entities-step.js`, `custom-entity-pickers-step.js`, `nested-data-models-step.js` and `field-types-step.js` (run with `BROWSER_TZ`, uses the dev-only Field Tests entity `SIMFLD`) for Custom Entities). Page delete not yet exercised.
 - **Dev.Sandbox has a "Member" user area** (`Cofoundry/UserAreas/MemberUserArea.cs`, code `MEM`) so access rules
   and a non-admin users list can be exercised. Access Control is hidden on sites with only the admin area.
 - **To revisit:** the modal dialog close icon (top right, `Components/Dialogs/ModalDialog.razor`) doesn't work.
   It looks like a bug carried over from the AngularJS admin, which has the same problem.
-- **Next:** Custom Entities phase 4, the remaining field types (HTML, document, page, directory, date/time,
-  color, option lists). The dynamic form is also needed by page block editing and image/document
-  collections. The Visual Editor stays on the MVC site.
+- **Next:** the Blazor extension point for custom admin modules (see "Backwards compatibility"), and the
+  remaining known gaps in the README. Page block editing (and `[CustomEntityMultiTypeCollection]`) only matters
+  if the Visual Editor moves; it stays on the MVC site for now.
 - No tests yet.
 
 ## Git

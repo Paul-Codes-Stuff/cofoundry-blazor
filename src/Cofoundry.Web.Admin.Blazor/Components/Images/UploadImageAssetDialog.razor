@@ -14,6 +14,11 @@
 
             <FormStatus Errors="_errors" />
 
+            @if (_restrictions.Length > 0)
+            {
+                <WarningMessage>This image field has restrictions: @_restrictions</WarningMessage>
+            }
+
             <FormSection Title="Image details">
 
                 <FormFieldImageUpload Title="File"
@@ -44,11 +49,24 @@
     private readonly AddImageAssetCommand _command = new();
     private IReadOnlyCollection<ValidationError> _errors = [];
     private bool _isSaving;
+    private string _restrictions = string.Empty;
+
+    /// <summary>
+    /// The picker's preset filter: its size restrictions are shown as a warning and its tags are added
+    /// to the new image.
+    /// </summary>
+    [Parameter] public ImageAssetFilter? Filter { get; set; }
 
     /// <summary>
     /// Called with the new image's id once uploaded, or null if the dialog was cancelled.
     /// </summary>
     [Parameter] public EventCallback<int?> OnClosed { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _restrictions = Filter?.DescribeSize() ?? string.Empty;
+        _command.Tags = ImageAssetFilter.SplitTags(Filter?.Tags);
+    }
 
     private void OnFileChanged(IFileSource? file)
     {

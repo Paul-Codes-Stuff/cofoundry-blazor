@@ -45,7 +45,8 @@ module.exports = async (page, c) => {
     for (const a of authors) await createEntity('SIMAUT', 'Name:', a);
     for (const cat of categories) await createEntity('SIMCAT', 'Title:', cat);
     await page.goto('/admin-next/images/new'); await c.settle();
-    await page.locator('.form-field-image-upload input[type=file]').setInputFiles({ name: `pick-thumb-${stamp}.png`, mimeType: 'image/png', buffer: await makePng(400, 300, '#c63') });
+    // At least 460x460: the sandbox's [Image(MinWidth = 460, MinHeight = 460)] fields filter smaller images out of the picker.
+    await page.locator('.form-field-image-upload input[type=file]').setInputFiles({ name: `pick-thumb-${stamp}.png`, mimeType: 'image/png', buffer: await makePng(500, 500, '#c63') });
     await page.waitForTimeout(1500);
     await c.btn('.page-actions', 'Save').click(); await c.settle(2000);
     if (!page.url().endsWith('/admin-next/images')) throw new Error('upload failed');

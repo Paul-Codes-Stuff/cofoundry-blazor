@@ -1,0 +1,12 @@
+@inherits DataModelFieldComponentBase
+
+@* [Document] properties: cms-form-field-document-asset. The id may be an int or an int?; 0 means no document. *@
+<FormFieldDocumentAsset Id="@Field.Property.Name" Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+                        Required="Field.IsRequired" Filter="DataModelAssetFilters.Document(Field)"
+                        @bind-Value="_binding.Value" />
+
+@code {
+    private DataModelFieldBinding<int?> _binding = default!;
+
+    protected override void OnParametersSet() => _binding = Field.Bind<int?>(emptyWhenDefault: true);
+}

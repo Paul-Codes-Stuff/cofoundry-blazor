@@ -5,7 +5,8 @@ installed **alongside** the AngularJS admin while modules are migrated one at a 
 
 > **Status: first slice.** Builds cleanly. The Dashboard, Pages (list, filter, create, details/edit, publish,
 > unpublish, change URL, duplicate, access rules), Directories, Page Templates, Images, Documents, Site Settings, Roles, Users
-> and Custom Entities (phases 1 to 3) modules have been smoke-tested in `Dev.Sandbox`.
+> and Custom Entities (phases 1 to 4: every data-model field type except page blocks' multi-type collection)
+> modules have been smoke-tested in `Dev.Sandbox`.
 
 ## Installing side-by-side
 
@@ -97,15 +98,41 @@ chosen by the schema's data template name:
   wants (e.g. an `int` image id to `FormFieldImageAsset`'s `int?`), and `Field.GetAttribute<T>(key)` reads the
   schema's additional attributes (`Maxlength`, `Rows`, `Placeholder`, `Min`/`Max`/`Step`, `PreviewWidth`...).
 * The model's own data annotations are validated by the field set, because the form's `DataAnnotationsValidator`
-  only checks the top-level command. Messages are filed against the bindings so they show under each field.
-  The schema's `IsRequired` (e.g. a non-nullable image id) is also enforced, as the AngularJS `required` was.
-* Supported so far: text (String, Char, Url, EmailAddress), MultilineText, Boolean, numbers (including plain
-  integers, which the AngularJS admin didn't render), ImageAsset, CustomEntitySelector (a search-as-you-type
-  `FormFieldFilteredDropdown` with an "Add" button that creates one in a dialog) and CustomEntityCollection (a
+  only checks the top-level command. Each property is validated on its own (`Validator.TryValidateProperty`,
+  with the field's title as the display name, so messages read "The Date field is required"), then the
+  model's `IValidatableObject` results are added. Messages are filed against the bindings so they show under
+  each field. The schema's `IsRequired` (e.g. a non-nullable image id) is also enforced, as the AngularJS
+  `required` was, but an empty collection doesn't count as missing: MVC marks every non-nullable collection
+  as required, and the AngularJS fields didn't enforce that either.
+* Supported: text (String, Char, Url, EmailAddress), MultilineText, Html, Boolean, numbers (including plain
+  integers, which the AngularJS admin didn't render), Date, DateLocal, DateTime, DateTimeLocal, Time, Color,
+  Dropdown, RadioList, CheckboxList, ImageAsset, ImageAssetCollection, DocumentAsset, DocumentAssetCollection,
+  PageSelector, PageCollection, DirectorySelector, CustomEntitySelector (a search-as-you-type
+  `FormFieldFilteredDropdown` with an "Add" button that creates one in a dialog), CustomEntityCollection (a
   table filled from `CustomEntityPickerDialog`, which filters, pages and can also create; orderable
   collections reorder by dragging rows), NestedDataModelCollection and NestedDataModelMultiTypeCollection.
   Anything else shows a "can't be edited in this admin yet" placeholder that keeps the value and still shows
   its validation messages.
+* Dates and times: `Field.Bind<T>()` converts between the property's type (DateTime, DateTimeOffset, TimeSpan
+  or an ISO string) and what the inputs use. The "Local" fields (`[DateLocal]`, `[DateTimeLocal]`) store UTC
+  and show the **browser's** time zone, as the AngularJS fields did through the browser's `Date`. The server
+  doesn't know that zone, so `BrowserTimeZone` (scoped, `wwwroot/js/time-zone.js`) reads its IANA name once
+  per circuit and converts (a time skipped by a daylight saving change uses the zone's standard offset).
+* Option lists: an enum or `IListOptionSource` puts its options in the schema. An `IListOptionApiSource` gives
+  a relative api path instead, which is fetched **in the browser** (`wwwroot/js/option-source.js`) with the
+  user's cookies, as the AngularJS `optionSourceService` did, so existing option apis work unchanged. Values
+  are compared as invariant strings, as the AngularJS fields compared them loosely.
+* Asset fields: `[Image]`, `[ImageCollection]`, `[Document]` and `[DocumentCollection]` pass their
+  restrictions (tags, sizes, file extensions; `DataModelAssetFilters`) to the pickers, which apply them, show
+  them disabled in the filter form and keep them on Clear. The upload dialogs opened from a picker warn about
+  the restrictions, and the image upload is tagged with the field's tags. The image and document pickers
+  have a multi-select mode for the collection fields, which share `IdCollectionFieldBase` with the page
+  collection.
+* Html: `FormFieldHtml` runs TinyMCE through `wwwroot/js/html-editor.js`. It's the same TinyMCE 4.4.3 build the
+  AngularJS admin bundles (copied to `wwwroot/lib/tinymce`, LGPL), and its skin is already in `shared.css`.
+  The toolbar presets, `Rows`, `CustomToolbar`, `ConfigFilePath` (fetched in the browser) and `ConfigSource`
+  options work as before. The "image" toolbar button opens `ImageAssetEditorDialog`. The AngularJS field also
+  asked for the `imagetools` plugin, which its build doesn't include (a 404), so it's left out.
 * Nested data models: the collection fields show a table of the items' [PreviewTitle], [PreviewDescription]
   and [PreviewImage] values (`NestedDataModelPreview`), and add or edit one item at a time in
   `EditNestedDataModelDialog`, which is a `DataModelFieldSet` of the nested schema. The dialog edits a shallow
@@ -139,15 +166,12 @@ to a JPEG in the browser first (`wwwroot/js/image-upload.js`), and the title def
 
 ## Known gaps
 
-* Custom entities, still to come: the remaining field types (HTML, document, page, directory, date/time,
-  color, option lists, phase 4). `[CustomEntityMultiTypeCollection]` (only used by page blocks) isn't ported.
-  The image field ignores `[Image]` size restrictions (the picker has no filters yet)
-* The image picker is single-select only. Its multi-select mode backs the image (and document) collection
-  fields, which only appear in dynamic data-model forms (`[ImageCollection]` on custom entity / page block
-  models), so they come with that form. Preset filter restrictions (`cms-width`, `cms-min-width`, ...) aren't
-  ported either
-* Upload fields have no "Remove" button (only needed for optional uploads, which no ported form has yet) and no
-  minimum/exact size check (the AngularJS field's `cms-filter`, used by image pickers)
+* `[CustomEntityMultiTypeCollection]` (only used by page blocks) isn't ported; it comes with page block editing
+* The page picker (page collection field) is multi-select only, since the single page field is a
+  search-as-you-type dropdown, as in the AngularJS admin
+* Upload fields have no "Remove" button (only needed for optional uploads, which no ported form has yet). As in
+  the AngularJS admin, an image uploaded from a picker isn't checked against the field's size restrictions; the
+  upload dialog only warns about them
 * The role picker in "Add Access Rule" is a plain dropdown of the area's roles, not the AngularJS search-as-you-type
   filtered dropdown. Fine for now, may be revisited
 * **To revisit:** the close icon (top right) on modal dialogs (`ModalDialog`) does nothing when clicked. The same

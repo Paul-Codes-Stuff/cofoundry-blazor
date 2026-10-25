@@ -145,6 +145,8 @@ async function smoke(page, c) {
     baseURL: BASE,
     viewport: { width: 1400, height: 900 },
     storageState: fs.existsSync(STATE) ? STATE : undefined,
+    // e.g. BROWSER_TZ=America/New_York, for fields that work in the browser's time zone.
+    timezoneId: process.env.BROWSER_TZ || undefined,
   });
   const page = await context.newPage();
   page.on('console', m => { if (m.type() === 'error') console.log('[console.error] ' + m.text()); });
