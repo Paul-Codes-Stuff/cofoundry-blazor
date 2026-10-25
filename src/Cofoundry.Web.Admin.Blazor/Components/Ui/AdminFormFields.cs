@@ -9,17 +9,23 @@ namespace Cofoundry.Web.Admin.Blazor.Components.Ui;
 /// </summary>
 public sealed class AdminFormFields
 {
-    private readonly List<FieldIdentifier> _fields = [];
+    private readonly List<(FieldIdentifier Field, string Name)> _fields = [];
 
-    public void Add(FieldIdentifier field)
+    /// <summary>
+    /// Adds a field, matched to errors by <paramref name="propertyName"/>, which defaults to the bound
+    /// property's name. Fields that bind to an adapter (e.g. a data model property's binding, whose
+    /// property is always "Value") pass the name of the property they edit.
+    /// </summary>
+    public void Add(FieldIdentifier field, string? propertyName = null)
     {
-        if (!_fields.Contains(field))
+        var name = propertyName ?? field.FieldName;
+        if (!_fields.Contains((field, name)))
         {
-            _fields.Add(field);
+            _fields.Add((field, name));
         }
     }
 
-    public void Remove(FieldIdentifier field) => _fields.Remove(field);
+    public void Remove(FieldIdentifier field) => _fields.RemoveAll(f => f.Field.Equals(field));
 
     /// <summary>
     /// Finds the field an error's property name is about. Names may be paths (e.g. "Command.Title"), so the
@@ -35,8 +41,10 @@ public sealed class AdminFormFields
 
         var name = propertyName[(propertyName.LastIndexOf('.') + 1)..];
         var matches = _fields
-            .Where(f => string.Equals(f.FieldName, propertyName, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(f.FieldName, name, StringComparison.OrdinalIgnoreCase))
+            .Where(f => string.Equals(f.Name, propertyName, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase))
+            .Select(f => f.Field)
+            .Distinct()
             .ToList();
 
         var onFormModel = matches.Where(f => ReferenceEquals(f.Model, formModel)).ToList();

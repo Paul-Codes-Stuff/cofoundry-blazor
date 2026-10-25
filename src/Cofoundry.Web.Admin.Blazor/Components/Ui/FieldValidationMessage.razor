@@ -1,0 +1,81 @@
+@typeparam TValue
+@implements IDisposable
+@using System.Linq.Expressions
+
+@* Like ValidationMessage, but names the field by its label. Commands are bound directly and many of their
+   properties have no [Display] name, so the default DataAnnotations messages would say "The
+   ApplicationName field is required." This shows "The Application Name field is required.", in line with
+   the data model fields (DataModelFieldSet). *@
+@if (_fieldIdentifier is { } field && EditContext != null)
+{
+    foreach (var message in EditContext.GetValidationMessages(field))
+    {
+        <div class="field-validation-error validation-message">@UseTitle(message, field.FieldName, Title)</div>
+    }
+}
+
+@code {
+    private EditContext? _subscribedEditContext;
+    private Expression<Func<TValue>>? _for;
+    private FieldIdentifier? _fieldIdentifier;
+
+    [CascadingParameter] public EditContext? EditContext { get; set; }
+
+    [Parameter, EditorRequired] public Expression<Func<TValue>>? For { get; set; }
+
+    /// <summary>
+    /// The field's label, without the trailing colon.
+    /// </summary>
+    [Parameter] public string? Title { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_for, For))
+        {
+            _for = For;
+            _fieldIdentifier = For == null ? null : FieldIdentifier.Create(For);
+        }
+
+        if (!ReferenceEquals(_subscribedEditContext, EditContext))
+        {
+            Unsubscribe();
+            _subscribedEditContext = EditContext;
+
+            if (_subscribedEditContext != null)
+            {
+                _subscribedEditContext.OnValidationStateChanged += OnValidationStateChanged;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Replaces the property name with <paramref name="title"/> in the default DataAnnotations wording
+    /// ("The {0} field ..." and "The field {0} ..."). Other messages are returned unchanged.
+    /// </summary>
+    public static string UseTitle(string message, string propertyName, string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title) || title == propertyName)
+        {
+            return message;
+        }
+
+        return message
+            .Replace($"The {propertyName} field", $"The {title} field", StringComparison.Ordinal)
+            .Replace($"The field {propertyName} ", $"The field {title} ", StringComparison.Ordinal);
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e)
+    {
+        StateHasChanged();
+    }
+
+    private void Unsubscribe()
+    {
+        if (_subscribedEditContext != null)
+        {
+            _subscribedEditContext.OnValidationStateChanged -= OnValidationStateChanged;
+        }
+    }
+
+    public void Dispose() => Unsubscribe();
+}

@@ -126,6 +126,17 @@ async function smoke(page, c) {
     if (new URL(page.url()).pathname === pageUrl) throw new Error('stayed on original page');
   });
 
+  // Deletes the copy, so each run leaves one page behind (other steps use an existing smoke page).
+  await c.step('delete', async () => {
+    const copyUrl = new URL(page.url()).pathname;
+    if (copyUrl === pageUrl) throw new Error('not on the copy');
+    await c.btn('.page-actions', 'Delete').click(); await page.waitForTimeout(800);
+    await page.click('.modal .main-cta'); await c.settle(2000);   // "Yes, delete it"
+    if (!/\/admin-next\/pages$/.test(page.url())) throw new Error('not back on list: ' + page.url());
+    await page.goto(copyUrl); await c.settle();
+    if (!/could not be found/.test(await page.locator('.page-body').innerText())) throw new Error('deleted page still loads');
+  });
+
   await c.step('list + filter', async () => {
     await page.goto('/admin-next/pages'); await c.settle();
     // The list is oldest first and earlier runs' pages are left behind, so page through it (this also

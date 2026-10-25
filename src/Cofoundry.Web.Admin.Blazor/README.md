@@ -43,7 +43,8 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
 | `cms-*` directives | Razor components in `Components/Ui`, emitting the same markup so the existing compiled `shared.css` applies |
 | Self-loading selector directives | `AdminLookups` loads dropdown data up front |
 | `$routeProvider` per module | `@page` routes |
-| `validationErrorService` sends a server error to the field registered for its property | Fields join their `AdminForm` (`AdminFormFields`); `FormStatus` files each command error under the field showing that property and lists only the rest |
+| `validationErrorService` sends a server error to the field registered for its property | Fields join their `AdminForm` (`AdminFormFields`); `FormStatus` files each command error under the field showing that property and lists only the rest. Data model fields join under the data model property's name |
+| Client-side messages per validation attribute ("This field is required") | The command's DataAnnotations messages, with the field's label in place of the property name (`FieldValidationMessage`): "The Application Name field is required." |
 
 `wwwroot/css` is a copy of the compiled AngularJS admin CSS and assets. Eventually the SCSS should move here.
 
@@ -253,10 +254,11 @@ references both versions of each.
   image/document pickers, upload dialogs (stacked on a picker), Duplicate and the access rules editor. If it
   happens again, note which dialog and browser
 * Visual editor (stays on the MVC site; links use `?mode=edit`)
-* Required-field messages use the command's property name when it has no `[Display]` name (e.g. "The
-  ApplicationName field is required."); the AngularJS forms showed their own client-side wording
-* Server-side errors about data model properties (custom entity fields) stay in the form status list: the
-  domain names them by path, and the dynamic fields bind to adapters, so they aren't matched to a field
+* A server-side error about an item in a nested data model collection shows under the collection field as
+  the domain's "{Collection} validation failed", without the item's own message (the domain only flattens one
+  level of `[ValidateObject]` results). In practice the form validates the same annotations first, so it's rare
 * A role can't be deleted while any user references it, including soft-deleted users (a domain rule, the same
   in the AngularJS admin). Move users to another role before deleting them if the role should go too
-* No tests yet
+* Unit tests (`test/Cofoundry.Web.Admin.Blazor.Tests`) cover the pure helpers only (routes, string utilities,
+  the server-error field matching, message wording, video id parsing). Components and pages are covered by
+  the browser steps in `.claude/skills/run-blazor-admin`

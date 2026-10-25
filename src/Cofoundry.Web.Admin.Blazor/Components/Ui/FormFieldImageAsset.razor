@@ -31,7 +31,7 @@
 
             @if (ShowInput)
             {
-                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+                <FieldValidationMessage For="ValueExpression" Title="@Title" />
                 <div class="collection-actions">
                     <div>
                         @if (_previewAsset != null)

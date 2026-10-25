@@ -46,7 +46,8 @@ module.exports = async (page, c) => {
     if (await page.locator('.page-body label:text-is("Url Slug:")').count()) throw new Error('slug field shown for an auto-generated slug');
     if (await c.btn('.page-actions', 'Save Draft').count()) throw new Error('Save Draft shown for an auto-publish entity');
     await c.btn('.page-actions', 'Save').click(); await page.waitForTimeout(800);
-    if (!/Title/i.test(await messages())) throw new Error('no title validation: ' + await messages());
+    // Authors use the custom title term "Name", which the message uses too.
+    if (!/The Name field is required/.test(await messages())) throw new Error('no title validation: ' + await messages());
   });
 
   await c.step('create author with dynamic fields', async () => {

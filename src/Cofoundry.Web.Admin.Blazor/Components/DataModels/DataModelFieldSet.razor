@@ -18,6 +18,8 @@
 
     [CascadingParameter] public EditContext? EditContext { get; set; }
 
+    [CascadingParameter] public AdminFormFields? FormFields { get; set; }
+
     /// <summary>
     /// The data model instance to edit, e.g. a custom entity's <see cref="ICustomEntityDataModel"/>.
     /// Changes are written straight to it.
@@ -33,6 +35,7 @@
         if (!ReferenceEquals(_fieldsModel, Model))
         {
             _fieldsModel = Model;
+            RemoveFormFields();
             _fields = CreateFields();
 
             // Messages filed against the previous model's bindings would never clear.
@@ -69,6 +72,28 @@
         }
 
         return fields;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        // Field components create their bindings as they render, so they're added to the form here.
+        // Each is added under the data model property's name, which is how the domain names a data
+        // model error (it flattens [ValidateObject] results), so FormStatus can show it under the field.
+        foreach (var field in _fields)
+        {
+            foreach (var binding in field.Bindings)
+            {
+                FormFields?.Add(binding.FieldIdentifier, field.Property.Name);
+            }
+        }
+    }
+
+    private void RemoveFormFields()
+    {
+        foreach (var binding in _fields.SelectMany(f => f.Bindings))
+        {
+            FormFields?.Remove(binding.FieldIdentifier);
+        }
     }
 
     /* VALIDATION */
@@ -154,5 +179,9 @@
         }
     }
 
-    public void Dispose() => Unsubscribe();
+    public void Dispose()
+    {
+        RemoveFormFields();
+        Unsubscribe();
+    }
 }

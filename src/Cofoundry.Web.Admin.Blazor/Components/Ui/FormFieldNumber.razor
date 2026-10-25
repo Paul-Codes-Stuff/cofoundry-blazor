@@ -14,7 +14,7 @@
                              disabled="@Disabled"
                              min="@Min"
                              max="@Max" />
-                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+                <FieldValidationMessage For="ValueExpression" Title="@Title" />
             }
             else if (Value.HasValue)
             {

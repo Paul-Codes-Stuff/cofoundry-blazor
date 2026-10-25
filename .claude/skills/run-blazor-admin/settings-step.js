@@ -41,7 +41,8 @@ module.exports = async (page, c) => {
       await c.btn('.page-actions', 'Save').click(); await page.waitForTimeout(800);
       // The message uses the command's property name, as the domain has no [Display] name for it.
       const msgs = (await page.locator('.field-validation-error, .validation-message').allInnerTexts()).join(' / ');
-      if (!/ApplicationName field is required/.test(msgs)) throw new Error('no validation: ' + msgs);
+      // Messages use the field's label, not the property name.
+      if (!/The Application Name field is required/.test(msgs)) throw new Error('no validation: ' + msgs);
       await c.shot('settings-2-validation');
     } finally {
       await appName().fill(original.appName); await appName().blur();

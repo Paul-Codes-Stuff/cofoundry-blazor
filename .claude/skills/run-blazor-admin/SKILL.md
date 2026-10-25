@@ -68,9 +68,9 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
 ```
 
 - **`smoke`** prints `[PASS]`/`[FAIL]` for each step: list, create validation, create, edit, change URL,
-  publish/unpublish, duplicate, and list + filter. It exits 1 on any failure, and a failing step saves a
-  `fail-<step>.png`. Each run **creates two real pages** with unique `smoke-<stamp>` slugs. They're left
-  in the database, and the list is oldest first, so the list step pages through it to find the new one.
+  publish/unpublish, duplicate, delete (the copy) and list + filter. It exits 1 on any failure, and a failing
+  step saves a `fail-<step>.png`. Each run **leaves one real page** with a unique `smoke-<stamp>` slug in the
+  database (other steps use it), and the list is oldest first, so the list step pages through it to find it.
 - **`server-validation-step.js`** checks a server-side error is shown under its field: it adds a directory
   twice with the same url path, expects the domain's "already exists" message under Url Path (not in the
   form status list), and that editing the field clears it. It deletes the directory.
@@ -148,6 +148,14 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   (override with `OUT_DIR`). Delete `auth-state.json` to force a fresh sign-in.
 - Browser console errors, page errors and HTTP 4xx/5xx responses are printed as they happen.
   **Read the screenshots.** A page can render with missing styling and still pass a DOM check.
+
+## Unit tests
+
+```bash
+dotnet test test/Cofoundry.Web.Admin.Blazor.Tests
+```
+
+Pure helpers only (no database or browser needed); everything else is covered by the steps above.
 
 ## Stop
 

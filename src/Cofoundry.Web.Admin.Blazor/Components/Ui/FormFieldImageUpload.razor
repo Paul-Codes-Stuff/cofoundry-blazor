@@ -57,7 +57,7 @@
             </div>
             @if (ShowInput)
             {
-                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+                <FieldValidationMessage For="ValueExpression" Title="@Title" />
                 @if (_error != null)
                 {
                     <span class="field-validation-error">@_error</span>

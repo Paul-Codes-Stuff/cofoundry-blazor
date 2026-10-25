@@ -62,6 +62,9 @@ Agreed direction, not yet done:
 - Razor `@page` accepts **string literals only**, so the `/admin-next` prefix is repeated in each page
   component. To change it, update `AdminBlazorRoutes.Prefix` and every `@page` directive.
 - **Never name a Razor variable `page`** in markup: `@page.X` is parsed as the `@page` directive.
+- Form fields show messages with `FieldValidationMessage` (the field's label replaces the property name in
+  DataAnnotations messages), not `ValidationMessage`. Browser steps match the label: "The Application Name
+  field is required.", not "ApplicationName".
 - **Component attributes cannot mix text and C#.** `class="a @b"` works on HTML elements but fails on
   components (RZ9986). Compute the whole value in one expression instead.
 - Pages under `Components/Pages` get `[AdminBlazorAuthorize]` from that folder's `_Imports.razor`. Do not put
@@ -104,7 +107,7 @@ Agreed direction, not yet done:
   for Pages, `assets-step.js` for Images/Documents, `settings-step.js` for Site Settings, `image-picker-step.js` for the picker, `roles-users-step.js` for Roles
   and Users, `access-rules-step.js` for Directories and access rules, `page-templates-step.js` for Page Templates, `custom-entities-step.js`, `custom-entity-pickers-step.js`, `nested-data-models-step.js` and `field-types-step.js` (run with `BROWSER_TZ`, uses the dev-only Field Tests entity `SIMFLD`) for Custom Entities, `plugins-step.js`
   for the Error Logging, YouTube and Vimeo plugins; its Vimeo steps need internet access; `auth-step.js` for
-  forgot/reset/change password). Page delete not yet exercised.
+  forgot/reset/change password; `smoke` also deletes the page it duplicates).
 - **Dev.Sandbox has a "Member" user area** (`Cofoundry/UserAreas/MemberUserArea.cs`, code `MEM`) so access rules
   and a non-admin users list can be exercised. Access Control is hidden on sites with only the admin area.
 - **To revisit:** the modal dialog close icon (top right, `Components/Dialogs/ModalDialog.razor`) was reported as
@@ -125,7 +128,10 @@ Agreed direction, not yet done:
 - **Next:** the remaining known gaps in the README. Every plugin with an AngularJS admin part now has a Blazor
   package. Page block editing (and `[CustomEntityMultiTypeCollection]`) only matters
   if the Visual Editor moves; it stays on the MVC site for now.
-- No tests yet.
+- **Unit tests:** `test/Cofoundry.Web.Admin.Blazor.Tests` (xunit v3, like the repo's other test projects) covers
+  pure helpers only: routes, `StringUtilities`, `AdminFormFields`, `FieldValidationMessage.UseTitle` and the
+  plugins' `ParseVideoId`. Run `dotnet test test/Cofoundry.Web.Admin.Blazor.Tests`. UI is covered by the skill's
+  browser steps.
 
 ## Git
 
