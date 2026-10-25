@@ -128,8 +128,14 @@ async function smoke(page, c) {
 
   await c.step('list + filter', async () => {
     await page.goto('/admin-next/pages'); await c.settle();
-    const all = await c.rows();
-    if (!all.some(r => r.includes(`smoke-${stamp}-moved`))) throw new Error('new page missing from list');
+    // The list is oldest first and earlier runs' pages are left behind, so page through it (this also
+    // exercises the pager).
+    let found = (await c.rows()).some(r => r.includes(`smoke-${stamp}-moved`));
+    for (let i = 0; !found && i < 20 && await page.locator('.pagination button.next:not([disabled])').count(); i++) {
+      await page.click('.pagination button.next'); await c.settle(600);
+      found = (await c.rows()).some(r => r.includes(`smoke-${stamp}-moved`));
+    }
+    if (!found) throw new Error('new page missing from list');
     await page.click('a.btn-icon:has-text("Filter")'); await page.waitForTimeout(600);
     await page.locator('.search-filter').getByLabel('Publish Status:', { exact: true }).selectOption({ label: 'Unpublished' });
     await c.btn('.search-filter', 'Apply').click(); await c.settle();

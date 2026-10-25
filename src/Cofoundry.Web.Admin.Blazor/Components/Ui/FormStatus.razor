@@ -1,13 +1,22 @@
+@implements IDisposable
+
+@* Port of cms-form-status. Inside an AdminForm, an error about a property that a field on the form shows is
+   shown under that field instead, as the AngularJS fields did (validationErrorService), until the field is
+   changed or the form is submitted again. The heading still shows, so an error further down the form isn't
+   missed; the list only holds the errors no field shows. *@
 @if (Errors.Count > 0)
 {
     <div class="form-message error perm">
         @(ErrorMessage ?? "Sorry, the changes could not be saved.")
-        <ul>
-            @foreach (var message in Errors.Select(e => e.Message).Distinct())
-            {
-                <li>@message</li>
-            }
-        </ul>
+        @if (_unhandledErrors.Count > 0)
+        {
+            <ul>
+                @foreach (var message in _unhandledErrors.Select(e => e.Message).Distinct())
+                {
+                    <li>@message</li>
+                }
+            </ul>
+        }
     </div>
 }
 else if (!string.IsNullOrEmpty(SuccessMessage))
@@ -16,6 +25,16 @@ else if (!string.IsNullOrEmpty(SuccessMessage))
 }
 
 @code {
+    private IReadOnlyCollection<ValidationError>? _filedErrors;
+    private IReadOnlyCollection<ValidationError> _unhandledErrors = [];
+    private EditContext? _editContext;
+    private ValidationMessageStore? _messages;
+    private readonly HashSet<FieldIdentifier> _fieldsWithMessages = [];
+
+    [CascadingParameter] public EditContext? CascadingEditContext { get; set; }
+
+    [CascadingParameter] public AdminFormFields? FormFields { get; set; }
+
     /// <summary>
     /// Errors returned from running a command, e.g. <see cref="AdminCommandResult.Errors"/>.
     /// </summary>
@@ -27,4 +46,106 @@ else if (!string.IsNullOrEmpty(SuccessMessage))
     /// Optional heading shown above the list of errors.
     /// </summary>
     [Parameter] public string? ErrorMessage { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_editContext, CascadingEditContext))
+        {
+            Unsubscribe();
+            _editContext = CascadingEditContext;
+
+            if (_editContext != null)
+            {
+                _messages = new ValidationMessageStore(_editContext);
+                _editContext.OnFieldChanged += OnFieldChanged;
+                _editContext.OnValidationRequested += OnValidationRequested;
+            }
+
+            _filedErrors = null;
+        }
+
+        // Only a new set of errors is filed: the page passes the same collection on every render.
+        if (!ReferenceEquals(_filedErrors, Errors))
+        {
+            _filedErrors = Errors;
+            FileErrors();
+        }
+    }
+
+    private void FileErrors()
+    {
+        ClearMessages();
+
+        if (_messages == null || _editContext == null || FormFields == null)
+        {
+            _unhandledErrors = Errors;
+            return;
+        }
+
+        var unhandled = new List<ValidationError>();
+        foreach (var error in Errors)
+        {
+            var fields = (error.Properties ?? [])
+                .Select(p => FormFields.Find(p, _editContext.Model))
+                .OfType<FieldIdentifier>()
+                .Distinct()
+                .ToList();
+
+            if (fields.Count == 0)
+            {
+                unhandled.Add(error);
+                continue;
+            }
+
+            foreach (var field in fields)
+            {
+                _messages.Add(field, error.Message);
+                _fieldsWithMessages.Add(field);
+            }
+        }
+
+        _unhandledErrors = unhandled;
+        _editContext.NotifyValidationStateChanged();
+    }
+
+    private void OnFieldChanged(object? sender, FieldChangedEventArgs e)
+    {
+        if (_fieldsWithMessages.Remove(e.FieldIdentifier))
+        {
+            _messages?.Clear(e.FieldIdentifier);
+            _editContext?.NotifyValidationStateChanged();
+        }
+    }
+
+    private void OnValidationRequested(object? sender, ValidationRequestedEventArgs e)
+    {
+        ClearMessages();
+    }
+
+    private void ClearMessages()
+    {
+        if (_fieldsWithMessages.Count == 0)
+        {
+            return;
+        }
+
+        _messages?.Clear();
+        _fieldsWithMessages.Clear();
+        _editContext?.NotifyValidationStateChanged();
+    }
+
+    private void Unsubscribe()
+    {
+        if (_editContext != null)
+        {
+            _messages?.Clear();
+            _editContext.OnFieldChanged -= OnFieldChanged;
+            _editContext.OnValidationRequested -= OnValidationRequested;
+        }
+
+        _messages = null;
+        _fieldsWithMessages.Clear();
+    }
+
+    public void Dispose() => Unsubscribe();
 }

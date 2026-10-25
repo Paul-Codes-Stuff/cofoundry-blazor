@@ -42,6 +42,7 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
 | `cms-*` directives | Razor components in `Components/Ui`, emitting the same markup so the existing compiled `shared.css` applies |
 | Self-loading selector directives | `AdminLookups` loads dropdown data up front |
 | `$routeProvider` per module | `@page` routes |
+| `validationErrorService` sends a server error to the field registered for its property | Fields join their `AdminForm` (`AdminFormFields`); `FormStatus` files each command error under the field showing that property and lists only the rest |
 
 `wwwroot/css` is a copy of the compiled AngularJS admin CSS and assets. Eventually the SCSS should move here.
 
@@ -239,15 +240,17 @@ references both versions of each.
   upload dialog only warns about them
 * The role picker in "Add Access Rule" is a plain dropdown of the area's roles, not the AngularJS search-as-you-type
   filtered dropdown. Fine for now, may be revisited
-* **To revisit:** the close icon (top right) on modal dialogs (`ModalDialog`) does nothing when clicked. The same
-  happens in the AngularJS admin, so the markup/CSS ported from it is the likely cause. Use Cancel meanwhile
+* **To revisit:** the close icon (top right) on modal dialogs (`ModalDialog`) was reported as doing nothing. It
+  couldn't be reproduced since: in headless Chrome the icon is the topmost element and a real click closes the
+  image/document pickers, upload dialogs (stacked on a picker), Duplicate and the access rules editor. If it
+  happens again, note which dialog and browser
 * Visual editor (stays on the MVC site; links use `?mode=edit`)
 * Forgot password, reset password (emailed links are built by the MVC route library) and forced password
   change are still the MVC pages
-* The footer doesn't show the Cofoundry version, which the AngularJS layout does
 * Required-field messages use the command's property name when it has no `[Display]` name (e.g. "The
   ApplicationName field is required."); the AngularJS forms showed their own client-side wording
-* Server-side validation messages are shown in the form status area, not against individual fields
+* Server-side errors about data model properties (custom entity fields) stay in the form status list: the
+  domain names them by path, and the dynamic fields bind to adapters, so they aren't matched to a field
 * A role can't be deleted while any user references it, including soft-deleted users (a domain rule, the same
   in the AngularJS admin). Move users to another role before deleting them if the role should go too
 * No tests yet

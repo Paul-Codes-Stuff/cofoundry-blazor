@@ -104,8 +104,12 @@ Agreed direction, not yet done:
   for the Error Logging, YouTube and Vimeo plugins; its Vimeo steps need internet access). Page delete not yet exercised.
 - **Dev.Sandbox has a "Member" user area** (`Cofoundry/UserAreas/MemberUserArea.cs`, code `MEM`) so access rules
   and a non-admin users list can be exercised. Access Control is hidden on sites with only the admin area.
-- **To revisit:** the modal dialog close icon (top right, `Components/Dialogs/ModalDialog.razor`) doesn't work.
-  It looks like a bug carried over from the AngularJS admin, which has the same problem.
+- **To revisit:** the modal dialog close icon (top right, `Components/Dialogs/ModalDialog.razor`) was reported as
+  not working, but couldn't be reproduced (it works on every dialog tried, stacked ones too). Ask which dialog
+  and browser if it comes up again.
+- **Server-side validation:** fields join their `AdminForm` (`AdminFormFields`, from `FormFieldBase`), and
+  `FormStatus` files each command error under the field showing its property, as the AngularJS
+  `validationErrorService` did. Only unmatched errors are listed. Tested by `server-validation-step.js`.
 - **Extension points:** `IAdminBlazorModuleRegistration` adds module pages from other assemblies (router and
   endpoints pick up their assembly; the nav links to them). The sandbox's Products module
   (`Dev.Sandbox/Cofoundry/Admin/Blazor`) is the example, tested by `extension-module-step.js`. A plugin package

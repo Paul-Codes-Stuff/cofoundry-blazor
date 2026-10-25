@@ -22,6 +22,13 @@ public abstract class FormFieldBase<TValue> : ComponentBase, IDisposable
     public EditContext? CascadingEditContext { get; set; }
 
     /// <summary>
+    /// The enclosing <see cref="AdminForm"/>'s fields, which this field joins so <see cref="FormStatus"/> can
+    /// show server-side errors under it.
+    /// </summary>
+    [CascadingParameter]
+    public AdminFormFields? FormFields { get; set; }
+
+    /// <summary>
     /// Set by <see cref="Dialogs.ModalDialog"/> so a dialog's fields don't repeat the ids of the form
     /// behind it, which would point their labels at the wrong input.
     /// </summary>
@@ -87,8 +94,15 @@ public abstract class FormFieldBase<TValue> : ComponentBase, IDisposable
     {
         if (ValueExpression != null)
         {
-            _fieldIdentifier = FieldIdentifier.Create(ValueExpression);
+            var fieldIdentifier = FieldIdentifier.Create(ValueExpression);
+            if (_hasFieldIdentifier && !fieldIdentifier.Equals(_fieldIdentifier))
+            {
+                FormFields?.Remove(_fieldIdentifier);
+            }
+
+            _fieldIdentifier = fieldIdentifier;
             _hasFieldIdentifier = true;
+            FormFields?.Add(_fieldIdentifier);
         }
 
         if (!ReferenceEquals(_subscribedEditContext, CascadingEditContext))
@@ -135,6 +149,11 @@ public abstract class FormFieldBase<TValue> : ComponentBase, IDisposable
     public void Dispose()
     {
         OnDisposing();
+
+        if (_hasFieldIdentifier)
+        {
+            FormFields?.Remove(_fieldIdentifier);
+        }
 
         if (_subscribedEditContext != null)
         {

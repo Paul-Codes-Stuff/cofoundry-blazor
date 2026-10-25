@@ -29,11 +29,14 @@
     </CascadingValue>
 
     <footer>
-        <p class="copyright">&copy; @DateTime.Now.Year Cofoundry. All Rights Reserved.</p>
+        <p class="copyright">&copy; @DateTime.UtcNow.Year Cofoundry. All Rights Reserved. @CofoundryVersion</p>
     </footer>
 
 </div>
 
 @code {
     private readonly ModalDialogStack _modalDialogStack = new();
+
+    // As the AngularJS layout: the version of Cofoundry.Web, the assembly of its ICofoundryHelper.
+    private static readonly Version? CofoundryVersion = typeof(ICofoundryHelper).Assembly.GetName().Version;
 }

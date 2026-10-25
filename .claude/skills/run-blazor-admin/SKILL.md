@@ -62,13 +62,17 @@ node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-adm
 BROWSER_TZ=America/New_York node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/field-types-step.js  # every field type
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/extension-module-step.js  # module from another assembly
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/plugins-step.js  # error log, YouTube and Vimeo fields
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/server-validation-step.js  # errors under fields
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
 ```
 
 - **`smoke`** prints `[PASS]`/`[FAIL]` for each step: list, create validation, create, edit, change URL,
   publish/unpublish, duplicate, and list + filter. It exits 1 on any failure, and a failing step saves a
   `fail-<step>.png`. Each run **creates two real pages** with unique `smoke-<stamp>` slugs. They're left
-  in the database.
+  in the database, and the list is oldest first, so the list step pages through it to find the new one.
+- **`server-validation-step.js`** checks a server-side error is shown under its field: it adds a directory
+  twice with the same url path, expects the domain's "already exists" message under Url Path (not in the
+  form status list), and that editing the field clears it. It deletes the directory.
 - **`assets-step.js`** uploads a small PNG, a 4000x2000 PNG (checks it's resized in the browser to 3200x1600)
   and a .txt document, then edits, replaces the file, filters and deletes them. The test files are drawn on a
   canvas in the page, so there are no fixtures. It cleans up after itself when it passes.

@@ -6,12 +6,15 @@
     <DataAnnotationsValidator />
 
     <CascadingValue Value="EditMode" Name="EditMode">
-        @ChildContent
+        <CascadingValue Value="_fields" IsFixed="true">
+            @ChildContent
+        </CascadingValue>
     </CascadingValue>
 </EditForm>
 
 @code {
     private EditForm? _editForm;
+    private readonly AdminFormFields _fields = new();
 
     // Component attributes can't mix text and C#, so the class list is built as one expression.
     private string FormCssClass => string.Join(' ', new[]
