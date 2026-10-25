@@ -1,6 +1,7 @@
 @implements IDisposable
 @inject IAdminBlazorExecutor Executor
 @inject NavigationManager Navigation
+@inject AdminBlazorModuleRegistry ModuleRegistry
 
 <nav class="main-nav fix">
     <a href="/" class="home"><i></i></a>
@@ -55,24 +56,8 @@
 </nav>
 
 @code {
-    /// <summary>
-    /// Modules that have been ported to Blazor, keyed by AdminModuleCode. Any module not listed
-    /// here still links to its AngularJS admin URL so both admins work side-by-side while the
-    /// migration is in progress. Add an entry as each module is ported.
-    /// </summary>
+    // There is one users module per user area: "COFUSR" followed by the area's code.
     private const string UsersModuleCodePrefix = "COFUSR";
-
-    private static readonly Dictionary<string, string> PortedModuleUrls = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["COFDSH"] = AdminBlazorRoutes.Dashboard,
-        ["COFPAG"] = AdminBlazorRoutes.Pages,
-        ["COFIMG"] = AdminBlazorRoutes.Images,
-        ["COFDOC"] = AdminBlazorRoutes.Documents,
-        ["COFSET"] = AdminBlazorRoutes.Settings,
-        ["COFROL"] = AdminBlazorRoutes.Roles,
-        ["COFDIR"] = AdminBlazorRoutes.Directories,
-        ["COFPGT"] = AdminBlazorRoutes.PageTemplates
-    };
 
     private IReadOnlyList<AdminModule> _manageSiteModules = [];
     private IReadOnlyList<AdminModule> _settingsModules = [];
@@ -96,9 +81,13 @@
             .ToList();
     }
 
-    private static string GetUrl(AdminModule module)
+    /// <summary>
+    /// The module's Blazor page if it has one (see <see cref="IAdminBlazorModuleRegistration"/>), otherwise
+    /// its own url, which for a module not yet ported is the AngularJS admin's.
+    /// </summary>
+    private string GetUrl(AdminModule module)
     {
-        if (PortedModuleUrls.TryGetValue(module.AdminModuleCode, out var url))
+        if (ModuleRegistry.GetUrl(module.AdminModuleCode) is string url)
         {
             return url;
         }
@@ -109,7 +98,6 @@
             return AdminBlazorRoutes.CustomEntities(module.AdminModuleCode);
         }
 
-        // There is one users module per user area: "COFUSR" followed by the area's code.
         if (module.AdminModuleCode.Length == UsersModuleCodePrefix.Length + 3
             && module.AdminModuleCode.StartsWith(UsersModuleCodePrefix, StringComparison.OrdinalIgnoreCase))
         {

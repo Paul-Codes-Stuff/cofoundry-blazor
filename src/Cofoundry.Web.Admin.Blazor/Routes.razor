@@ -1,6 +1,7 @@
 @inject NavigationManager Navigation
+@inject AdminBlazorModuleRegistry ModuleRegistry
 
-<Router AppAssembly="typeof(App).Assembly">
+<Router AppAssembly="typeof(App).Assembly" AdditionalAssemblies="ModuleRegistry.AdditionalAssemblies">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)">
             <NotAuthorized>

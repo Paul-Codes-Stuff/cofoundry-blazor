@@ -72,10 +72,12 @@ public class AdminBlazorAntiforgeryStartupConfigurationTask
 public class AdminBlazorRouteRegistration : IOrderedRouteRegistration
 {
     private readonly AdminSettings _adminSettings;
+    private readonly AdminBlazorModuleRegistry _moduleRegistry;
 
-    public AdminBlazorRouteRegistration(AdminSettings adminSettings)
+    public AdminBlazorRouteRegistration(AdminSettings adminSettings, AdminBlazorModuleRegistry moduleRegistry)
     {
         _adminSettings = adminSettings;
+        _moduleRegistry = moduleRegistry;
     }
 
     public int Ordering => (int)RouteRegistrationOrdering.Early;
@@ -87,8 +89,11 @@ public class AdminBlazorRouteRegistration : IOrderedRouteRegistration
             return;
         }
 
+        // Pages from other assemblies (IAdminBlazorModuleRegistration) need endpoints too, or a request
+        // straight to one falls through to Cofoundry's page route. Routes.razor adds them to the router.
         routeBuilder
             .MapRazorComponents<App>()
-            .AddInteractiveServerRenderMode();
+            .AddInteractiveServerRenderMode()
+            .AddAdditionalAssemblies([.. _moduleRegistry.AdditionalAssemblies]);
     }
 }

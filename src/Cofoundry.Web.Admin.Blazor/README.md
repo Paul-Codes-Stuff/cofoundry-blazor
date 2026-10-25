@@ -25,8 +25,8 @@ when the host itself contains `.razor` files, so without it the admin renders a 
 * The Blazor admin lives under **`/admin-next`** (the AngularJS admin stays at `/admin`).
 * Sign-in/out is at `/admin-next/auth/login` and `/logout`. Signed-out requests to `/admin-next/...` are sent
   there; `/admin/...` still uses the MVC login. Forgot/reset/change password still use the MVC pages.
-* The nav lists every permitted module. Modules not yet ported link to their AngularJS admin URL; ported ones
-  link to the Blazor page (see `PortedModuleUrls` in `Components/Layout/AdminNav.razor`).
+* The nav lists every permitted module. Modules with a Blazor page (see "Extending the admin") link to it;
+  the others, including custom modules not yet ported, link to their AngularJS admin URL.
 
 ### Changing the prefix
 
@@ -164,8 +164,43 @@ limit is 30MB (`BufferedFileSource.MaxFileSize`), matching the request size limi
 As in the AngularJS admin, images larger than `ImageAssetsSettings.MaxUploadWidth`/`MaxUploadHeight` are resized
 to a JPEG in the browser first (`wwwroot/js/image-upload.js`), and the title defaults to the file name.
 
+## Extending the admin
+
+The Blazor equivalents of the AngularJS extension model. Everything is discovered through Cofoundry's usual
+assembly scanning, so an extension only needs to be referenced by the site.
+
+* **Modules (pages):** implement `IAdminBlazorModuleRegistration` (`Infrastructure/AdminBlazorModules.cs`),
+  returning `new AdminBlazorModule("<AdminModuleCode>", typeof(MyModulePage))`. The nav then links that module
+  to the page's `@page` route, which must be under `/admin-next` and have no parameters (pass the url when the
+  page has more than one). The page's assembly is added to the router and to the endpoints, so every routable
+  component in it works, by direct request or in-app navigation. Later registrations replace earlier ones, so
+  a site can also swap a built-in module's page. The built-in modules are registered the same way
+  (`DefaultAdminBlazorModuleRegistration`).
+  * The module itself (title, menu, ordering, permission) still comes from the domain's
+    `IAdminModuleRegistration`. A module ported from AngularJS keeps its `IStandardAngularModuleRegistration`
+    and only adds the Blazor registration. A Blazor-only module implements `IAdminModuleRegistration` with its
+    `/admin-next/...` url.
+  * Pages need `[AdminBlazorAuthorize]` (signed-in admin) and should check the module's own permission with
+    `IPermissionValidationService`, as the built-in pages do. They get `AdminLayout` from the router.
+* **Form fields:** components in `Components/Ui` (`FormFieldText`, `FormFieldDropdown`, ...) are public and can
+  be used or wrapped, like the sandbox's `FormFieldTestSelector`. For a data-model field type (an attribute's
+  `TemplateHint`/`UIHint`, e.g. the YouTube plugin's "Youtube"), implement `IDataModelFieldComponentRegistration`
+  (see "Dynamic data-model forms").
+* **Services:** inject `IAdminBlazorExecutor` for domain queries and commands (it runs them as the signed-in
+  user), `AdminLookups` for shared dropdown data, and use the permission records in `AdminPermissions.cs`.
+  These replace the AngularJS shared services (`shared.serviceBase`, `permissionValidationService`, ...).
+* **Static files:** a Razor class library's `wwwroot` is served at `_content/<AssemblyName>/`.
+* **Razor namespaces:** a project whose folders include `Cofoundry` (e.g. a site's `Cofoundry/Admin/...`) gets
+  component namespaces like `MySite.Cofoundry.Admin`, which hide the real `Cofoundry` namespaces. Use
+  `@using global::Cofoundry...` in its `_Imports.razor` and set `@namespace` in each component.
+
+The sandbox's **Products** module is the worked example: `samples/src/Dev/Dev.Sandbox/Cofoundry/Admin/Blazor`.
+
 ## Known gaps
 
+* The Error Logging and YouTube plugins (`src/Cofoundry.Plugins`) still only have AngularJS admin parts, so
+  their module and field stay on the AngularJS admin (the field shows the "can't be edited" placeholder in
+  Blazor forms) until they get Blazor versions
 * `[CustomEntityMultiTypeCollection]` (only used by page blocks) isn't ported; it comes with page block editing
 * The page picker (page collection field) is multi-select only, since the single page field is a
   search-as-you-type dropdown, as in the AngularJS admin

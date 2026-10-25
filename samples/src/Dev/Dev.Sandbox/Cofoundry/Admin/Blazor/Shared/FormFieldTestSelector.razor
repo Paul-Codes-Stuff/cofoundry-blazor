@@ -1,0 +1,29 @@
+@namespace Dev.Sandbox
+
+@* Port of the sandbox's cms-form-field-test-selector: a custom form field built from the admin's own
+   FormFieldDropdown, which an extension can use like any built-in field. *@
+<FormFieldDropdown TValue="int?" Title="@Title" Description="@Description" Required="Required"
+                   DefaultItemText="None" Options="Options"
+                   Value="Value" ValueChanged="ValueChanged" ValueExpression="ValueExpression" />
+
+@code {
+    // The AngularJS selector asked an api that the sandbox never had, so these are fixed.
+    private static readonly IReadOnlyList<SelectOption<int?>> Options =
+    [
+        new(1, "Dog"),
+        new(2, "Cat"),
+        new(3, "Llama")
+    ];
+
+    [Parameter] public string Title { get; set; } = "Test";
+
+    [Parameter] public string? Description { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public int? Value { get; set; }
+
+    [Parameter] public EventCallback<int?> ValueChanged { get; set; }
+
+    [Parameter] public System.Linq.Expressions.Expression<Func<int?>>? ValueExpression { get; set; }
+}

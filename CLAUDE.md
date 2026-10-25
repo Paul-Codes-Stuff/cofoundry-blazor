@@ -38,9 +38,11 @@ Agreed direction, not yet done:
    with no AngularJS dependency.
 2. Keep the Blazor admin on in-process domain calls. Routing it through the API wouldn't help compatibility.
 3. The bigger break is the **AngularJS extension model**: custom modules, custom form-field directives (e.g. the
-   YouTube plugin) and shared AngularJS services. Blazor needs its own extension point for these before the
-   AngularJS admin can be removed. Until then, unported and custom modules stay reachable because `AdminNav` links
-   them to their AngularJS URLs.
+   YouTube plugin) and shared AngularJS services. Blazor now has its own extension points
+   (`IAdminBlazorModuleRegistration` for module pages, `IDataModelFieldComponentRegistration` for field types; see
+   "Extending the admin" in the README), proven by the sandbox's Products module. Existing extensions still need
+   Blazor versions written: the Error Logging and YouTube plugins have none yet. Until they do, modules without a
+   Blazor page stay reachable because `AdminNav` links them to their AngularJS URLs.
 
 ## How to port a module
 
@@ -49,7 +51,7 @@ Agreed direction, not yet done:
 2. Find the domain queries/commands the API controller uses (`src/Cofoundry.Domain`) and call those via the
    executor. Commands carry data annotations, so bind forms to them directly.
 3. Add components under `Components/<Module>/`, reusing `Components/Ui`. Add the module's `AdminModuleCode`
-   and URL to `PortedModuleUrls` in `Components/Layout/AdminNav.razor`.
+   and landing page to `DefaultAdminBlazorModuleRegistration` (`Bootstrap/`).
 4. Check permissions with `IPermissionValidationService` (see `Infrastructure/AdminPermissions.cs`).
 
 ## Gotchas (learned from the first build)
@@ -99,8 +101,11 @@ Agreed direction, not yet done:
   and a non-admin users list can be exercised. Access Control is hidden on sites with only the admin area.
 - **To revisit:** the modal dialog close icon (top right, `Components/Dialogs/ModalDialog.razor`) doesn't work.
   It looks like a bug carried over from the AngularJS admin, which has the same problem.
-- **Next:** the Blazor extension point for custom admin modules (see "Backwards compatibility"), and the
-  remaining known gaps in the README. Page block editing (and `[CustomEntityMultiTypeCollection]`) only matters
+- **Extension points:** `IAdminBlazorModuleRegistration` adds module pages from other assemblies (router and
+  endpoints pick up their assembly; the nav links to them). The sandbox's Products module
+  (`Dev.Sandbox/Cofoundry/Admin/Blazor`) is the example, tested by `extension-module-step.js`.
+- **Next:** Blazor versions of the Error Logging and YouTube plugins' admin parts, and the remaining known gaps
+  in the README. Page block editing (and `[CustomEntityMultiTypeCollection]`) only matters
   if the Visual Editor moves; it stays on the MVC site for now.
 - No tests yet.
 

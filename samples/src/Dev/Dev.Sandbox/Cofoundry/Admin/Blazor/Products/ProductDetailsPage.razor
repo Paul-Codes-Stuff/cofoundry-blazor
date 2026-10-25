@@ -1,0 +1,74 @@
+@page "/admin-next/products"
+@namespace Dev.Sandbox
+@inject ProductStore Store
+
+@* Port of the sandbox's AngularJS Products module (Admin/Modules/Products): a page in the Blazor admin
+   from outside its assembly, added by ProductsBlazorModuleRegistration. *@
+<PageTitle>Product | Admin</PageTitle>
+
+<PageHeader Title="Product" />
+
+<AdminForm Model="_command" EditMode="_editMode" OnValidSubmit="Save">
+
+    @if (!_editMode)
+    {
+        <PageActions>
+            <AdminButton Text="Edit" Class="main-cta" OnClick="BeginEdit" />
+        </PageActions>
+    }
+    else
+    {
+        <PageActions>
+            <AdminButtonSubmit Text="Save" />
+            <AdminButton Text="Cancel" OnClick="CancelEdit" />
+        </PageActions>
+    }
+
+    <PageBody ContentType="form">
+
+        <FormStatus Errors="_errors" SuccessMessage="@_message" />
+
+        <FormSection Title="Test Data">
+
+            <FormFieldText Title="Title" MaxLength="32" @bind-Value="_command.Title" />
+
+            <FormFieldText Title="Ref" MaxLength="32" @bind-Value="_command.Ref" />
+
+            <FormFieldTestSelector Title="Test Selection" @bind-Value="_command.Test" />
+
+        </FormSection>
+
+    </PageBody>
+
+</AdminForm>
+
+@code {
+    private UpdateProductCommand _command = new();
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private string? _message;
+    private bool _editMode;
+
+    protected override void OnInitialized() => Reset();
+
+    private void Reset()
+    {
+        var product = Store.Get();
+        _command = new UpdateProductCommand { Title = product.Title, Ref = product.Ref, Test = product.Test };
+        _editMode = false;
+    }
+
+    private void BeginEdit()
+    {
+        _editMode = true;
+        _message = null;
+    }
+
+    private void CancelEdit() => Reset();
+
+    private void Save()
+    {
+        Store.Update(_command);
+        Reset();
+        _message = "Changes were saved successfully";
+    }
+}
