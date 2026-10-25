@@ -1,6 +1,6 @@
 ---
 name: run-blazor-admin
-description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker; roles and permissions; users create, deactivate, reset password, delete; directories; page and directory access rules; page templates; custom entities, dynamic data-model fields, custom entity pickers, versions and ordering, nested data models; every data-model field type: dates and times in the browser's time zone, option lists, image/document/page/directory pickers, the html editor; module pages from other assemblies; the Error Logging, YouTube and Vimeo plugins).
+description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (sign in, forgot/reset/change password; pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker; roles and permissions; users create, deactivate, reset password, delete; directories; page and directory access rules; page templates; custom entities, dynamic data-model fields, custom entity pickers, versions and ordering, nested data models; every data-model field type: dates and times in the browser's time zone, option lists, image/document/page/directory pickers, the html editor; module pages from other assemblies; the Error Logging, YouTube and Vimeo plugins).
 ---
 
 # Run the Blazor admin
@@ -63,6 +63,7 @@ BROWSER_TZ=America/New_York node .claude/skills/run-blazor-admin/driver.js run .
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/extension-module-step.js  # module from another assembly
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/plugins-step.js  # error log, YouTube and Vimeo fields
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/server-validation-step.js  # errors under fields
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/auth-step.js  # forgot/reset/change password
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
 ```
 
@@ -131,6 +132,11 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   entity. The Settings sub-nav is hidden until hovered, so its links need `dispatchEvent('click')`, not
   `click()`. A page that embeds the Vimeo player never reaches network idle, so `c.settle()` times out on it:
   wait for an element instead.
+- **`auth-step.js`** creates a Cofoundry admin user, then in a signed-out context signs in with the emailed
+  temporary password (sent to change password), changes it (validation and a wrong current password first),
+  requests a reset from forgot password, opens the emailed link (and a bad token), resets the password and
+  signs in with it. It reads the emails from `samples/src/Dev/Dev.Sandbox/App_Data/Emails`, so run it from the
+  repo root, and checks their links point at `/admin-next`. It deletes the user (a soft-deleted row remains).
 - **`extension-module-step.js`** covers the module extension point through the sandbox's Products module, a
   Blazor page in Dev.Sandbox (`Cofoundry/Admin/Blazor`): the nav link, direct load (endpoints) and in-app
   navigation (router), the signed-out redirect, validation, its custom selector field, save and cancel. The

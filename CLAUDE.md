@@ -12,7 +12,9 @@ Read `src/Cofoundry.Web.Admin.Blazor/README.md` first: it has the status, what i
   `Cofoundry.Web.Admin` except to read it.
 - **Auth:** sign-in/out is ported (`Components/Auth`, `/admin-next/auth/login|logout`). These pages are static
   SSR (`[ExcludeFromInteractiveRouting]`) because they set the auth cookie; `App.razor` picks the render mode
-  per page. Forgot/reset/change password still use the MVC `auth` controller's pages.
+  per page. Forgot/reset/change password are ported too (same folder, static SSR, `AuthPageBase`).
+  `AdminBlazorMailTemplateBuilder` points the admin emails' reset and sign-in links at `/admin-next`, for mail
+  sent from either admin (the domain would otherwise build them from `AdminSettings.DirectoryName`).
 - **Data access:** components call the domain layer in-process through `IAdminBlazorExecutor`
   (`Infrastructure/AdminBlazorExecutor.cs`), not the `/admin/api` controllers. Each call runs in its own DI
   scope seeded with the circuit's signed-in user (`CircuitAwareUserSessionService`), because Cofoundry's
@@ -83,7 +85,7 @@ Agreed direction, not yet done:
 
 ## Status and next steps
 
-- **Ported:** shell/nav, sign in/out, shared UI components, Dashboard (`/admin-next` and `/admin-next/dashboard`),
+- **Ported:** shell/nav, sign in/out, forgot/reset/forced change password, shared UI components, Dashboard (`/admin-next` and `/admin-next/dashboard`),
   Pages (list, create, details, change URL, duplicate), Images and Documents (list, filter, upload, details,
   replace file, delete), Site Settings (edit, clear cache), image picker (OpenGraph image on pages), Roles
   (permissions editor), Users (per user area: list, create, edit, reset password, delete), Directories (list,
@@ -101,7 +103,8 @@ Agreed direction, not yet done:
 - **Builds and runs.** Smoke-tested in `samples/src/Dev/Dev.Sandbox` with the `run-blazor-admin` skill (`smoke`
   for Pages, `assets-step.js` for Images/Documents, `settings-step.js` for Site Settings, `image-picker-step.js` for the picker, `roles-users-step.js` for Roles
   and Users, `access-rules-step.js` for Directories and access rules, `page-templates-step.js` for Page Templates, `custom-entities-step.js`, `custom-entity-pickers-step.js`, `nested-data-models-step.js` and `field-types-step.js` (run with `BROWSER_TZ`, uses the dev-only Field Tests entity `SIMFLD`) for Custom Entities, `plugins-step.js`
-  for the Error Logging, YouTube and Vimeo plugins; its Vimeo steps need internet access). Page delete not yet exercised.
+  for the Error Logging, YouTube and Vimeo plugins; its Vimeo steps need internet access; `auth-step.js` for
+  forgot/reset/change password). Page delete not yet exercised.
 - **Dev.Sandbox has a "Member" user area** (`Cofoundry/UserAreas/MemberUserArea.cs`, code `MEM`) so access rules
   and a non-admin users list can be exercised. Access Control is hidden on sites with only the admin area.
 - **To revisit:** the modal dialog close icon (top right, `Components/Dialogs/ModalDialog.razor`) was reported as

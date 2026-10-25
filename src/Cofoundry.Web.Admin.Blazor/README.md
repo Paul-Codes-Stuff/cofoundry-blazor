@@ -24,7 +24,8 @@ when the host itself contains `.razor` files, so without it the admin renders a 
 
 * The Blazor admin lives under **`/admin-next`** (the AngularJS admin stays at `/admin`).
 * Sign-in/out is at `/admin-next/auth/login` and `/logout`. Signed-out requests to `/admin-next/...` are sent
-  there; `/admin/...` still uses the MVC login. Forgot/reset/change password still use the MVC pages.
+  there; `/admin/...` still uses the MVC login. Forgot password, reset password and forced password change
+  are at `/admin-next/auth/forgot-password`, `reset-password` and `change-password`.
 * The nav lists every permitted module. Modules with a Blazor page (see "Extending the admin") link to it;
   the others, including custom modules not yet ported, link to their AngularJS admin URL.
 
@@ -52,6 +53,13 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
 * Sign in / sign out (static SSR pages in `Components/Auth`, with the same setup, return-URL and
   password-change redirects as the MVC controller). Unlike the MVC login, "Remember me" is honoured:
   unticked gives a browser-session cookie, ticked a persistent one
+* Forgot password, reset password (from the emailed link) and forced password change (after signing in with a
+  temporary password), also static SSR and sharing `AuthPageBase`. The domain builds the admin emails' links
+  from the AngularJS admin's directory, so `AdminBlazorMailTemplateBuilder` (an
+  `IUserMailTemplateBuilder<CofoundryAdminUserArea>`, picked up by Cofoundry's scan) points the reset link at
+  `/admin-next/auth/reset-password` and sign-in links at `/admin-next`. That applies to emails sent from
+  either admin, so the AngularJS forgot password page also emails a Blazor link. A site with its own builder
+  for the admin user area replaces this one and keeps the AngularJS links
 * Shared UI: page layout, buttons, form + fields (text, number, text area, checkbox, dropdown, tags, read-only,
   container, image upload, document upload, image anchor location, date-time-local, decimal), table (incl. image thumbnail, tag list,
   created/updated audit cells), pager, status/warning messages, time-ago, audit data, modal + confirm dialog
@@ -245,8 +253,6 @@ references both versions of each.
   image/document pickers, upload dialogs (stacked on a picker), Duplicate and the access rules editor. If it
   happens again, note which dialog and browser
 * Visual editor (stays on the MVC site; links use `?mode=edit`)
-* Forgot password, reset password (emailed links are built by the MVC route library) and forced password
-  change are still the MVC pages
 * Required-field messages use the command's property name when it has no `[Display]` name (e.g. "The
   ApplicationName field is required."); the AngularJS forms showed their own client-side wording
 * Server-side errors about data model properties (custom entity fields) stay in the form status list: the

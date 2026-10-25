@@ -81,6 +81,27 @@ public static class AdminBlazorRoutes
 
     public const string Login = Root + "/auth/login";
     public const string Logout = Root + "/auth/logout";
+    public const string ForgotPassword = Root + "/auth/forgot-password";
+
+    /// <summary>
+    /// The account recovery page linked from the reset password email, which adds the token as a
+    /// query parameter (see <see cref="AdminBlazorMailTemplateBuilder"/>).
+    /// </summary>
+    public const string ResetPassword = Root + "/auth/reset-password";
+
+    public static string ForgotPasswordWithEmail(string? email)
+    {
+        return string.IsNullOrEmpty(email) ? ForgotPassword : $"{ForgotPassword}?email={Uri.EscapeDataString(email)}";
+    }
+
+    /// <summary>
+    /// Where a user who must change their password is sent from sign in.
+    /// </summary>
+    public static string ChangePassword(string? returnUrl)
+    {
+        var url = Root + "/auth/change-password";
+        return string.IsNullOrEmpty(returnUrl) ? url : $"{url}?ReturnUrl={Uri.EscapeDataString(returnUrl)}";
+    }
 
     public static string LoginWithReturnUrl(string? returnUrl)
     {
@@ -105,13 +126,5 @@ public static class AdminBlazorRoutes
     public static class Mvc
     {
         public static string Setup(string adminDirectoryName) => $"/{adminDirectoryName}/setup";
-
-        public static string ForgotPassword(string adminDirectoryName) => $"/{adminDirectoryName}/auth/forgot-password";
-
-        public static string ChangePassword(string adminDirectoryName, string? returnUrl)
-        {
-            var url = $"/{adminDirectoryName}/auth/change-password";
-            return string.IsNullOrEmpty(returnUrl) ? url : $"{url}?ReturnUrl={Uri.EscapeDataString(returnUrl)}";
-        }
     }
 }
