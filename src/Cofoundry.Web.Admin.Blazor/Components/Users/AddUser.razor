@@ -1,0 +1,157 @@
+@page "/admin-next/users/{UserAreaCode}/new"
+@inject IAdminBlazorExecutor Executor
+@inject NavigationManager Navigation
+
+<PageTitle>Create User | Admin</PageTitle>
+
+<PageHeader Title="Create" ParentTitle="@(_userArea?.Name + " Users")" ParentHref="@AdminBlazorRoutes.Users(UserAreaCode)" />
+
+@if (_notFound)
+{
+    <PageBody ContentType="form">
+        <p class="message warning perm">Sorry, that user area could not be found.</p>
+    </PageBody>
+}
+else if (_userArea == null || _model == null || _roles == null)
+{
+    <PageBody ContentType="form"><TableContainer IsLoading="true" /></PageBody>
+}
+else
+{
+    <AdminForm Model="_model" IsLoading="_isSaving" OnValidSubmit="SaveAsync">
+
+        <PageActions>
+            <AdminButtonSubmit Text="Save" IsLoading="_isSaving" Disabled="_isSaving" />
+            <AdminButton Text="Cancel" Disabled="_isSaving" OnClick="Cancel" />
+        </PageActions>
+
+        <PageBody ContentType="form">
+
+            <FormStatus Errors="_errors" />
+
+            @if (_userArea.AllowPasswordSignIn)
+            {
+                <WarningMessage>An email notification will be sent to the user with a temporary password.</WarningMessage>
+            }
+
+            <FormSection Title="User Details">
+
+                @if (_userArea.ShowDisplayName)
+                {
+                    <FormFieldText Title="Display Name" MaxLength="150" @bind-Value="_model.DisplayName"
+                                   Description="A display-friendly name such as a real name or pseudonym." />
+                }
+                @if (!_userArea.UseEmailAsUsername)
+                {
+                    <FormFieldText Title="Username" MaxLength="150" @bind-Value="_model.Username"
+                                   Description="The username that the user uses to sign in with." />
+                }
+                <FormFieldText Title="Email" InputType="email" MaxLength="150" @bind-Value="_model.Email" />
+                <FormFieldDropdown TValue="int?" Title="Role" Options="_roles" Required="true" DefaultItemText="Please choose"
+                                   Description="The role dictates which permissions a user has."
+                                   @bind-Value="_model.RoleId" />
+
+            </FormSection>
+
+            @if (!_userArea.IsCofoundryAdminArea)
+            {
+                <FormSection Title="Additional Details">
+                    <FormFieldText Title="First Name" MaxLength="32" @bind-Value="_model.FirstName" />
+                    <FormFieldText Title="Last Name" MaxLength="32" @bind-Value="_model.LastName" />
+                </FormSection>
+            }
+
+        </PageBody>
+
+    </AdminForm>
+}
+
+@code {
+    private UserAreaInfo? _userArea;
+    private UserFormModel? _model;
+    private IReadOnlyList<SelectOption<int?>>? _roles;
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private bool _isSaving;
+    private bool _notFound;
+
+    [Parameter] public string UserAreaCode { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _userArea = await UserAreaInfo.LoadAsync(Executor, UserAreaCode);
+
+        if (_userArea == null)
+        {
+            _notFound = true;
+            return;
+        }
+
+        _model = new UserFormModel(_userArea);
+        _roles = await UserRoleOptions.LoadAsync(Executor, _userArea.UserAreaCode);
+
+        if (_roles.Count == 1)
+        {
+            _model.RoleId = _roles[0].Value;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errors = [];
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(CreateCommand());
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+
+            Navigation.NavigateTo(AdminBlazorRoutes.Users(_userArea!.UserAreaCode));
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    /// <summary>
+    /// Areas with password sign in get a generated temporary password that is emailed to the user.
+    /// Other areas add the user without one.
+    /// </summary>
+    private ICommand CreateCommand()
+    {
+        var model = _model!;
+        var username = _userArea!.UseEmailAsUsername ? null : model.Username;
+
+        if (_userArea.AllowPasswordSignIn)
+        {
+            return new AddUserWithTemporaryPasswordCommand
+            {
+                UserAreaCode = _userArea.UserAreaCode,
+                DisplayName = model.DisplayName,
+                Username = username,
+                Email = model.Email ?? string.Empty,
+                RoleId = model.RoleId,
+                FirstName = model.FirstName,
+                LastName = model.LastName
+            };
+        }
+
+        return new AddUserCommand
+        {
+            UserAreaCode = _userArea.UserAreaCode,
+            DisplayName = model.DisplayName,
+            Username = username,
+            Email = model.Email,
+            RoleId = model.RoleId,
+            FirstName = model.FirstName,
+            LastName = model.LastName
+        };
+    }
+
+    private void Cancel() => Navigation.NavigateTo(AdminBlazorRoutes.Users(UserAreaCode));
+}

@@ -1,0 +1,89 @@
+@page "/admin-next/roles/new"
+@inject IAdminBlazorExecutor Executor
+@inject NavigationManager Navigation
+
+<PageTitle>Create Role | Admin</PageTitle>
+
+<PageHeader Title="Create" ParentTitle="Roles" ParentHref="@AdminBlazorRoutes.Roles" />
+
+@if (_userAreas == null)
+{
+    <PageBody ContentType="form"><TableContainer IsLoading="true" /></PageBody>
+}
+else
+{
+    <AdminForm Model="_command" IsLoading="_isSaving" OnValidSubmit="SaveAsync">
+
+        <PageActions>
+            <AdminButtonSubmit Text="Save" IsLoading="_isSaving" Disabled="_isSaving" />
+            <AdminButton Text="Cancel" Disabled="_isSaving" OnClick="Cancel" />
+        </PageActions>
+
+        <PageBody ContentType="form">
+
+            <FormStatus Errors="_errors" />
+
+            <FormSection Title="Role">
+
+                <FormFieldText Title="Title" MaxLength="50" @bind-Value="_command.Title" />
+
+                @if (_userAreas.Count > 1)
+                {
+                    <FormFieldDropdown TValue="string" Title="User Area" Options="_userAreas" Required="true"
+                                       DefaultItemText="Please choose" @bind-Value="_command.UserAreaCode" />
+                }
+
+            </FormSection>
+
+            <FormSection Title="Permissions">
+                <FormFieldPermissionsCollection @bind-Value="_command.Permissions" Disabled="_isSaving" />
+            </FormSection>
+
+        </PageBody>
+
+    </AdminForm>
+}
+
+@code {
+    private readonly AddRoleCommand _command = new();
+    private IReadOnlyList<SelectOption<string>>? _userAreas;
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private bool _isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var userAreas = await Executor.QueryAsync(new GetAllUserAreaMicroSummariesQuery());
+        _userAreas = userAreas.Select(a => new SelectOption<string>(a.UserAreaCode, a.Name)).ToList();
+
+        // With a single user area the dropdown is hidden, as in the AngularJS admin.
+        if (_userAreas.Count == 1)
+        {
+            _command.UserAreaCode = _userAreas[0].Value;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errors = [];
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(_command);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+
+            Navigation.NavigateTo(AdminBlazorRoutes.Roles);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel() => Navigation.NavigateTo(AdminBlazorRoutes.Roles);
+}

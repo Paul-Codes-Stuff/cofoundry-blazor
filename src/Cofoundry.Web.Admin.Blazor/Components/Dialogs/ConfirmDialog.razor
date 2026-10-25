@@ -3,7 +3,16 @@
         <AdminButton Text="@OkButtonTitle" Class="main-cta" IsLoading="_isBusy" OnClick="Confirm" />
         <AdminButton Text="@CancelButtonTitle" Disabled="_isBusy" OnClick="Cancel" />
     </div>
-    <div class="modal-body">@Message</div>
+    <div class="modal-body">
+        @if (MessageContent != null)
+        {
+            @MessageContent
+        }
+        else
+        {
+            @Message
+        }
+    </div>
 </ModalDialog>
 
 @code {
@@ -12,6 +21,11 @@
     [Parameter] public string? Title { get; set; }
 
     [Parameter] public string? Message { get; set; }
+
+    /// <summary>
+    /// Used instead of <see cref="Message"/> when the message needs markup, e.g. paragraphs.
+    /// </summary>
+    [Parameter] public RenderFragment? MessageContent { get; set; }
 
     [Parameter] public string OkButtonTitle { get; set; } = "OK";
 

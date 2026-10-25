@@ -1,0 +1,393 @@
+@page "/admin-next/users/{UserAreaCode}/{UserId:int}"
+@inject IAdminBlazorExecutor Executor
+@inject NavigationManager Navigation
+
+<PageTitle>@(_user == null ? "User" : Heading) | Admin</PageTitle>
+
+<PageHeader Title="@(_user == null ? null : Heading)" ParentTitle="@(_userArea?.Name + " Users")" ParentHref="@AdminBlazorRoutes.Users(UserAreaCode)" />
+
+@if (_user == null || _userArea == null || _model == null || _permissions == null || _roles == null)
+{
+    <PageBody ContentType="form">
+        @if (_notFound)
+        {
+            <p class="message warning perm">Sorry, that user could not be found.</p>
+        }
+        else
+        {
+            <TableContainer IsLoading="true" />
+        }
+    </PageBody>
+}
+else
+{
+    <AdminForm Model="_model" EditMode="_editMode" IsLoading="_isLoading" OnValidSubmit="SaveAsync">
+
+        @if (!_editMode)
+        {
+            <PageActions>
+                @if (CanUpdate)
+                {
+                    <AdminButton Text="Edit" Class="main-cta" Disabled="_isLoading" OnClick="BeginEdit" />
+                }
+                @if (CanResetPassword)
+                {
+                    <AdminButton Text="Reset Password" Disabled="_isLoading" OnClick="() => _isResetPasswordDialogOpen = true" />
+                }
+                @if (CanDelete)
+                {
+                    <AdminButton Text="Delete" Disabled="_isLoading" OnClick="() => _isDeleteDialogOpen = true" />
+                }
+            </PageActions>
+        }
+        else
+        {
+            <PageActions>
+                <AdminButtonSubmit Text="Save" IsLoading="_isLoading" Disabled="_isLoading" />
+                <AdminButton Text="Cancel" Disabled="_isLoading" OnClick="CancelEdit" />
+            </PageActions>
+        }
+
+        <PageBody ContentType="form">
+
+            <FormStatus Errors="_errors" SuccessMessage="@_message" />
+
+            @if (_editLockReason != null)
+            {
+                <div class="form-message error perm">@_editLockReason</div>
+            }
+
+            <FormSection Title="Main">
+
+                @if (_userArea.ShowDisplayName)
+                {
+                    <FormFieldText Title="Display Name" MaxLength="150" @bind-Value="_model.DisplayName"
+                                   Description="A display-friendly name such as a real name or pseudonym." />
+                }
+                @if (!_userArea.UseEmailAsUsername)
+                {
+                    <FormFieldText Title="Username" MaxLength="150" @bind-Value="_model.Username"
+                                   Description="The username that the user uses to sign in with." />
+                }
+                <FormFieldText Title="Email Address" InputType="email" MaxLength="150" @bind-Value="_model.Email" />
+
+                @* Changing your own role or deactivating yourself could lock you out. *@
+                <FormFieldDropdown TValue="int?" Title="Role" Options="_roles" Required="true" ReadOnly="_isCurrentUser"
+                                   Description="The role dictates which permissions a user has."
+                                   @bind-Value="_model.RoleId" />
+
+                @if (_userArea.AllowPasswordSignIn)
+                {
+                    <FormFieldCheckbox Title="Require Password Change" @bind-Value="_model.RequirePasswordChange"
+                                       Description="If selected, the user will be required to change their password the next time they sign in." />
+                }
+
+                @if (_editMode)
+                {
+                    <FormFieldCheckbox Title="Account Verified" @bind-Value="_model.IsAccountVerified"
+                                       Description="If selected, the user will be marked as a verified account." />
+                }
+                else
+                {
+                    <FormFieldContainer Title="Account Verified" Description="The date that the user account has been verified.">
+                        @if (_user.AccountVerifiedDate.HasValue)
+                        {
+                            <span>Yes (<TimeAgo Time="_user.AccountVerifiedDate" />)</span>
+                        }
+                        else
+                        {
+                            <span>No</span>
+                        }
+                    </FormFieldContainer>
+                }
+
+                <FormFieldCheckbox Title="Account Active" ReadOnly="_isCurrentUser" @bind-Value="_model.IsActive"
+                                   Description="If an account is deactivated, the user will be signed out and prevented from signing in.." />
+
+            </FormSection>
+
+            @if (!_userArea.IsCofoundryAdminArea)
+            {
+                <FormSection Title="Additional Details">
+                    <FormFieldText Title="First Name" MaxLength="32" @bind-Value="_model.FirstName" />
+                    <FormFieldText Title="Last Name" MaxLength="32" @bind-Value="_model.LastName" />
+                </FormSection>
+            }
+
+            <FormSection Title="Logs">
+
+                <FormFieldContainer Title="Last signed in">
+                    @if (_user.LastSignInDate.HasValue)
+                    {
+                        <TimeAgo Time="_user.LastSignInDate" />
+                    }
+                    else
+                    {
+                        <span>Never</span>
+                    }
+                </FormFieldContainer>
+
+                @if (_userArea.AllowPasswordSignIn)
+                {
+                    <FormFieldContainer Title="Password last changed">
+                        @if (_user.LastPasswordChangeDate == _user.AuditData.CreateDate)
+                        {
+                            <span>Never</span>
+                        }
+                        else
+                        {
+                            <TimeAgo Time="_user.LastPasswordChangeDate" />
+                        }
+                    </FormFieldContainer>
+                }
+
+            </FormSection>
+
+            <AuditDataSection AuditData="_user.AuditData" />
+
+        </PageBody>
+
+    </AdminForm>
+
+    @if (_isResetPasswordDialogOpen)
+    {
+        <ConfirmDialog Title="Reset Password"
+                       OkButtonTitle="Yes, reset it"
+                       OnOk="ResetPasswordAsync"
+                       OnClosed="() => _isResetPasswordDialogOpen = false">
+            <MessageContent>
+                @* The AngularJS message used <br><br>; the admin css removes paragraph margins. *@
+                <text>Resetting a password will sign the user out of all sessions and email them a new temporary password that needs to be changed at first sign in.</text>
+                <br /><br />
+                <text>Do you want to continue?</text>
+            </MessageContent>
+        </ConfirmDialog>
+    }
+
+    @if (_isDeleteDialogOpen)
+    {
+        <ConfirmDialog Title="Delete User" Message="Are you sure you want to delete this user?"
+                       OkButtonTitle="Yes, delete it"
+                       OnOk="DeleteAsync"
+                       OnClosed="OnDeleteClosed" />
+    }
+}
+
+@code {
+    private UserDetails? _user;
+    private UserAreaInfo? _userArea;
+    private UserPermissions? _permissions;
+    private CurrentAdminUser? _currentUser;
+    private IReadOnlyList<SelectOption<int?>>? _roles;
+    private UserFormModel? _model;
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private string? _message;
+    private string? _editLockReason;
+    private bool _isCurrentUser;
+    private bool _editMode;
+    private bool _isLoading;
+    private bool _isResetPasswordDialogOpen;
+    private bool _isDeleteDialogOpen;
+    private bool _deleted;
+    private bool _notFound;
+
+    [Parameter] public string UserAreaCode { get; set; } = string.Empty;
+
+    [Parameter] public int UserId { get; set; }
+
+    private bool IsEditable => _editLockReason == null;
+
+    private bool CanUpdate => IsEditable && _permissions!.CanUpdate;
+
+    // The domain only resets the password of a user who can sign in, i.e. an active account.
+    private bool CanResetPassword => IsEditable
+        && _user!.AccountStatus == UserAccountStatus.Active
+        && _permissions!.CanResetPassword
+        && _userArea!.AllowPasswordSignIn
+        && _userArea.UseEmailAsUsername
+        && !_isCurrentUser;
+
+    private bool CanDelete => IsEditable && _permissions!.CanDelete && !_isCurrentUser;
+
+    /// <summary>
+    /// The AngularJS header showed the first and last name. Admin users have neither, so fall back
+    /// to the display name or username.
+    /// </summary>
+    private string Heading
+    {
+        get
+        {
+            var name = $"{_user!.FirstName} {_user.LastName}".Trim();
+            return !string.IsNullOrEmpty(name) ? name : _user.DisplayName ?? _user.Username;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_userArea?.UserAreaCode != UserAreaCode)
+        {
+            _userArea = await UserAreaInfo.LoadAsync(Executor, UserAreaCode);
+
+            if (_userArea == null)
+            {
+                _notFound = true;
+                return;
+            }
+
+            _permissions = await UserPermissions.LoadAsync(Executor, _userArea.UserAreaCode);
+            _roles = await UserRoleOptions.LoadAsync(Executor, _userArea.UserAreaCode);
+            _currentUser ??= await CurrentAdminUser.LoadAsync(Executor);
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _notFound = false;
+        var user = await Executor.QueryAsync(new GetUserDetailsByIdQuery(UserId));
+
+        // The user must belong to the area in the URL, otherwise the area's settings don't apply.
+        if (user == null || user.UserArea.UserAreaCode != _userArea!.UserAreaCode)
+        {
+            _notFound = true;
+            return;
+        }
+
+        _user = user;
+        _isCurrentUser = user.UserId == _currentUser!.UserId;
+        _editLockReason = GetEditLockReason(user);
+        _model = MapModel(user);
+        _editMode = false;
+    }
+
+    private string? GetEditLockReason(UserDetails user)
+    {
+        if (user.AccountStatus == UserAccountStatus.Deleted)
+        {
+            return "This user cannot be edited because it has been deleted.";
+        }
+
+        if (user.Role.IsSuperAdminRole && !_currentUser!.IsSuperAdmin)
+        {
+            return "You need to be in the super admin role to update this user.";
+        }
+
+        return null;
+    }
+
+    private UserFormModel MapModel(UserDetails user)
+    {
+        return new UserFormModel(_userArea!)
+        {
+            DisplayName = user.DisplayName,
+            Username = user.Username,
+            Email = user.Email,
+            RoleId = user.Role.RoleId,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            RequirePasswordChange = user.RequirePasswordChange,
+            IsAccountVerified = user.AccountVerifiedDate.HasValue,
+            IsActive = user.AccountStatus == UserAccountStatus.Active
+        };
+    }
+
+    private void BeginEdit()
+    {
+        _editMode = true;
+        _errors = [];
+        _message = null;
+    }
+
+    private void CancelEdit()
+    {
+        _editMode = false;
+        _model = MapModel(_user!);
+        _errors = [];
+    }
+
+    private async Task SaveAsync()
+    {
+        _isLoading = true;
+        _errors = [];
+        _message = null;
+
+        var model = _model!;
+        var command = new UpdateUserCommand
+        {
+            UserId = UserId,
+            DisplayName = model.DisplayName,
+            Username = _userArea!.UseEmailAsUsername ? null : model.Username,
+            Email = model.Email,
+            RoleId = model.RoleId,
+            FirstName = model.FirstName,
+            LastName = model.LastName,
+            RequirePasswordChange = model.RequirePasswordChange,
+            IsAccountVerified = model.IsAccountVerified,
+            IsActive = model.IsActive
+        };
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(command);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+
+            await LoadAsync();
+            _message = "Changes were saved successfully";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ResetPasswordAsync()
+    {
+        _errors = [];
+        _message = null;
+
+        var result = await Executor.ExecuteAsync(new ResetUserPasswordCommand { UserId = UserId });
+
+        if (result.Succeeded)
+        {
+            await LoadAsync();
+            _message = "Password reset, notification sent.";
+        }
+        else
+        {
+            _errors = result.Errors;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        _errors = [];
+        _message = null;
+
+        var result = await Executor.ExecuteAsync(new DeleteUserCommand(UserId));
+
+        if (result.Succeeded)
+        {
+            _deleted = true;
+        }
+        else
+        {
+            _errors = result.Errors;
+        }
+    }
+
+    private void OnDeleteClosed(bool confirmed)
+    {
+        _isDeleteDialogOpen = false;
+
+        if (confirmed && _deleted)
+        {
+            Navigation.NavigateTo(AdminBlazorRoutes.Users(UserAreaCode));
+        }
+    }
+}

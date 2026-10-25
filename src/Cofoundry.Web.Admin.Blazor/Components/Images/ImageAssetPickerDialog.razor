@@ -124,7 +124,7 @@
     protected override async Task OnInitializedAsync()
     {
         _selected = CurrentAsset;
-        _canCreate = (await AssetPermissions.LoadImagesAsync(Executor)).CanCreate;
+        _canCreate = (await CrudPermissions.LoadImagesAsync(Executor)).CanCreate;
         await LoadGridAsync();
     }
 

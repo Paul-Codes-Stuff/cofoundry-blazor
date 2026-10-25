@@ -97,14 +97,14 @@
     private readonly DocumentFilter _filter = new();
     private SearchDocumentAssetSummariesQuery _query = new() { PageNumber = 1, PageSize = DefaultPageSize };
     private PagedQueryResult<DocumentAssetSummary>? _result;
-    private AssetPermissions? _permissions;
+    private CrudPermissions? _permissions;
     private IReadOnlyList<SelectOption<string>> _fileTypes = [];
     private bool _isFilterVisible;
     private bool _isLoading;
 
     protected override async Task OnInitializedAsync()
     {
-        _permissions = await AssetPermissions.LoadDocumentsAsync(Executor);
+        _permissions = await CrudPermissions.LoadDocumentsAsync(Executor);
 
         var fileTypes = await Executor.QueryAsync(new GetAllDocumentAssetFileTypesQuery());
         _fileTypes = fileTypes

@@ -7,7 +7,7 @@
             @if (ShowInput)
             {
                 <InputText id="@FieldId"
-                           type="text"
+                           type="@InputType"
                            Value="@Value"
                            ValueChanged="ValueChanged"
                            ValueExpression="ValueExpression"
@@ -30,4 +30,9 @@
 
 @code {
     [Parameter] public int? MaxLength { get; set; }
+
+    /// <summary>
+    /// The input's type attribute, e.g. "email" for cms-form-field-email-address.
+    /// </summary>
+    [Parameter] public string InputType { get; set; } = "text";
 }

@@ -60,13 +60,16 @@
     /// here still links to its AngularJS admin URL so both admins work side-by-side while the
     /// migration is in progress. Add an entry as each module is ported.
     /// </summary>
+    private const string UsersModuleCodePrefix = "COFUSR";
+
     private static readonly Dictionary<string, string> PortedModuleUrls = new(StringComparer.OrdinalIgnoreCase)
     {
         ["COFDSH"] = AdminBlazorRoutes.Dashboard,
         ["COFPAG"] = AdminBlazorRoutes.Pages,
         ["COFIMG"] = AdminBlazorRoutes.Images,
         ["COFDOC"] = AdminBlazorRoutes.Documents,
-        ["COFSET"] = AdminBlazorRoutes.Settings
+        ["COFSET"] = AdminBlazorRoutes.Settings,
+        ["COFROL"] = AdminBlazorRoutes.Roles
     };
 
     private IReadOnlyList<AdminModule> _manageSiteModules = [];
@@ -96,6 +99,13 @@
         if (PortedModuleUrls.TryGetValue(module.AdminModuleCode, out var url))
         {
             return url;
+        }
+
+        // There is one users module per user area: "COFUSR" followed by the area's code.
+        if (module.AdminModuleCode.Length == UsersModuleCodePrefix.Length + 3
+            && module.AdminModuleCode.StartsWith(UsersModuleCodePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return AdminBlazorRoutes.Users(module.AdminModuleCode[UsersModuleCodePrefix.Length..]);
         }
 
         return module.Url.StartsWith('/') ? module.Url : "/" + module.Url;

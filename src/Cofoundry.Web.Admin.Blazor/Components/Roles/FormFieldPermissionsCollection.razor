@@ -1,0 +1,176 @@
+@inject IAdminBlazorExecutor Executor
+
+@* Port of cms-form-field-permissions-collection: every permission, grouped by entity, as checkboxes.
+   A group's other permissions can only be ticked once its "Read" permission is. *@
+<FormFieldContainer>
+    <TableContainer IsLoading="_groups == null">
+        @if (_groups != null)
+        {
+            <table class="table">
+                @foreach (var group in _groups)
+                {
+                    <tbody @key="group.Title">
+                        <tr>
+                            <th colspan="2">
+                                <h5 class="table-group-heading">@group.Title</h5>
+                            </th>
+                            <th style="width:30px; text-align:center;">
+                                @if (EditMode)
+                                {
+                                    <input type="checkbox" title="Select all" checked="@group.Permissions.All(IsSelected)" disabled="@Disabled"
+                                           @onchange="e => ToggleGroupAsync(group, IsChecked(e))" />
+                                }
+                            </th>
+                        </tr>
+                        @foreach (var permission in group.Permissions)
+                        {
+                            <tr @key="permission.UniqueId">
+                                <td><label for="@permission.UniqueId">@permission.Permission.PermissionType.Name</label></td>
+                                <td>@permission.Permission.PermissionType.Description</td>
+                                <td class="row-type" style="width:30px; text-align:center;">
+                                    <input type="checkbox"
+                                           id="@permission.UniqueId"
+                                           checked="@IsSelected(permission)"
+                                           disabled="@(Disabled || !EditMode || (!permission.IsRead && !IsReadPermitted(group)))"
+                                           @onchange="e => SetSelectedAsync(group, permission, IsChecked(e))" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                }
+            </table>
+        }
+    </TableContainer>
+</FormFieldContainer>
+
+@code {
+    private const string ReadPermissionCode = "COMRED";
+
+    // The AngularJS field listed the common permissions first, in this order, then the rest by name.
+    private static readonly string[] CommonPermissionOrder = [ReadPermissionCode, "COMMOD", "COMCRT", "COMUPD", "COMDEL"];
+
+    private IReadOnlyList<PermissionGroup>? _groups;
+    private HashSet<string> _selected = [];
+    private IReadOnlyCollection<PermissionCommandData>? _lastValue;
+
+    [CascadingParameter(Name = "EditMode")] public bool EditMode { get; set; } = true;
+
+    [Parameter] public IReadOnlyCollection<PermissionCommandData> Value { get; set; } = [];
+
+    [Parameter] public EventCallback<IReadOnlyCollection<PermissionCommandData>> ValueChanged { get; set; }
+
+    // Accepted so @bind-Value compiles; the permissions have no per-field validation messages.
+    [Parameter] public System.Linq.Expressions.Expression<Func<IReadOnlyCollection<PermissionCommandData>>>? ValueExpression { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var permissions = await Executor.QueryAsync(new GetAllPermissionsQuery());
+
+        _groups = permissions
+            .Select(p => new PermissionItem(p))
+            .GroupBy(p => p.EntityDefinition?.Name ?? "Misc")
+            .Select(g => new PermissionGroup(g.Key, g.OrderBy(GetSortKey, StringComparer.Ordinal).ToList()))
+            .OrderBy(g => g.Title, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(Value, _lastValue))
+        {
+            _lastValue = Value;
+            _selected = Value.Select(p => MakeUniqueId(p.PermissionCode, p.EntityDefinitionCode)).ToHashSet();
+        }
+    }
+
+    private bool IsSelected(PermissionItem permission) => _selected.Contains(permission.UniqueId);
+
+    private bool IsReadPermitted(PermissionGroup group) => group.ReadPermission == null || IsSelected(group.ReadPermission);
+
+    private static bool IsChecked(ChangeEventArgs e) => e.Value is bool b && b;
+
+    private Task ToggleGroupAsync(PermissionGroup group, bool isChecked)
+    {
+        foreach (var permission in group.Permissions)
+        {
+            Set(permission, isChecked);
+        }
+
+        return NotifyChangedAsync();
+    }
+
+    private Task SetSelectedAsync(PermissionGroup group, PermissionItem permission, bool isChecked)
+    {
+        Set(permission, isChecked);
+
+        // Without read access the other permissions are meaningless, so unticking Read clears the group.
+        if (permission.IsRead && !isChecked)
+        {
+            foreach (var other in group.Permissions)
+            {
+                Set(other, false);
+            }
+        }
+
+        return NotifyChangedAsync();
+    }
+
+    private void Set(PermissionItem permission, bool isSelected)
+    {
+        if (isSelected)
+        {
+            _selected.Add(permission.UniqueId);
+        }
+        else
+        {
+            _selected.Remove(permission.UniqueId);
+        }
+    }
+
+    private async Task NotifyChangedAsync()
+    {
+        var value = _groups!
+            .SelectMany(g => g.Permissions)
+            .Where(IsSelected)
+            .Select(p => new PermissionCommandData
+            {
+                PermissionCode = p.Permission.PermissionType.Code,
+                EntityDefinitionCode = p.EntityDefinition?.EntityDefinitionCode
+            })
+            .ToList();
+
+        _lastValue = value;
+        await ValueChanged.InvokeAsync(value);
+    }
+
+    private static string GetSortKey(PermissionItem permission)
+    {
+        var index = Array.IndexOf(CommonPermissionOrder, permission.Permission.PermissionType.Code);
+        return index >= 0 ? "AAAA" + index : permission.Permission.PermissionType.Name;
+    }
+
+    private static string MakeUniqueId(string permissionCode, string? entityDefinitionCode) =>
+        "permission" + permissionCode + entityDefinitionCode;
+
+    private sealed class PermissionItem(IPermission permission)
+    {
+        public IPermission Permission { get; } = permission;
+
+        public IEntityDefinition? EntityDefinition { get; } = (permission as IEntityPermission)?.EntityDefinition;
+
+        public string UniqueId { get; } = MakeUniqueId(permission.PermissionType.Code, (permission as IEntityPermission)?.EntityDefinition.EntityDefinitionCode);
+
+        public bool IsRead => Permission.PermissionType.Code == ReadPermissionCode;
+    }
+
+    private sealed class PermissionGroup(string title, IReadOnlyList<PermissionItem> permissions)
+    {
+        public string Title { get; } = title;
+
+        public IReadOnlyList<PermissionItem> Permissions { get; } = permissions;
+
+        public PermissionItem? ReadPermission { get; } = permissions.FirstOrDefault(p => p.IsRead);
+    }
+}

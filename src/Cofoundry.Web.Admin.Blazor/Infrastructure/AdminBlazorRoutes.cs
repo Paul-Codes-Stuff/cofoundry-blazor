@@ -41,6 +41,20 @@ public static class AdminBlazorRoutes
 
     public const string Settings = Root + "/settings";
 
+    public const string Roles = Root + "/roles";
+    public const string RoleNew = Roles + "/new";
+
+    public static string RoleDetails(int roleId) => $"{Roles}/{roleId}";
+
+    /// <summary>
+    /// Users are listed per user area, keyed by its 3 character code, e.g. "/admin-next/users/COF".
+    /// </summary>
+    public static string Users(string userAreaCode) => $"{Root}/users/{userAreaCode}";
+
+    public static string UserNew(string userAreaCode) => Users(userAreaCode) + "/new";
+
+    public static string UserDetails(string userAreaCode, int userId) => $"{Users(userAreaCode)}/{userId}";
+
     public const string Login = Root + "/auth/login";
     public const string Logout = Root + "/auth/logout";
 

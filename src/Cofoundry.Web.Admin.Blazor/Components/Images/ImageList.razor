@@ -104,13 +104,13 @@
     private readonly ImageFilter _filter = new();
     private SearchImageAssetSummariesQuery _query = new() { PageNumber = 1, PageSize = DefaultPageSize };
     private PagedQueryResult<ImageAssetSummary>? _result;
-    private AssetPermissions? _permissions;
+    private CrudPermissions? _permissions;
     private bool _isFilterVisible;
     private bool _isLoading;
 
     protected override async Task OnInitializedAsync()
     {
-        _permissions = await AssetPermissions.LoadImagesAsync(Executor);
+        _permissions = await CrudPermissions.LoadImagesAsync(Executor);
         await LoadGridAsync();
     }
 

@@ -84,7 +84,7 @@ else
 
 @code {
     private DocumentAssetDetails? _document;
-    private AssetPermissions? _permissions;
+    private CrudPermissions? _permissions;
     private UpdateDocumentAssetCommand? _command;
     private IReadOnlyCollection<ValidationError> _errors = [];
     private string? _message;
@@ -98,7 +98,7 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        _permissions ??= await AssetPermissions.LoadDocumentsAsync(Executor);
+        _permissions ??= await CrudPermissions.LoadDocumentsAsync(Executor);
         await LoadAsync();
     }
 

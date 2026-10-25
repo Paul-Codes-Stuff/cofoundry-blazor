@@ -32,17 +32,20 @@ public sealed record PagePermissions(
 }
 
 /// <summary>
-/// The create/update/delete permissions for an asset module (images or documents).
+/// The create/update/delete permissions for a simple entity module (images, documents, roles).
 /// </summary>
-public sealed record AssetPermissions(bool CanCreate, bool CanUpdate, bool CanDelete)
+public sealed record CrudPermissions(bool CanCreate, bool CanUpdate, bool CanDelete)
 {
-    public static Task<AssetPermissions> LoadImagesAsync(IAdminBlazorExecutor executor) =>
+    public static Task<CrudPermissions> LoadImagesAsync(IAdminBlazorExecutor executor) =>
         LoadAsync<ImageAssetCreatePermission, ImageAssetUpdatePermission, ImageAssetDeletePermission>(executor);
 
-    public static Task<AssetPermissions> LoadDocumentsAsync(IAdminBlazorExecutor executor) =>
+    public static Task<CrudPermissions> LoadDocumentsAsync(IAdminBlazorExecutor executor) =>
         LoadAsync<DocumentAssetCreatePermission, DocumentAssetUpdatePermission, DocumentAssetDeletePermission>(executor);
 
-    private static async Task<AssetPermissions> LoadAsync<TCreate, TUpdate, TDelete>(IAdminBlazorExecutor executor)
+    public static Task<CrudPermissions> LoadRolesAsync(IAdminBlazorExecutor executor) =>
+        LoadAsync<RoleCreatePermission, RoleUpdatePermission, RoleDeletePermission>(executor);
+
+    private static async Task<CrudPermissions> LoadAsync<TCreate, TUpdate, TDelete>(IAdminBlazorExecutor executor)
         where TCreate : IPermissionApplication, new()
         where TUpdate : IPermissionApplication, new()
         where TDelete : IPermissionApplication, new()
@@ -51,11 +54,47 @@ public sealed record AssetPermissions(bool CanCreate, bool CanUpdate, bool CanDe
         {
             var permissions = services.GetRequiredService<IPermissionValidationService>();
 
-            return new AssetPermissions(
+            return new CrudPermissions(
                 await permissions.HasPermissionAsync<TCreate>(),
                 await permissions.HasPermissionAsync<TUpdate>(),
                 await permissions.HasPermissionAsync<TDelete>()
                 );
+        });
+    }
+}
+
+/// <summary>
+/// Permissions for managing the users of one user area. Cofoundry admin users and users of other
+/// areas have separate permission sets, as in the AngularJS admin (COFUSR / COFUSN).
+/// </summary>
+public sealed record UserPermissions(
+    bool CanCreate,
+    bool CanUpdate,
+    bool CanDelete,
+    bool CanResetPassword,
+    bool CanReadRoles)
+{
+    public static async Task<UserPermissions> LoadAsync(IAdminBlazorExecutor executor, string userAreaCode)
+    {
+        var isAdminArea = userAreaCode == CofoundryAdminUserArea.Code;
+
+        return await executor.WithServicesAsync(async services =>
+        {
+            var permissions = services.GetRequiredService<IPermissionValidationService>();
+
+            return isAdminArea
+                ? new UserPermissions(
+                    await permissions.HasPermissionAsync<CofoundryUserCreatePermission>(),
+                    await permissions.HasPermissionAsync<CofoundryUserUpdatePermission>(),
+                    await permissions.HasPermissionAsync<CofoundryUserDeletePermission>(),
+                    await permissions.HasPermissionAsync<CofoundryUserResetPasswordPermission>(),
+                    await permissions.HasPermissionAsync<RoleReadPermission>())
+                : new UserPermissions(
+                    await permissions.HasPermissionAsync<NonCofoundryUserCreatePermission>(),
+                    await permissions.HasPermissionAsync<NonCofoundryUserUpdatePermission>(),
+                    await permissions.HasPermissionAsync<NonCofoundryUserDeletePermission>(),
+                    await permissions.HasPermissionAsync<NonCofoundryUserResetPasswordPermission>(),
+                    await permissions.HasPermissionAsync<RoleReadPermission>());
         });
     }
 }

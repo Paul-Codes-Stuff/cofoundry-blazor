@@ -1,0 +1,212 @@
+@page "/admin-next/users/{UserAreaCode}"
+@inject IAdminBlazorExecutor Executor
+
+<PageTitle>@(_userArea?.Name) Users | Admin</PageTitle>
+
+<PageHeader Title="@(_userArea == null ? "Users" : _userArea.Name + " Users")" />
+
+@if (_notFound)
+{
+    <PageBody ContentType="form">
+        <p class="message warning perm">Sorry, that user area could not be found.</p>
+    </PageBody>
+}
+else if (_userArea != null)
+{
+    <PageSubHeader>
+        <PageHeaderButtons>
+
+            <a class="btn-icon" href="" @onclick="() => _isFilterVisible = !_isFilterVisible" @onclick:preventDefault>
+                <i class="fa fa-search"></i> Filter
+            </a>
+
+            @if (_isFilterVisible)
+            {
+                <AdminForm Model="_filter" OnValidSubmit="ApplyFilter" CssClass="search-filter">
+                    <FormSection Title="Filter this list">
+
+                        @if (!_userArea.UseEmailAsUsername)
+                        {
+                            <FormFieldText Title="Username" @bind-Value="_filter.Username" />
+                        }
+                        <FormFieldText Title="Email" @bind-Value="_filter.Email" />
+                        <FormFieldText Title="Name" @bind-Value="_filter.Name" />
+                        <FormFieldDropdown TValue="UserAccountStatusFilter" Title="Active" Options="AccountStatusOptions" Required="true"
+                                           @bind-Value="_filter.AccountStatus" />
+
+                    </FormSection>
+                    <div class="form-actions">
+                        <AdminButtonSubmit Text="Apply" />
+                        <AdminButton Text="Clear" OnClick="ClearFilter" />
+                    </div>
+                </AdminForm>
+            }
+
+        </PageHeaderButtons>
+    </PageSubHeader>
+
+    <PageActions>
+        @if (_permissions?.CanCreate == true)
+        {
+            <ButtonLink Class="main-cta" Text="Create" Icon="plus" Href="@AdminBlazorRoutes.UserNew(_userArea.UserAreaCode)" />
+        }
+
+        <Pager PageNumber="_result?.PageNumber ?? 1" PageCount="_result?.PageCount ?? 0" OnPageChanged="GoToPage" />
+    </PageActions>
+
+    <PageBody ContentType="form">
+        <TableContainer IsLoading="_isLoading">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Last Signed In</th>
+                        <th>Created</th>
+                        <th class="actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_result != null && _result.Items.Count == 0)
+                    {
+                        <tr><td colspan="100" class="empty">Sorry, no users could be found.</td></tr>
+                    }
+                    @foreach (var user in _result?.Items ?? [])
+                    {
+                        <tr @key="user.UserId">
+                            <td>
+                                <a href="@AdminBlazorRoutes.UserDetails(_userArea.UserAreaCode, user.UserId)">@user.Username</a>
+                                @if (user.AccountStatus == UserAccountStatus.Deactivated)
+                                {
+                                    <div>(deactivated)</div>
+                                }
+                            </td>
+                            <td>
+                                @if (_permissions?.CanReadRoles == true)
+                                {
+                                    <a href="@AdminBlazorRoutes.RoleDetails(user.Role.RoleId)">@user.Role.Title</a>
+                                }
+                                else
+                                {
+                                    <span>@user.Role.Title</span>
+                                }
+                            </td>
+                            <td>
+                                @if (user.LastSignInDate == null)
+                                {
+                                    <span>Never</span>
+                                }
+                                <TimeAgo Time="user.LastSignInDate" />
+                            </td>
+                            <td class="lowPriority">
+                                <AuditDataCell AuditData="user.AuditData" />
+                            </td>
+                            <td class="actions">
+                                @if (_permissions?.CanUpdate == true)
+                                {
+                                    <IconLink Icon="pencil-square-o" Title="Edit" Href="@AdminBlazorRoutes.UserDetails(_userArea.UserAreaCode, user.UserId)" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </TableContainer>
+    </PageBody>
+}
+
+@code {
+    // The AngularJS SearchQuery default.
+    private const int DefaultPageSize = 30;
+
+    private static readonly IReadOnlyList<SelectOption<UserAccountStatusFilter>> AccountStatusOptions =
+    [
+        new(UserAccountStatusFilter.Any, "Any"),
+        new(UserAccountStatusFilter.Active, "Active"),
+        new(UserAccountStatusFilter.Deactivated, "Deactivated")
+    ];
+
+    private UserFilter _filter = new();
+    private SearchUserSummariesQuery _query = new();
+    private PagedQueryResult<UserSummary>? _result;
+    private UserAreaInfo? _userArea;
+    private UserPermissions? _permissions;
+    private bool _isFilterVisible;
+    private bool _isLoading;
+    private bool _notFound;
+
+    [Parameter] public string UserAreaCode { get; set; } = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // The same component instance is reused when the nav switches between user areas.
+        if (_userArea?.UserAreaCode == UserAreaCode)
+        {
+            return;
+        }
+
+        _userArea = await UserAreaInfo.LoadAsync(Executor, UserAreaCode);
+        _notFound = _userArea == null;
+        _result = null;
+        _isFilterVisible = false;
+
+        if (_userArea == null)
+        {
+            return;
+        }
+
+        _permissions = await UserPermissions.LoadAsync(Executor, _userArea.UserAreaCode);
+        _filter = new UserFilter();
+        await ApplyFilter();
+    }
+
+    private async Task LoadGridAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _result = await Executor.QueryAsync(_query);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ApplyFilter()
+    {
+        _query = new SearchUserSummariesQuery
+        {
+            PageNumber = 1,
+            PageSize = DefaultPageSize,
+            UserAreaCode = _userArea!.UserAreaCode,
+            Username = _filter.Username,
+            Email = _filter.Email,
+            Name = _filter.Name,
+            AccountStatus = _filter.AccountStatus
+        };
+
+        _isFilterVisible = false;
+        await LoadGridAsync();
+    }
+
+    private async Task ClearFilter()
+    {
+        _filter = new UserFilter();
+        await ApplyFilter();
+    }
+
+    private async Task GoToPage(int pageNumber)
+    {
+        _query.PageNumber = pageNumber;
+        await LoadGridAsync();
+    }
+
+    private sealed class UserFilter
+    {
+        public string? Username { get; set; }
+        public string? Email { get; set; }
+        public string? Name { get; set; }
+        public UserAccountStatusFilter AccountStatus { get; set; } = UserAccountStatusFilter.Active;
+    }
+}

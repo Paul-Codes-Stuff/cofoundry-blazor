@@ -1,6 +1,6 @@
 ---
 name: run-blazor-admin
-description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker).
+description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker; roles and permissions; users create, deactivate, reset password, delete).
 ---
 
 # Run the Blazor admin
@@ -53,6 +53,7 @@ node .claude/skills/run-blazor-admin/driver.js shot admin-next/pages/new create-
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/assets-step.js  # Images + Documents
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/settings-step.js  # Site Settings
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/image-picker-step.js  # OpenGraph image picker
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/roles-users-step.js  # Roles + Users
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
 ```
 
@@ -67,6 +68,11 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   `/robots.txt`) and Clear Cache. It appends a marker to robots.txt and then restores the original value.
 - **`image-picker-step.js`** picks, changes, uploads-from-picker and removes the OpenGraph image on the first
   `smoke-` page in the list, so run `smoke` once first on a fresh database. It deletes the images it uploads.
+- **`roles-users-step.js`** creates a role with Pages permissions, edits them, creates a Cofoundry admin user in
+  it, filters, resets the password, deactivates the user, then deletes the user and the role. The user is moved
+  to another role before it's deleted, because a role still referenced by a (soft-)deleted user can't be
+  deleted. Reset-password and welcome emails go to the sandbox's mail drop folder (`App_Data/Emails`, the
+  default `LocalDrop` mode), so nothing is sent. Creating a user takes a few seconds (password hashing).
 - **`run`** loads a module of the form `module.exports = async (page, c) => { ... }`. `page` is a
   Playwright page with `baseURL` already set. `c` provides `settle()`, `shot(name)`, `step(name, fn)`,
   `btn(scope, text)`, `field(scope, label)`, `rows()` and `status()`. See `driver.js`.

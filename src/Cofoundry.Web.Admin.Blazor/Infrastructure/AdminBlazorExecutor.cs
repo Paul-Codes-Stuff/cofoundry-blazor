@@ -85,6 +85,11 @@ public class AdminBlazorExecutor : IAdminBlazorExecutor
         {
             errors.Add(new ValidationError { Message = ex.Message });
         }
+        catch (EntityNotFoundException ex)
+        {
+            // e.g. the record was deleted in another tab. The API returned a 404 for this.
+            errors.Add(new ValidationError { Message = ex.Message });
+        }
 
         return errors.Count == 0 ? AdminCommandResult.Success : new AdminCommandResult(errors);
     }

@@ -85,7 +85,7 @@ else
 
 @code {
     private ImageAssetDetails? _image;
-    private AssetPermissions? _permissions;
+    private CrudPermissions? _permissions;
     private UpdateImageAssetCommand? _command;
     private IReadOnlyCollection<ValidationError> _errors = [];
     private string? _message;
@@ -99,7 +99,7 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        _permissions ??= await AssetPermissions.LoadImagesAsync(Executor);
+        _permissions ??= await CrudPermissions.LoadImagesAsync(Executor);
         await LoadAsync();
     }
 

@@ -1,0 +1,128 @@
+@page "/admin-next/roles"
+@inject IAdminBlazorExecutor Executor
+
+<PageTitle>Roles | Admin</PageTitle>
+
+<PageHeader Title="Roles & Permission" />
+
+<PageSubHeader>
+    <PageHeaderButtons>
+
+        <a class="btn-icon" href="" @onclick="() => _isFilterVisible = !_isFilterVisible" @onclick:preventDefault>
+            <i class="fa fa-search"></i> Filter
+        </a>
+
+        @if (_isFilterVisible)
+        {
+            <AdminForm Model="_filter" OnValidSubmit="ApplyFilter" CssClass="search-filter">
+                <FormSection Title="Filter this list">
+                    <FormFieldText Title="Text" @bind-Value="_filter.Text" />
+                </FormSection>
+                <div class="form-actions">
+                    <AdminButtonSubmit Text="Apply" />
+                    <AdminButton Text="Clear" OnClick="ClearFilter" />
+                </div>
+            </AdminForm>
+        }
+
+    </PageHeaderButtons>
+</PageSubHeader>
+
+<PageActions>
+    @if (_permissions?.CanCreate == true)
+    {
+        <ButtonLink Class="main-cta" Text="Create" Icon="plus" Href="@AdminBlazorRoutes.RoleNew" />
+    }
+
+    <Pager PageNumber="_result?.PageNumber ?? 1" PageCount="_result?.PageCount ?? 0" OnPageChanged="GoToPage" />
+</PageActions>
+
+<PageBody ContentType="form">
+    <TableContainer IsLoading="_isLoading">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>User Area</th>
+                    <th>Title</th>
+                    <th class="actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_result != null && _result.Items.Count == 0)
+                {
+                    <tr><td colspan="100" class="empty">Sorry, no roles could be found.</td></tr>
+                }
+                @foreach (var role in _result?.Items ?? [])
+                {
+                    <tr @key="role.RoleId">
+                        <td>@role.UserArea.Name</td>
+                        <td>
+                            <a href="@AdminBlazorRoutes.RoleDetails(role.RoleId)">@role.Title</a>
+                        </td>
+                        <td class="actions">
+                            @if (_permissions?.CanUpdate == true)
+                            {
+                                <IconLink Icon="pencil-square-o" Title="Edit" Href="@AdminBlazorRoutes.RoleDetails(role.RoleId)" />
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </TableContainer>
+</PageBody>
+
+@code {
+    // The AngularJS SearchQuery default.
+    private const int DefaultPageSize = 30;
+
+    private readonly RoleFilter _filter = new();
+    private SearchRolesQuery _query = new() { PageNumber = 1, PageSize = DefaultPageSize };
+    private PagedQueryResult<RoleMicroSummary>? _result;
+    private CrudPermissions? _permissions;
+    private bool _isFilterVisible;
+    private bool _isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _permissions = await CrudPermissions.LoadRolesAsync(Executor);
+        await LoadGridAsync();
+    }
+
+    private async Task LoadGridAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _result = await Executor.QueryAsync(_query);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ApplyFilter()
+    {
+        _query = new SearchRolesQuery { PageNumber = 1, PageSize = DefaultPageSize, Text = _filter.Text };
+        _isFilterVisible = false;
+        await LoadGridAsync();
+    }
+
+    private async Task ClearFilter()
+    {
+        _filter.Text = null;
+        await ApplyFilter();
+    }
+
+    private async Task GoToPage(int pageNumber)
+    {
+        _query.PageNumber = pageNumber;
+        await LoadGridAsync();
+    }
+
+    private sealed class RoleFilter
+    {
+        public string? Text { get; set; }
+    }
+}

@@ -1,0 +1,3 @@
+@* Everything under Components/Users requires a signed-in admin user. Applied here rather than the root
+   _Imports so it does not land on App.razor or Routes.razor, which must render for signed-out users. *@
+@attribute [AdminBlazorAuthorize]

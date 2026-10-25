@@ -4,7 +4,8 @@ A Blazor (Interactive Server) port of the AngularJS admin in `Cofoundry.Web.Admi
 installed **alongside** the AngularJS admin while modules are migrated one at a time.
 
 > **Status: first slice.** Builds cleanly. The Dashboard, Pages (list, filter, create, details/edit, publish,
-> unpublish, change URL, duplicate), Images, Documents and Site Settings modules have been smoke-tested in `Dev.Sandbox`.
+> unpublish, change URL, duplicate), Images, Documents, Site Settings, Roles and Users modules have been smoke-tested
+> in `Dev.Sandbox`.
 
 ## Installing side-by-side
 
@@ -60,6 +61,13 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
   image picker (`FormFieldImageAsset` + "Find an image" dialog, with upload from inside the dialog)
 * Documents: list (filter by tags/extension, paging), upload, details (edit, replace file, delete)
 * Site Settings: general + SEO settings (view, edit), clear cache
+* Roles: list (filter, paging), create, details (edit title and permissions, delete). The permissions field
+  groups permissions by entity and only enables a group's other permissions once its Read permission is ticked
+* Users: one list per user area at `/admin-next/users/{UserAreaCode}` (filter by username/email/name/status),
+  create (with an emailed temporary password when the area allows password sign in), details (edit,
+  deactivate, verify, reset password, delete). Which fields show and are required follows the user area's
+  settings (`UserAreaInfo`), as in the AngularJS `UsersModuleOptions`. The nav maps every `COFUSR` + area code
+  module to its Blazor list
 
 ### File uploads
 
@@ -85,4 +93,6 @@ to a JPEG in the browser first (`wwwroot/js/image-upload.js`), and the title def
 * Required-field messages use the command's property name when it has no `[Display]` name (e.g. "The
   ApplicationName field is required."); the AngularJS forms showed their own client-side wording
 * Server-side validation messages are shown in the form status area, not against individual fields
+* A role can't be deleted while any user references it, including soft-deleted users (a domain rule, the same
+  in the AngularJS admin). Move users to another role before deleting them if the role should go too
 * No tests yet
