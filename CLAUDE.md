@@ -41,7 +41,7 @@ Agreed direction, not yet done:
    YouTube plugin) and shared AngularJS services. Blazor now has its own extension points
    (`IAdminBlazorModuleRegistration` for module pages, `IDataModelFieldComponentRegistration` for field types; see
    "Extending the admin" in the README), proven by the sandbox's Products module and by the Error Logging and
-   YouTube plugins' new `*.Admin.Blazor` packages. Other extensions (e.g. the Vimeo plugin, third-party modules)
+   YouTube plugins' new `*.Admin.Blazor` packages. Other extensions (third-party modules and plugins)
    still need Blazor versions. Until they have them, modules without a Blazor page stay reachable because
    `AdminNav` links them to their AngularJS URLs.
 
@@ -96,11 +96,12 @@ Agreed direction, not yet done:
   4.4.3 build, `wwwroot/lib/tinymce`), an unsupported-field placeholder, and the
   `IDataModelFieldComponentRegistration` extension point), and the plugins' Blazor packages:
   `Cofoundry.Plugins.ErrorLogging.Admin.Blazor` (error log list and details) and
-  `Cofoundry.Plugins.YouTube.Admin.Blazor` (the `[YouTube]` field and picker).
+  `Cofoundry.Plugins.YouTube.Admin.Blazor` (the `[YouTube]` field and picker) and
+  `Cofoundry.Plugins.Vimeo.Admin.Blazor` (the `[Vimeo]` field and picker).
 - **Builds and runs.** Smoke-tested in `samples/src/Dev/Dev.Sandbox` with the `run-blazor-admin` skill (`smoke`
   for Pages, `assets-step.js` for Images/Documents, `settings-step.js` for Site Settings, `image-picker-step.js` for the picker, `roles-users-step.js` for Roles
   and Users, `access-rules-step.js` for Directories and access rules, `page-templates-step.js` for Page Templates, `custom-entities-step.js`, `custom-entity-pickers-step.js`, `nested-data-models-step.js` and `field-types-step.js` (run with `BROWSER_TZ`, uses the dev-only Field Tests entity `SIMFLD`) for Custom Entities, `plugins-step.js`
-  for the Error Logging and YouTube plugins). Page delete not yet exercised.
+  for the Error Logging, YouTube and Vimeo plugins; its Vimeo steps need internet access). Page delete not yet exercised.
 - **Dev.Sandbox has a "Member" user area** (`Cofoundry/UserAreas/MemberUserArea.cs`, code `MEM`) so access rules
   and a non-admin users list can be exercised. Access Control is hidden on sites with only the admin area.
 - **To revisit:** the modal dialog close icon (top right, `Components/Dialogs/ModalDialog.razor`) doesn't work.
@@ -111,10 +112,11 @@ Agreed direction, not yet done:
   that can be installed without its AngularJS one describes its module in `AdminBlazorModule.Module`, which is
   only used when no other registration has that code (Cofoundry doesn't merge duplicate module codes).
 - **Plugins:** Blazor admin parts are separate `*.Admin.Blazor` projects next to the AngularJS ones (both in the
-  solution's plugin folders). Dev.Sandbox references both versions of Error Logging and YouTube, and has a
+  solution's plugin folders). Dev.Sandbox references both versions of Error Logging, YouTube and Vimeo, and has a
   `test/error` route that throws so there is an error to log. The plugin installs its own table
   (`CofoundryPlugin.Error`) on startup.
-- **Next:** the Vimeo plugin's admin part, and the remaining known gaps in the README. Page block editing (and `[CustomEntityMultiTypeCollection]`) only matters
+- **Next:** the remaining known gaps in the README. Every plugin with an AngularJS admin part now has a Blazor
+  package. Page block editing (and `[CustomEntityMultiTypeCollection]`) only matters
   if the Visual Editor moves; it stays on the MVC site for now.
 - No tests yet.
 

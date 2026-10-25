@@ -4,6 +4,9 @@
 // - YouTube (Cofoundry.Plugins.YouTube.Admin.Blazor): the [YouTube] field on the dev-only Field Tests entity
 //   (SIMFLD): the picker dialog's id/url parsing, title and description, save, cancel and remove. The sandbox
 //   has no YouTube API key, so nothing is looked up on YouTube and only the id comes back from the check.
+// - Vimeo (Cofoundry.Plugins.Vimeo.Admin.Blazor): the [Vimeo] field on the same entity. This one really looks
+//   the video up with Vimeo's oEmbed api (no key needed), so the server needs internet access: it uses
+//   "The Mountain" (22439234) and expects video 1 to give Vimeo's 404 message.
 // Logged errors stay in the database (the plugin has no delete); the custom entity is deleted.
 module.exports = async (page, c) => {
   const stamp = Date.now().toString(36);
@@ -149,12 +152,59 @@ module.exports = async (page, c) => {
     if (v != null) throw new Error(JSON.stringify(v));
   });
 
-  await c.step('youtube: cleanup', async () => {
+  // Vimeo, on the same entity.
+
+  const vimeo = () => control('Vimeo video:');
+  const vimeoInput = () => top().locator('input[placeholder="enter a vimeo url or id"]');
+  const checkVimeo = async value => {
+    await vimeoInput().fill(value); await vimeoInput().blur();
+    await top().locator('.form-field-input-actions button:text-is("Ok")').click();
+    await top().locator('.form-field-input-actions button.loading').waitFor({ state: 'detached', timeout: 25000 }).catch(() => { });
+    await page.waitForTimeout(600);
+  };
+  const storedVimeo = async () => {
+    const res = await page.request.get(`/admin/api/custom-entities/${id}`);
+    const json = await res.json();
+    return (json.data || json).latestVersion.model.vimeoVideo;
+  };
+
+  await c.step('vimeo: lookup errors', async () => {
+    await c.btn('.page-actions', 'Edit').click(); await page.waitForTimeout(1200);
+    if (!(await vimeo().locator('img[title="Not set"]').count())) throw new Error('no placeholder image');
+    await vimeo().locator('button[title="Select"]').click(); await page.waitForTimeout(800);
+    if (!/Vimeo Video/.test(await top().innerText())) throw new Error('dialog not open');
+    await checkVimeo('https://example.com/not-vimeo');
+    if (!/The url\/id is invalid/.test(await top().innerText())) throw new Error('no invalid message');
+    await checkVimeo('1');
+    if (!/You aren't able to access the video because of privacy or permissions issues/.test(await top().innerText())) throw new Error('no 404 message: ' + await top().innerText());
+  });
+
+  await c.step('vimeo: look up a video by url, save', async () => {
+    await checkVimeo('https://vimeo.com/channels/staffpicks/22439234');
+    if (!(await top().locator('button[title="Change"]').count())) throw new Error('not found: ' + await top().innerText());
+    if ((await top().getByLabel('Title:', { exact: true }).inputValue()) !== 'The Mountain') throw new Error('title not filled from Vimeo');
+    const description = await top().getByLabel('Description:', { exact: true }).inputValue();
+    if (!description.includes('El Teide') || /<[a-z]/i.test(description)) throw new Error('description ' + description.slice(0, 100));
+    if ((await top().locator('iframe').getAttribute('src')) !== 'https://player.vimeo.com/video/22439234') throw new Error('preview');
+    await c.shot('plugins-5-vimeo-picker');
+    await top().locator('.page-actions button:text-is("Ok")').click(); await page.waitForTimeout(600);
+    if (!(await vimeo().innerText()).includes('The Mountain')) throw new Error('field not updated');
+    // Not settle(): the saved view embeds the Vimeo player, which keeps the network busy.
+    await c.btn('.page-actions', 'Save').click();
+    await page.locator('.page-actions button:text-is("Edit")').waitFor({ timeout: 20000 }); await page.waitForTimeout(1000);
+    const v = await storedVimeo();
+    if (!v || v.id !== 22439234 || v.title !== 'The Mountain' || v.duration !== 185 || !v.thumbnailUrl || !/^2011-04-15/.test(v.uploadDate)) throw new Error(JSON.stringify(v));
+  });
+
+  await c.step('cleanup', async () => {
     await page.goto(list); await c.settle();
     if (!(await page.locator(`table.table a:text-is("${title}")`).count())) return;
-    await page.click(`table.table a:text-is("${title}")`); await c.settle();
+    // The details page embeds the Vimeo player, which keeps the network busy, so settle() would time out.
+    await page.click(`table.table a:text-is("${title}")`);
+    await page.locator('.page-actions button:text-is("Delete")').waitFor({ timeout: 20000 }); await page.waitForTimeout(800);
     await c.btn('.page-actions', 'Delete').click(); await page.waitForTimeout(800);
-    await page.click('.modal .main-cta'); await c.settle(2000);
+    await page.click('.modal .main-cta');
+    await page.waitForURL(u => u.pathname.endsWith(list), { timeout: 20000 }).catch(() => { });
     if (!page.url().endsWith(list)) throw new Error('delete failed');
   });
 };

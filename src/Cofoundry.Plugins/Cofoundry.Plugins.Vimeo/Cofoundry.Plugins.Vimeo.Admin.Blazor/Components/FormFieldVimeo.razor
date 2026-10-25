@@ -1,0 +1,74 @@
+@inherits FormFieldBase<VimeoVideo?>
+
+@* Port of cms-form-field-vimeo: a video chosen in VimeoPickerDialog, which can also edit its title and
+   description. The AngularJS field meant to show those under the preview but never did (it checked a
+   property that doesn't exist); they're shown here. *@
+<div class="control-group form-field-vimeo-preview">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label" for="@FieldId">@Title:</label>
+        <div class="controls">
+            <div class="image-asset" id="@FieldId">
+                <VimeoVideoPreview VideoId="Value?.Id" />
+                @if (Value?.Id != null)
+                {
+                    @if (!string.IsNullOrEmpty(Value.Title))
+                    {
+                        <div>@Value.Title</div>
+                    }
+                    @if (!string.IsNullOrEmpty(Value.Description))
+                    {
+                        <div>@Value.Description</div>
+                    }
+                }
+            </div>
+
+            @if (ShowInput)
+            {
+                <div class="collection-actions">
+                    <ButtonIcon Icon="cog" Title="@ButtonText" Disabled="Disabled" OnClick="OpenPicker" />
+                    @if (Value != null && !Required)
+                    {
+                        <ButtonIcon Icon="trash-o" Title="Remove" Disabled="Disabled" OnClick="RemoveAsync" />
+                    }
+                </div>
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+            }
+        </div>
+    </div>
+    <FieldHelp Text="@Description" />
+</div>
+
+@if (_isPickerOpen)
+{
+    <VimeoPickerDialog CurrentVideo="Value" OnSelected="OnSelectedAsync" OnCancel="() => _isPickerOpen = false" />
+}
+
+@code {
+    private bool _isPickerOpen;
+
+    [Parameter] public bool Required { get; set; }
+
+    private string ButtonText => Value != null ? "Change" : "Select";
+
+    private void OpenPicker()
+    {
+        if (!Disabled)
+        {
+            _isPickerOpen = true;
+        }
+    }
+
+    private async Task OnSelectedAsync(VimeoVideo? video)
+    {
+        _isPickerOpen = false;
+        await SetAsync(video);
+    }
+
+    private Task RemoveAsync() => SetAsync(null);
+
+    private async Task SetAsync(VimeoVideo? video)
+    {
+        await ValueChanged.InvokeAsync(video);
+        NotifyFieldChanged();
+    }
+}

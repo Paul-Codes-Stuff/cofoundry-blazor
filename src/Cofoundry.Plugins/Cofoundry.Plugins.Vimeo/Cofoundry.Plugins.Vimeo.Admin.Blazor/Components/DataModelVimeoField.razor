@@ -1,0 +1,11 @@
+@inherits DataModelFieldComponentBase
+
+@* [Vimeo] properties (VimeoVideo). *@
+<FormFieldVimeo Id="@Field.Property.Name" Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+                Required="Field.IsRequired" @bind-Value="_binding.Value" />
+
+@code {
+    private DataModelFieldBinding<VimeoVideo?> _binding = default!;
+
+    protected override void OnParametersSet() => _binding = Field.Bind<VimeoVideo?>();
+}

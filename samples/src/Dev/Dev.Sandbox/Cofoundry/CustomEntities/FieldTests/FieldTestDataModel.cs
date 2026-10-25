@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Cofoundry.Plugins.Vimeo.Domain;
 using Cofoundry.Plugins.YouTube.Domain;
 
 namespace Dev.Sandbox;
@@ -102,6 +103,9 @@ public class FieldTestDataModel : ICustomEntityDataModel
 
     [YouTube]
     public YouTubeVideo? Video { get; set; }
+
+    [Vimeo]
+    public VimeoVideo? VimeoVideo { get; set; }
 
     [UIHint("NotARealFieldType")]
     [Display(Description = "A template with no field component, to show the unsupported placeholder.")]

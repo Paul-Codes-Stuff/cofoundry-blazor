@@ -1,0 +1,20 @@
+@* Port of cms-vimeo-video: the embedded player for a video id, or a placeholder image when there's none. *@
+@if (VideoId == null)
+{
+    <img src="@ReplacementImageUrl" title="Not set" />
+}
+else
+{
+    <iframe src="@EmbedUrl"
+            width="100%"
+            frameborder="0"
+            allowfullscreen></iframe>
+}
+
+@code {
+    private const string ReplacementImageUrl = "/_content/Cofoundry.Plugins.Vimeo.Admin.Blazor/img/vimeo-replacement.png";
+
+    [Parameter] public long? VideoId { get; set; }
+
+    private string EmbedUrl => "https://player.vimeo.com/video/" + VideoId?.ToString(System.Globalization.CultureInfo.InvariantCulture);
+}

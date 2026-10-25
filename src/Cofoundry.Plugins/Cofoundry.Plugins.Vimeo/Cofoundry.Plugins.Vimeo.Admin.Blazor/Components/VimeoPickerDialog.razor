@@ -1,0 +1,66 @@
+@* Port of VimeoPickerDialog: a video id or url, a preview, and the title and description, which default to
+   Vimeo's and can be changed. It edits a copy, so Cancel leaves the field as it was. *@
+<ModalDialog Title="Vimeo Video" Size="large" OnClose="CancelAsync">
+    @* Enter in the id input mustn't close the dialog, so the form has no submit handler: Ok is a click. *@
+    <AdminForm Model="_form">
+        <PageActions>
+            <AdminButton Text="Ok" Class="main-cta" Disabled="_video.Id == null" OnClick="OkAsync" />
+            <AdminButton Text="Cancel" OnClick="CancelAsync" />
+        </PageActions>
+        <PageBody>
+            <FormSection Title="Vimeo video">
+
+                <FormFieldVimeoId VideoId="_video.Id" OnVideoSelected="OnVideoSelected" />
+
+                <FormFieldContainer Title="Preview">
+                    <div class="form-field-vimeo-preview">
+                        <VimeoVideoPreview VideoId="_video.Id" />
+                    </div>
+                </FormFieldContainer>
+
+                <FormFieldText Title="Title" @bind-Value="_video.Title" />
+                <FormFieldTextArea Title="Description" @bind-Value="_video.Description" />
+
+            </FormSection>
+        </PageBody>
+    </AdminForm>
+</ModalDialog>
+
+@code {
+    private readonly object _form = new();
+    private VimeoVideo _video = new();
+
+    [Parameter] public VimeoVideo? CurrentVideo { get; set; }
+
+    [Parameter] public EventCallback<VimeoVideo?> OnSelected { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _video = CurrentVideo == null ? new() : Copy(CurrentVideo);
+    }
+
+    private void OnVideoSelected(VimeoVideo? video)
+    {
+        _video = video ?? new();
+    }
+
+    private Task OkAsync() => OnSelected.InvokeAsync(_video.Id == null ? null : _video);
+
+    private Task CancelAsync() => OnCancel.InvokeAsync();
+
+    private static VimeoVideo Copy(VimeoVideo video) => new()
+    {
+        Id = video.Id,
+        Title = video.Title,
+        Description = video.Description,
+        Duration = video.Duration,
+        Width = video.Width,
+        Height = video.Height,
+        UploadDate = video.UploadDate,
+        ThumbnailUrl = video.ThumbnailUrl,
+        ThumbnailWidth = video.ThumbnailWidth,
+        ThumbnailHeight = video.ThumbnailHeight
+    };
+}

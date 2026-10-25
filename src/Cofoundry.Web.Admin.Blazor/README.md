@@ -220,12 +220,17 @@ references both versions of each.
   field shows the video's title and description under the preview, which the AngularJS field meant to do but
   didn't (it checked a misspelt property). The AngularJS field's id-only mode (`cms-model-type="id"`) isn't
   ported: data model forms never used it.
+* **Vimeo** (`Cofoundry.Plugins.Vimeo.Admin.Blazor`): the `[Vimeo]` field ("Vimeo" template hint), the same
+  shape as YouTube. Videos are looked up with Vimeo's oEmbed api (no key) from the server
+  (`VimeoVideoInfoService`), sending the admin's url as the referrer as the browser did, so videos restricted
+  to the site's domain still resolve. The 403/404/other error messages are the AngularJS ones, and html is
+  stripped from the description as before. Same title/description display fix and missing id-only mode as
+  YouTube.
 
 ## Known gaps
 
 * The YouTube field's lookup with an API key hasn't been tested (the sandbox has no key), and the preview shows
-  YouTube's "Error 153" in headless Chrome. The AngularJS field embeds the same url. The Vimeo plugin
-  (`Cofoundry.Plugins.Vimeo.Admin`) has no Blazor version yet
+  YouTube's "Error 153" in headless Chrome. The AngularJS field embeds the same url
 * `[CustomEntityMultiTypeCollection]` (only used by page blocks) isn't ported; it comes with page block editing
 * The page picker (page collection field) is multi-select only, since the single page field is a
   search-as-you-type dropdown, as in the AngularJS admin

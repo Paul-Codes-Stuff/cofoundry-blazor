@@ -1,0 +1,131 @@
+@inject VimeoVideoInfoService VideoInfoService
+@inject NavigationManager Navigation
+
+@* Port of cms-form-field-vimeo-id, used by VimeoPickerDialog: a Vimeo url or id, looked up on Vimeo when
+   "Ok" is clicked. The video's details are passed to OnVideoSelected, or null when the input was cleared. *@
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label" for="@InputId">Video Id:</label>
+
+        <div class="controls">
+            @if (!_isEditing)
+            {
+                <div>
+                    @VideoId
+                    <ButtonIcon Icon="cog" Title="Change" OnClick="StartEditing" />
+                </div>
+            }
+            else
+            {
+                <div>
+                    <input type="text"
+                           id="@InputId"
+                           placeholder="enter a vimeo url or id"
+                           @bind="_input"
+                           disabled="@_isLoading" />
+
+                    <div class="form-field-input-actions">
+                        <AdminButton Text="Ok" IsLoading="_isLoading" OnClick="UpdateVideoIdAsync" />
+                        @if (VideoId != null)
+                        {
+                            <AdminButton Text="Cancel" Disabled="_isLoading" OnClick="CancelEditing" />
+                        }
+                    </div>
+
+                    @if (_error != null)
+                    {
+                        <div class="field-validation-error">@_error</div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private long? _shownVideoId;
+    private string? _input;
+    private string? _error;
+    private bool _isEditing;
+    private bool _isLoading;
+
+    [CascadingParameter(Name = "FieldIdPrefix")] public string? FieldIdPrefix { get; set; }
+
+    [Parameter] public long? VideoId { get; set; }
+
+    [Parameter] public EventCallback<VimeoVideo?> OnVideoSelected { get; set; }
+
+    private string InputId => FieldIdPrefix + "VimeoVideoId";
+
+    private string AreaCssClass => _error == null ? "editmode" : "editmode invalid";
+
+    protected override void OnParametersSet()
+    {
+        // As the AngularJS field watched its model: a new id ends editing, no id starts it.
+        if (_shownVideoId != VideoId || (!_isEditing && VideoId == null))
+        {
+            _shownVideoId = VideoId;
+            _input = FormatId(VideoId);
+            _isEditing = VideoId == null;
+        }
+    }
+
+    private void StartEditing()
+    {
+        _error = null;
+        _isEditing = true;
+    }
+
+    private void CancelEditing()
+    {
+        _input = FormatId(VideoId);
+        _error = null;
+        _isEditing = false;
+    }
+
+    private async Task UpdateVideoIdAsync()
+    {
+        _error = null;
+
+        if (string.IsNullOrWhiteSpace(_input))
+        {
+            await OnVideoSelected.InvokeAsync(null);
+            return;
+        }
+
+        var videoId = VimeoVideoInfoService.ParseVideoId(_input);
+
+        if (videoId == null)
+        {
+            _error = "The url/id is invalid";
+            return;
+        }
+
+        if (videoId == VideoId)
+        {
+            CancelEditing();
+            return;
+        }
+
+        VimeoVideo video;
+        _isLoading = true;
+        try
+        {
+            video = await VideoInfoService.GetVideoInfoAsync(videoId.Value, Navigation.BaseUri);
+        }
+        catch (VimeoVideoLookupException ex)
+        {
+            _error = ex.Message;
+            return;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+
+        _input = FormatId(video.Id);
+        await OnVideoSelected.InvokeAsync(video);
+    }
+
+    private static string? FormatId(long? id) => id?.ToString(System.Globalization.CultureInfo.InvariantCulture);
+}
