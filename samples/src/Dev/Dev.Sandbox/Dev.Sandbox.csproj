@@ -6,6 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Both admins' versions of the plugins, as a site would install them during the migration. -->
+    <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.ErrorLogging\Cofoundry.Plugins.ErrorLogging.Admin\Cofoundry.Plugins.ErrorLogging.Admin.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.ErrorLogging\Cofoundry.Plugins.ErrorLogging.Admin.Blazor\Cofoundry.Plugins.ErrorLogging.Admin.Blazor.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.YouTube\Cofoundry.Plugins.YouTube.Admin\Cofoundry.Plugins.YouTube.Admin.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.YouTube\Cofoundry.Plugins.YouTube.Admin.Blazor\Cofoundry.Plugins.YouTube.Admin.Blazor.csproj" />
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.Imaging.SkiaSharp\Cofoundry.Plugins.Imaging.SkiaSharp\Cofoundry.Plugins.Imaging.SkiaSharp.csproj" />
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Web.Admin.Blazor\Cofoundry.Web.Admin.Blazor.csproj" />
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Web.Admin\Cofoundry.Web.Admin.csproj" />

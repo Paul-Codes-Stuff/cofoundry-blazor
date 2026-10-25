@@ -1,0 +1,62 @@
+@page "/admin-next/errors/{ErrorId:int}"
+@inject IAdminBlazorExecutor Executor
+
+<PageTitle>Error @ErrorId | Admin</PageTitle>
+
+<PageHeader Title="@($"Id:{ErrorId}")" ParentTitle="Errors" ParentHref="@ErrorsBlazorRoutes.List" />
+
+@* Read-only, as in the AngularJS admin. *@
+<PageBody ContentType="form" HasActions="false">
+    @if (_error == null)
+    {
+        @if (_notFound)
+        {
+            <p class="message warning perm">Sorry, that error could not be found.</p>
+        }
+        else
+        {
+            <TableContainer IsLoading="true" />
+        }
+    }
+    else
+    {
+        <FormSection Title="Main">
+            <FormFieldReadonly Title="Message" Value="@_error.ExceptionType" />
+            <FormFieldReadonly Title="Url" Value="@_error.Url" />
+            <FormFieldReadonly Title="User Agent" Value="@_error.UserAgent" />
+            <FormFieldReadonly Title="Date" Value="@_error.CreateDate.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture)" />
+        </FormSection>
+
+        <FormSection Title="Stack Trace">
+            <div class="control-group">
+                <div class="control-group-area">
+                    @* Scrolls rather than spilling out of the section, as long lines did in the AngularJS admin. *@
+                    <pre style="overflow-x: auto">@_error.StackTrace</pre>
+                </div>
+            </div>
+        </FormSection>
+
+        @* The AngularJS template titled this section "Stack Trace" too, by mistake. *@
+        <FormSection Title="Other">
+            <FormFieldReadonly Title="QueryString" Value="@_error.QueryString" />
+            <FormFieldReadonly Title="Session" Value="@_error.Session" />
+            <FormFieldReadonly Title="Form" Value="@_error.Form" />
+            <FormFieldReadonly Title="Data" Value="@_error.Data" />
+            <FormFieldReadonly Title="Source" Value="@_error.Source" />
+            <FormFieldReadonly Title="Target" Value="@_error.Target" />
+        </FormSection>
+    }
+</PageBody>
+
+@code {
+    private ErrorDetails? _error;
+    private bool _notFound;
+
+    [Parameter] public int ErrorId { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _error = await Executor.QueryAsync(new GetErrorDetailsByIdQuery(ErrorId));
+        _notFound = _error == null;
+    }
+}

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <PackageId>Cofoundry.Plugins.ErrorLogging.Admin.Blazor</PackageId>
+    <Description>The error log module for the Cofoundry Blazor admin (Cofoundry.Web.Admin.Blazor).</Description>
+    <PackageTags>Cofoundry Plugin ErrorLogging Admin Blazor</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RootNamespace>Cofoundry.Plugins.ErrorLogging.Admin.Blazor</RootNamespace>
+    <AddRazorSupportForMvc>false</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Cofoundry.Web.Admin.Blazor\Cofoundry.Web.Admin.Blazor.csproj" />
+    <ProjectReference Include="..\Cofoundry.Plugins.ErrorLogging\Cofoundry.Plugins.ErrorLogging.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+</Project>

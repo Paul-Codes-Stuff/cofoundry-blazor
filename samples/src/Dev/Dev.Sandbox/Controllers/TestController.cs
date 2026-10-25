@@ -24,6 +24,15 @@ public class TestController : Controller
         return Json(result);
     }
 
+    /// <summary>
+    /// Throws, so the error logging plugin has something to log.
+    /// </summary>
+    [Route("test/error")]
+    public IActionResult Error(string? stamp)
+    {
+        throw new InvalidOperationException($"Error logging test {stamp}");
+    }
+
     [Route("test/test")]
     public async Task<IActionResult> Test()
     {

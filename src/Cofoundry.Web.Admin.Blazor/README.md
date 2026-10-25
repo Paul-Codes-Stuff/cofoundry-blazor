@@ -180,6 +180,11 @@ assembly scanning, so an extension only needs to be referenced by the site.
     `IAdminModuleRegistration`. A module ported from AngularJS keeps its `IStandardAngularModuleRegistration`
     and only adds the Blazor registration. A Blazor-only module implements `IAdminModuleRegistration` with its
     `/admin-next/...` url.
+  * A package that may be installed with or without its AngularJS counterpart (a plugin) sets
+    `AdminBlazorModule.Module` instead. `AdminBlazorModuleDefinitionRegistration` adds that module to Cofoundry's
+    list (so both admins' navs show it, linking to the Blazor page) only when no other `IAdminModuleRegistration`
+    has its code. Cofoundry doesn't merge modules with the same code, so this is what stops it being listed
+    twice when both packages are installed.
   * Pages need `[AdminBlazorAuthorize]` (signed-in admin) and should check the module's own permission with
     `IPermissionValidationService`, as the built-in pages do. They get `AdminLayout` from the router.
 * **Form fields:** components in `Components/Ui` (`FormFieldText`, `FormFieldDropdown`, ...) are public and can
@@ -196,11 +201,31 @@ assembly scanning, so an extension only needs to be referenced by the site.
 
 The sandbox's **Products** module is the worked example: `samples/src/Dev/Dev.Sandbox/Cofoundry/Admin/Blazor`.
 
+### Plugins
+
+The plugins' Blazor admin parts are separate packages next to their AngularJS ones (`*.Admin.Blazor` under
+`src/Cofoundry.Plugins`), so a site installs whichever admin it runs, or both during the migration. Dev.Sandbox
+references both versions of each.
+
+* **Error Logging** (`Cofoundry.Plugins.ErrorLogging.Admin.Blazor`): the error log module (`COFERR`), a list
+  with a text filter and a read-only details page at `/admin-next/errors`. It describes its module itself
+  (`AdminBlazorModule.Module`), so it works without the AngularJS package. Compared with the AngularJS pages,
+  the third details section is titled "Other" (the AngularJS template repeated "Stack Trace"), the date is
+  formatted (UTC), and a long stack trace scrolls instead of spilling out of its section. The plugin's own
+  query maps `Session` from the query string (a domain bug, left as it is).
+* **YouTube** (`Cofoundry.Plugins.YouTube.Admin.Blazor`): the `[YouTube]` field ("Youtube" template hint) with
+  its picker dialog. The video is looked up with the YouTube Data API **on the server** (`YouTubeVideoInfoService`)
+  rather than in the browser, so the API key (`YouTubeSettings.ApiKey`) is no longer sent to the
+  browser, and the `youtube-settings` admin api isn't needed. Without a key only the id is kept, as before. The
+  field shows the video's title and description under the preview, which the AngularJS field meant to do but
+  didn't (it checked a misspelt property). The AngularJS field's id-only mode (`cms-model-type="id"`) isn't
+  ported: data model forms never used it.
+
 ## Known gaps
 
-* The Error Logging and YouTube plugins (`src/Cofoundry.Plugins`) still only have AngularJS admin parts, so
-  their module and field stay on the AngularJS admin (the field shows the "can't be edited" placeholder in
-  Blazor forms) until they get Blazor versions
+* The YouTube field's lookup with an API key hasn't been tested (the sandbox has no key), and the preview shows
+  YouTube's "Error 153" in headless Chrome. The AngularJS field embeds the same url. The Vimeo plugin
+  (`Cofoundry.Plugins.Vimeo.Admin`) has no Blazor version yet
 * `[CustomEntityMultiTypeCollection]` (only used by page blocks) isn't ported; it comes with page block editing
 * The page picker (page collection field) is multi-select only, since the single page field is a
   search-as-you-type dropdown, as in the AngularJS admin

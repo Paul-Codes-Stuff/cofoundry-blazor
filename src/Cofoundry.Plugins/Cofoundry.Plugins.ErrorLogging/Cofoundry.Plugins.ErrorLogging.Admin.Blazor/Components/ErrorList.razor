@@ -1,0 +1,114 @@
+@page "/admin-next/errors"
+@inject IAdminBlazorExecutor Executor
+
+<PageTitle>Errors | Admin</PageTitle>
+
+<PageHeader Title="Errors" />
+
+<PageActions>
+    @if (_result?.PageCount > 1)
+    {
+        <Pager PageNumber="_result.PageNumber" PageCount="_result.PageCount" OnPageChanged="GoToPage" />
+    }
+
+    <AdminButton Text="Filter" OnClick="() => _isFilterVisible = !_isFilterVisible" />
+
+    @if (_isFilterVisible)
+    {
+        <AdminForm Model="_filter" OnValidSubmit="ApplyFilter" CssClass="search-filter">
+            <FormSection Title="Filter this list">
+                <FormFieldText Title="Text" @bind-Value="_filter.Text" />
+            </FormSection>
+            <div class="form-actions">
+                <AdminButtonSubmit Text="Apply" />
+                <AdminButton Text="Clear" OnClick="ClearFilter" />
+            </div>
+        </AdminForm>
+    }
+</PageActions>
+
+<PageBody ContentType="form">
+    <TableContainer IsLoading="_isLoading">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Error</th>
+                    <th>Url</th>
+                    <th>User Agent</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_result != null && _result.Items.Count == 0)
+                {
+                    <tr><td colspan="100" class="empty">Hooray! No Errors!</td></tr>
+                }
+                @foreach (var error in _result?.Items ?? [])
+                {
+                    <tr @key="error.ErrorId">
+                        <td>
+                            <a href="@ErrorsBlazorRoutes.Details(error.ErrorId)" style="word-break:break-word">@error.ExceptionType</a>
+                        </td>
+                        <td>
+                            <a href="@error.Url">@error.Url</a>
+                        </td>
+                        <td>@error.UserAgent</td>
+                        <td>
+                            <TimeAgo Time="error.CreateDate" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </TableContainer>
+</PageBody>
+
+@code {
+    // The AngularJS SearchQuery default.
+    private const int DefaultPageSize = 30;
+
+    private readonly ErrorFilter _filter = new();
+    private SearchErrorSummariesQuery _query = new() { PageNumber = 1, PageSize = DefaultPageSize };
+    private PagedQueryResult<ErrorSummary>? _result;
+    private bool _isFilterVisible;
+    private bool _isLoading;
+
+    protected override Task OnInitializedAsync() => LoadGridAsync();
+
+    private async Task LoadGridAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _result = await Executor.QueryAsync(_query);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ApplyFilter()
+    {
+        _query = new SearchErrorSummariesQuery { PageNumber = 1, PageSize = DefaultPageSize, Text = _filter.Text };
+        _isFilterVisible = false;
+        await LoadGridAsync();
+    }
+
+    private async Task ClearFilter()
+    {
+        _filter.Text = null;
+        await ApplyFilter();
+    }
+
+    private async Task GoToPage(int pageNumber)
+    {
+        _query.PageNumber = pageNumber;
+        await LoadGridAsync();
+    }
+
+    private sealed class ErrorFilter
+    {
+        public string? Text { get; set; }
+    }
+}

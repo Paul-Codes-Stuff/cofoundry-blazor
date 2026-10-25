@@ -1,0 +1,21 @@
+@* Port of cms-youtube-video: the embedded player for a video id, or a placeholder image when there's none. *@
+@if (string.IsNullOrEmpty(VideoId))
+{
+    <img src="@ReplacementImageUrl" title="Not set" />
+}
+else
+{
+    <iframe src="@EmbedUrl"
+            width="480" height="270"
+            frameborder="0"
+            allow="encrypted-media"
+            allowfullscreen></iframe>
+}
+
+@code {
+    private const string ReplacementImageUrl = "/_content/Cofoundry.Plugins.YouTube.Admin.Blazor/img/youtube-replacement.png";
+
+    [Parameter] public string? VideoId { get; set; }
+
+    private string EmbedUrl => "https://www.youtube-nocookie.com/embed/" + Uri.EscapeDataString(VideoId ?? string.Empty);
+}

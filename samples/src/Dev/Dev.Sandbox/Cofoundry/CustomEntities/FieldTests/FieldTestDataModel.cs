@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Cofoundry.Plugins.YouTube.Domain;
 
 namespace Dev.Sandbox;
 
@@ -98,6 +99,9 @@ public class FieldTestDataModel : ICustomEntityDataModel
 
     [Html(HtmlToolbarPreset.Headings, HtmlToolbarPreset.BasicFormatting, HtmlToolbarPreset.Media, HtmlToolbarPreset.Source, Rows = 8)]
     public string? Html { get; set; }
+
+    [YouTube]
+    public YouTubeVideo? Video { get; set; }
 
     [UIHint("NotARealFieldType")]
     [Display(Description = "A template with no field component, to show the unsupported placeholder.")]

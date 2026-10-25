@@ -1,5 +1,6 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Cofoundry.Web.Admin.Blazor;
 
@@ -12,8 +13,9 @@ namespace Cofoundry.Web.Admin.Blazor;
 /// <remarks>
 /// The module itself (title, menu category, ordering and permission) still comes from an
 /// <see cref="IAdminModuleRegistration"/>, as it does for the AngularJS admin. A module that already has an
-/// AngularJS registration only needs this to move its nav link to Blazor. A module that is Blazor only
-/// implements <see cref="IAdminModuleRegistration"/> too, with its Blazor url as <see cref="AdminModule.Url"/>.
+/// AngularJS registration only needs this to move its nav link to Blazor. A module that may be installed
+/// without one (e.g. a plugin with separate AngularJS and Blazor packages) also sets
+/// <see cref="AdminBlazorModule.Module"/>, which is used only when no other registration has its code.
 /// Modules without a Blazor page keep linking to their AngularJS url.
 /// </remarks>
 public interface IAdminBlazorModuleRegistration
@@ -52,6 +54,34 @@ public sealed class AdminBlazorModule
     /// The page's route, which the nav links to.
     /// </summary>
     public string Url { get; }
+
+    /// <summary>
+    /// Optionally, the module itself, for when nothing else registers it: Cofoundry doesn't merge modules
+    /// with the same code, so this is skipped when another <see cref="IAdminModuleRegistration"/> has
+    /// <see cref="AdminModuleCode"/>. That lets a plugin's Blazor package work alone and also next to its
+    /// AngularJS package. Its <see cref="AdminModule.AdminModuleCode"/> must match, and an empty
+    /// <see cref="AdminModule.Url"/> is set to <see cref="Url"/>, so both admins link to the Blazor page.
+    /// </summary>
+    public AdminModule? Module
+    {
+        get => _module;
+        init
+        {
+            if (value != null && !value.AdminModuleCode.Equals(AdminModuleCode, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException($"The module's code {value.AdminModuleCode} doesn't match {AdminModuleCode}.", nameof(Module));
+            }
+
+            if (value != null && string.IsNullOrEmpty(value.Url))
+            {
+                value.Url = Url;
+            }
+
+            _module = value;
+        }
+    }
+
+    private readonly AdminModule? _module;
 
     private static string GetUrl(string adminModuleCode, Type pageComponent, string? url)
     {
@@ -119,4 +149,49 @@ public class AdminBlazorModuleRegistry
     /// The Blazor url of a module, or null if it has no Blazor page.
     /// </summary>
     public string? GetUrl(string adminModuleCode) => _modules.GetValueOrDefault(adminModuleCode)?.Url;
+
+    /// <summary>
+    /// The modules defined by their Blazor registration (<see cref="AdminBlazorModule.Module"/>).
+    /// </summary>
+    public IEnumerable<AdminModule> GetModuleDefinitions() => _modules.Values
+        .Select(m => m.Module)
+        .OfType<AdminModule>();
+}
+
+/// <summary>
+/// Adds the modules defined by Blazor registrations (<see cref="AdminBlazorModule.Module"/>) to Cofoundry's
+/// modules, for both admins, unless another <see cref="IAdminModuleRegistration"/> already has the code.
+/// </summary>
+public class AdminBlazorModuleDefinitionRegistration : IAdminModuleRegistration
+{
+    private readonly AdminBlazorModuleRegistry _registry;
+    private readonly IServiceProvider _serviceProvider;
+
+    public AdminBlazorModuleDefinitionRegistration(
+        AdminBlazorModuleRegistry registry,
+        IServiceProvider serviceProvider
+        )
+    {
+        _registry = registry;
+        _serviceProvider = serviceProvider;
+    }
+
+    public IEnumerable<AdminModule> GetModules()
+    {
+        var definitions = _registry.GetModuleDefinitions().ToList();
+        if (definitions.Count == 0)
+        {
+            return definitions;
+        }
+
+        // Resolved here rather than injected, since this is one of them.
+        var otherCodes = _serviceProvider
+            .GetServices<IAdminModuleRegistration>()
+            .Where(r => r is not AdminBlazorModuleDefinitionRegistration)
+            .SelectMany(r => r.GetModules())
+            .Select(m => m.AdminModuleCode)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return definitions.Where(m => !otherCodes.Contains(m.AdminModuleCode));
+    }
 }

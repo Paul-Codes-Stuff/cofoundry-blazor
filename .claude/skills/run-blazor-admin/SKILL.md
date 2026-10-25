@@ -1,6 +1,6 @@
 ---
 name: run-blazor-admin
-description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker; roles and permissions; users create, deactivate, reset password, delete; directories; page and directory access rules; page templates; custom entities, dynamic data-model fields, custom entity pickers, versions and ordering, nested data models; every data-model field type: dates and times in the browser's time zone, option lists, image/document/page/directory pickers, the html editor; module pages from other assemblies).
+description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker; roles and permissions; users create, deactivate, reset password, delete; directories; page and directory access rules; page templates; custom entities, dynamic data-model fields, custom entity pickers, versions and ordering, nested data models; every data-model field type: dates and times in the browser's time zone, option lists, image/document/page/directory pickers, the html editor; module pages from other assemblies; the Error Logging and YouTube plugins).
 ---
 
 # Run the Blazor admin
@@ -61,6 +61,7 @@ node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-adm
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/nested-data-models-step.js  # nested models, ordering
 BROWSER_TZ=America/New_York node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/field-types-step.js  # every field type
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/extension-module-step.js  # module from another assembly
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/plugins-step.js  # error log, YouTube field
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
 ```
 
@@ -116,6 +117,12 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   pages, so run `smoke` once first on a fresh database. It deletes the entity and the assets it uploads.
   `c.btn('.modal', ...)` finds the **bottom** dialog's button when dialogs are stacked, and a click on it times
   out under the overlay: scope to `.modal` `.last()` instead.
+- **`plugins-step.js`** covers the plugins' Blazor packages. Error Logging: it logs an error through the
+  sandbox's `test/error` route, then checks the module is listed once in **both** admins' navs (it fetches the
+  AngularJS `/admin` page's html), the list, filter, details and not-found pages. Logged errors stay in the
+  database (the plugin can't delete them). YouTube: the `[YouTube]` Video property of Field Tests (`SIMFLD`):
+  id and url parsing in the picker, title/description, save, cancel and remove; it deletes the entity. The
+  Settings sub-nav is hidden until hovered, so its links need `dispatchEvent('click')`, not `click()`.
 - **`extension-module-step.js`** covers the module extension point through the sandbox's Products module, a
   Blazor page in Dev.Sandbox (`Cofoundry/Admin/Blazor`): the nav link, direct load (endpoints) and in-app
   navigation (router), the signed-out redirect, validation, its custom selector field, save and cancel. The
