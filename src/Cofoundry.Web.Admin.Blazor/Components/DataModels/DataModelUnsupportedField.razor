@@ -1,0 +1,17 @@
+@inherits DataModelFieldComponentBase
+
+@* Shown for a data template the Blazor admin has no field for yet, so the property is visible rather
+   than silently dropped. Its value is left as it is when the model is saved, but its validation
+   messages still show here: a required or MinItems property would otherwise block the save silently. *@
+<FormFieldContainer Title="@Field.Title" Description="@Field.Description">
+    <div class="text-block-display-value">
+        <em>This field type (@Field.Schema.DataTemplateName) can't be edited in this admin yet.</em>
+    </div>
+    <ValidationMessage For="() => _binding.Value" class="field-validation-error" />
+</FormFieldContainer>
+
+@code {
+    private DataModelFieldBinding<object?> _binding = default!;
+
+    protected override void OnParametersSet() => _binding = Field.Bind<object?>();
+}

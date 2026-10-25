@@ -119,3 +119,31 @@ public sealed record UserPermissions(
         });
     }
 }
+
+/// <summary>
+/// Permissions for one custom entity definition. Each definition has its own permission set, coded
+/// by the definition code (e.g. "SIMBLPCOMCRT"), as in the AngularJS custom entities module.
+/// </summary>
+public sealed record CustomEntityPermissions(
+    bool CanCreate,
+    bool CanUpdate,
+    bool CanDelete,
+    bool CanPublish,
+    bool CanUpdateUrl)
+{
+    public static async Task<CustomEntityPermissions> LoadAsync(IAdminBlazorExecutor executor, string customEntityDefinitionCode)
+    {
+        return await executor.WithServicesAsync(async services =>
+        {
+            var permissions = services.GetRequiredService<IPermissionValidationService>();
+
+            return new CustomEntityPermissions(
+                await permissions.HasCustomEntityPermissionAsync<CustomEntityCreatePermission>(customEntityDefinitionCode),
+                await permissions.HasCustomEntityPermissionAsync<CustomEntityUpdatePermission>(customEntityDefinitionCode),
+                await permissions.HasCustomEntityPermissionAsync<CustomEntityDeletePermission>(customEntityDefinitionCode),
+                await permissions.HasCustomEntityPermissionAsync<CustomEntityPublishPermission>(customEntityDefinitionCode),
+                await permissions.HasCustomEntityPermissionAsync<CustomEntityUpdateUrlPermission>(customEntityDefinitionCode)
+                );
+        });
+    }
+}

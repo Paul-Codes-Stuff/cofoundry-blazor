@@ -103,6 +103,12 @@
             return url;
         }
 
+        // Each custom entity definition is its own module, coded by the definition code.
+        if (module.RestrictedToPermission is CustomEntityAdminModulePermission)
+        {
+            return AdminBlazorRoutes.CustomEntities(module.AdminModuleCode);
+        }
+
         // There is one users module per user area: "COFUSR" followed by the area's code.
         if (module.AdminModuleCode.Length == UsersModuleCodePrefix.Length + 3
             && module.AdminModuleCode.StartsWith(UsersModuleCodePrefix, StringComparison.OrdinalIgnoreCase))

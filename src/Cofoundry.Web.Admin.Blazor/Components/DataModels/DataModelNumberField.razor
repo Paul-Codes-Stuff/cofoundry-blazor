@@ -1,0 +1,43 @@
+@inherits DataModelFieldComponentBase
+
+@* Numeric properties and [Number]: cms-form-field-number. Integers use FormFieldNumber, everything
+   else FormFieldDecimal. [Range] and [Number] supply Min, Max and Step. *@
+@if (_intBinding != null)
+{
+    <FormFieldNumber Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+                     Min="IntMin" Max="IntMax" @bind-Value="_intBinding.Value" />
+}
+else
+{
+    <FormFieldDecimal Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+                      Min="@Min" Max="@Max" Step="@Step" @bind-Value="_decimalBinding!.Value" />
+}
+
+@code {
+    private static readonly HashSet<Type> IntegerTypes = [typeof(byte), typeof(short), typeof(int), typeof(long)];
+
+    private DataModelFieldBinding<int?>? _intBinding;
+    private DataModelFieldBinding<decimal?>? _decimalBinding;
+
+    private int? IntMin => Field.GetAttribute<int?>(DataModelAttributes.Min);
+
+    private int? IntMax => Field.GetAttribute<int?>(DataModelAttributes.Max);
+
+    private string? Min => Field.GetAttribute<string>(DataModelAttributes.Min);
+
+    private string? Max => Field.GetAttribute<string>(DataModelAttributes.Max);
+
+    private string? Step => Field.GetAttribute<string>(DataModelAttributes.Step);
+
+    protected override void OnParametersSet()
+    {
+        if (IntegerTypes.Contains(Field.ValueType))
+        {
+            _intBinding = Field.Bind<int?>();
+        }
+        else
+        {
+            _decimalBinding = Field.Bind<decimal?>();
+        }
+    }
+}

@@ -4,8 +4,8 @@ A Blazor (Interactive Server) port of the AngularJS admin in `Cofoundry.Web.Admi
 installed **alongside** the AngularJS admin while modules are migrated one at a time.
 
 > **Status: first slice.** Builds cleanly. The Dashboard, Pages (list, filter, create, details/edit, publish,
-> unpublish, change URL, duplicate, access rules), Directories, Page Templates, Images, Documents, Site Settings, Roles and Users
-> modules have been smoke-tested in `Dev.Sandbox`.
+> unpublish, change URL, duplicate, access rules), Directories, Page Templates, Images, Documents, Site Settings, Roles, Users
+> and Custom Entities (first phase) modules have been smoke-tested in `Dev.Sandbox`.
 
 ## Installing side-by-side
 
@@ -51,7 +51,7 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
   password-change redirects as the MVC controller). Unlike the MVC login, "Remember me" is honoured:
   unticked gives a browser-session cookie, ticked a persistent one
 * Shared UI: page layout, buttons, form + fields (text, number, text area, checkbox, dropdown, tags, read-only,
-  container, image upload, document upload, image anchor location), table (incl. image thumbnail, tag list,
+  container, image upload, document upload, image anchor location, date-time-local, decimal), table (incl. image thumbnail, tag list,
   created/updated audit cells), pager, status/warning messages, time-ago, audit data, modal + confirm dialog
 * Dashboard: at `/admin-next/dashboard` and the `/admin-next` root. It shows the site's
   `/Cofoundry/Admin/Dashboard/Dashboard.html` if one exists, otherwise the application name and a welcome message
@@ -78,6 +78,33 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
   default action. As in the AngularJS admin, "Access Control" only appears once the site has a user area
   besides the Cofoundry admin one, and is read-only without the manage access rules permission
 
+* Custom Entities: one module per definition at `/admin-next/custom-entities/{DefinitionCode}`, with list (filter
+  by text/created dates/market, paging, [PreviewImage] and [PreviewDescription] columns), create (Save, Save &
+  Publish, Save Draft, Save & Edit Content), details (edit, publish/unpublish, versions, discard draft, copy to
+  draft, change URL, duplicate, delete, template regions). The definition's custom terms, `AutoPublish`,
+  `AutoGenerateUrlSlug` and `HasLocale` drive the UI as in the AngularJS module. The nav maps every module
+  restricted by `CustomEntityAdminModulePermission` to its Blazor list
+
+### Dynamic data-model forms
+
+`DataModelFieldSet` (`Components/DataModels`) is the port of `cms-form-dynamic-field-set`. It takes the domain's
+`IDynamicDataModelSchema` and the **real CLR model instance** (not JSON), and renders one component per property,
+chosen by the schema's data template name:
+
+* Each property is a `DataModelField`. `Field.Bind<T>()` adapts the property to the type an existing form field
+  wants (e.g. an `int` image id to `FormFieldImageAsset`'s `int?`), and `Field.GetAttribute<T>(key)` reads the
+  schema's additional attributes (`Maxlength`, `Rows`, `Placeholder`, `Min`/`Max`/`Step`, `PreviewWidth`...).
+* The model's own data annotations are validated by the field set, because the form's `DataAnnotationsValidator`
+  only checks the top-level command. Messages are filed against the bindings so they show under each field.
+  The schema's `IsRequired` (e.g. a non-nullable image id) is also enforced, as the AngularJS `required` was.
+* Supported so far: text (String, Char, Url, EmailAddress), MultilineText, Boolean, numbers (including plain
+  integers, which the AngularJS admin didn't render) and ImageAsset. Anything else shows a "can't be edited in this
+  admin yet" placeholder that keeps the value and still shows its validation messages.
+* **Extension point:** implement `IDataModelFieldComponentRegistration` (discovered automatically) to map
+  template names to components deriving from `DataModelFieldComponentBase`. Registrations are applied after the
+  built-in `DefaultDataModelFieldComponentRegistration`, so they can replace a built-in field. This is the
+  Blazor replacement for plugins adding `cms-form-field-*` directives (e.g. the YouTube plugin).
+
 ### File uploads
 
 Uploads go through `InputFile` over the SignalR circuit and are buffered in memory on the server
@@ -88,6 +115,10 @@ to a JPEG in the browser first (`wwwroot/js/image-upload.js`), and the title def
 
 ## Known gaps
 
+* Custom entities, still to come: custom entity pickers (single and collection, needed by Blog Posts), nested
+  data models (single and multi-type collections), and the remaining field types (HTML, document, page,
+  directory, date/time, color, option lists). Change Ordering on custom entity lists isn't ported. The image
+  field ignores `[Image]` size restrictions (the picker has no filters yet)
 * The image picker is single-select only. Its multi-select mode backs the image (and document) collection
   fields, which only appear in dynamic data-model forms (`[ImageCollection]` on custom entity / page block
   models), so they come with that form. Preset filter restrictions (`cms-width`, `cms-min-width`, ...) aren't

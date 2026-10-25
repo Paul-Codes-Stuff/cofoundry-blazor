@@ -1,0 +1,567 @@
+@page "/admin-next/custom-entities/{CustomEntityDefinitionCode}/{CustomEntityId:int}"
+@inject IAdminBlazorExecutor Executor
+@inject NavigationManager Navigation
+
+<PageTitle>@(_entity?.LatestVersion.Title ?? _module?.Definition.Name ?? "Custom Entity") | Admin</PageTitle>
+
+<PageHeader Title="@_entity?.LatestVersion.Title" ParentTitle="@_module?.Definition.NamePlural" ParentHref="@ListUrl" />
+
+@if (_module == null || _entity == null || _command == null)
+{
+    <PageBody ContentType="form">
+        @if (_notFound)
+        {
+            <p class="message warning perm">Sorry, that @(_module?.Definition.Name.ToLowerInvariant() ?? "custom entity") could not be found.</p>
+        }
+        else
+        {
+            <TableContainer IsLoading="true" />
+        }
+    </PageBody>
+}
+else
+{
+    var definition = _module.Definition;
+    var permissions = _module.Permissions;
+    var nameLower = definition.Name.ToLowerInvariant();
+    var isMarkedPublished = _entity.PublishStatus == PublishStatus.Published;
+
+    <AdminForm @ref="_form" Model="_command" EditMode="_editMode" IsLoading="_isLoading" OnValidSubmit="() => SaveAsync(false)">
+
+        @if (!_editMode)
+        {
+            <PageActions>
+                @if (permissions.CanUpdate)
+                {
+                    <AdminButton Text="Edit" Class="main-cta" Disabled="_isLoading" OnClick="BeginEdit" />
+                }
+                @if (!string.IsNullOrEmpty(_entity.FullUrlPath))
+                {
+                    <ButtonLink Text="Browse to page" Icon="eye" Href="@_entity.FullUrlPath" />
+                }
+                @if (!definition.AutoPublish && (!isMarkedPublished || _entity.HasDraftVersion) && permissions.CanPublish)
+                {
+                    <AdminButton Text="Publish" Disabled="_isLoading" OnClick="() => _dialog = Dialog.Publish" />
+                }
+                @if (!definition.AutoPublish && isMarkedPublished && permissions.CanPublish)
+                {
+                    <AdminButton Text="Unpublish" Disabled="_isLoading" OnClick="() => _dialog = Dialog.Unpublish" />
+                }
+                @if (_module.CanChangeUrl && permissions.CanUpdateUrl)
+                {
+                    <AdminButton Text="Change Url" Disabled="_isLoading" OnClick="() => _dialog = Dialog.ChangeUrl" />
+                }
+                @if (permissions.CanCreate)
+                {
+                    <AdminButton Text="Duplicate" Disabled="_isLoading" OnClick="() => _dialog = Dialog.Duplicate" />
+                }
+                @if (permissions.CanDelete)
+                {
+                    <AdminButton Text="Delete" Disabled="_isLoading" OnClick="() => _dialog = Dialog.Delete" />
+                }
+            </PageActions>
+        }
+        else
+        {
+            <PageActions>
+                @if (!definition.AutoPublish)
+                {
+                    <AdminButtonSubmit Text="Save Draft" Class="main-cta" IsLoading="_isLoading && !_isPublishing" Disabled="_isLoading" />
+                }
+                @if (permissions.CanPublish)
+                {
+                    <AdminButton Text="@_module.SaveAndPublishText" IsLoading="_isLoading && _isPublishing" Disabled="_isLoading"
+                                 OnClick="() => SaveAsync(true)" />
+                }
+                <AdminButton Text="Cancel" Disabled="_isLoading" OnClick="CancelEditAsync" />
+            </PageActions>
+        }
+
+        <PageBody ContentType="form">
+
+            <FormStatus Errors="_errors" SuccessMessage="@_message" />
+
+            <FormSection Title="Main">
+
+                <FormFieldText Title="@_module.TitleTerm" MaxLength="200" @bind-Value="_command.Title" />
+
+                @if (definition.HasLocale)
+                {
+                    <FormFieldReadonly Title="Market" Value="@_entity.Locale?.IETFLanguageTag" />
+                }
+
+                @if (!string.IsNullOrEmpty(_entity.FullUrlPath))
+                {
+                    <FormFieldContainer Title="Url">
+                        <a href="@_entity.FullUrlPath">@_entity.FullUrlPath</a>
+                    </FormFieldContainer>
+                }
+
+                @if (!definition.AutoPublish)
+                {
+                    <FormFieldReadonly Title="Published Status" Value="@CustomEntityLabels.PublishStatus(_entity.PublishStatus, _entity.PublishDate)" />
+
+                    <FormFieldContainer Title="Publish Date">
+                        @if (_entity.PublishDate.HasValue)
+                        {
+                            <span>@_entity.PublishDate.Value.ToString("D") at @_entity.PublishDate.Value.ToString("HH:mm:ss")</span>
+                        }
+                        else
+                        {
+                            <span>Not set</span>
+                        }
+                    </FormFieldContainer>
+                }
+
+            </FormSection>
+
+            @if (_module.HasProperties)
+            {
+                <FormSection Title="Properties">
+                    <DataModelFieldSet Model="_command.Model" Schema="_module.Schema" Context="@(new DataModelFieldContext(_entity.Locale?.LocaleId))" />
+                </FormSection>
+            }
+
+            @foreach (var entityPage in _entity.LatestVersion.Pages)
+            {
+                <FormSection Title="@($"Template: {entityPage.PageRoute.Title}")">
+
+                    <FormSectionActions>
+                        @if (permissions.CanUpdate && entityPage.Regions.Count > 0 && !_editMode)
+                        {
+                            <ButtonLink Text="Manage in Visual Editor" Icon="eye" Href="@CustomEntityUrls.VisualEditor(entityPage.FullUrlPath)" />
+                        }
+                    </FormSectionActions>
+
+                    @if (entityPage.Regions.Count == 0)
+                    {
+                        <div class="form-section-message"><p>This template has no managed content</p></div>
+                    }
+                    else
+                    {
+                        if (_editMode)
+                        {
+                            <div><p>Page content is edited in the visual editor.</p></div>
+                        }
+
+                        <FormFieldContainer>
+                            <TableContainer>
+                                <table class="table">
+                                    @foreach (var region in entityPage.Regions)
+                                    {
+                                        <tbody>
+                                            <tr>
+                                                <th colspan="2"><h5 class="table-group-heading">Region: @region.Name</h5></th>
+                                            </tr>
+                                            @if (region.Blocks.Count == 0)
+                                            {
+                                                <tr><td colspan="2">No content</td></tr>
+                                            }
+                                            @foreach (var block in region.Blocks)
+                                            {
+                                                <tr>
+                                                    <td>@block.BlockType.Name</td>
+                                                    <td class="row-type" style="width:30px; text-align:center;"></td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    }
+                                </table>
+                            </TableContainer>
+                        </FormFieldContainer>
+                    }
+
+                </FormSection>
+            }
+
+            @if (!definition.AutoPublish)
+            {
+                <FormSection Title="Versions">
+                    <FormFieldContainer>
+                        <TableContainer IsLoading="_isVersionsLoading">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Version</th>
+                                        <th class="lowPriority">Created</th>
+                                        @if (!_editMode)
+                                        {
+                                            <th class="actions">Actions</th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var version in _versions?.Items ?? [])
+                                    {
+                                        var label = CustomEntityLabels.Version(version, _entity);
+
+                                        <tr @key="version.CustomEntityVersionId">
+                                            <td>@label</td>
+                                            <td class="lowPriority"><AuditDataCell AuditData="version.AuditData" /></td>
+                                            @if (!_editMode)
+                                            {
+                                                <td class="actions">
+                                                    @if (version.WorkFlowStatus == WorkFlowStatus.Draft)
+                                                    {
+                                                        @if (_versions!.Items.Count > 1 && permissions.CanUpdate)
+                                                        {
+                                                            <IconLink Icon="trash-o" Title="Discard" OnClick="() => _dialog = Dialog.DiscardDraft" />
+                                                        }
+                                                        @if (permissions.CanPublish)
+                                                        {
+                                                            <IconLink Icon="cloud-upload" Title="Publish" OnClick="() => _dialog = Dialog.Publish" />
+                                                        }
+                                                    }
+                                                    @if (version.IsLatestPublishedVersion && isMarkedPublished && permissions.CanPublish)
+                                                    {
+                                                        <IconLink Icon="cloud-download" Title="Un-publish" OnClick="() => _dialog = Dialog.Unpublish" />
+                                                    }
+                                                    @if (!version.IsLatestPublishedVersion && version.WorkFlowStatus == WorkFlowStatus.Published && permissions.CanUpdate)
+                                                    {
+                                                        <IconLink Icon="files-o" Title="Copy to draft" OnClick="() => BeginCopyToDraftAsync(version)" />
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(_entity.FullUrlPath))
+                                                    {
+                                                        <IconLink Icon="external-link" Target="_blank" Title="@($"Browse to page: {label}")"
+                                                                  Href="@CustomEntityUrls.BrowseVersion(_entity, version)" />
+                                                    }
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </TableContainer>
+
+                        <Pager PageNumber="_versions?.PageNumber ?? 1" PageCount="_versions?.PageCount ?? 0" OnPageChanged="GoToVersionsPage" />
+                    </FormFieldContainer>
+                </FormSection>
+            }
+
+            <AuditDataSection AuditData="_entity.AuditData" />
+
+        </PageBody>
+    </AdminForm>
+
+    @switch (_dialog)
+    {
+        case Dialog.Publish:
+            <ConfirmDialog Title="@($"Publish {definition.Name}")" Message="@($"Are you sure you want to publish this {nameLower}?")"
+                           OkButtonTitle="Yes, publish it"
+                           OnOk="PublishAsync"
+                           OnClosed="OnConfirmClosed" />
+            break;
+        case Dialog.Unpublish:
+            <ConfirmDialog Title="@($"Unpublish {definition.Name}")"
+                           Message="@($"Unpublishing this {nameLower} will remove it from the live site and put it into draft status. Are you sure you want to continue?")"
+                           OkButtonTitle="Yes, unpublish it"
+                           OnOk="UnpublishAsync"
+                           OnClosed="OnConfirmClosed" />
+            break;
+        case Dialog.DiscardDraft:
+            <ConfirmDialog Title="Discard Version"
+                           Message="Are you sure you want to discard this draft? This will discard all changes since it was last published."
+                           OkButtonTitle="Yes, discard it"
+                           OnOk="DiscardDraftAsync"
+                           OnClosed="OnConfirmClosed" />
+            break;
+        case Dialog.CopyToDraft:
+            <ConfirmDialog Title="@($"Copy {definition.Name} Version")"
+                           Message="@($"A draft version of this {nameLower} already exists. Copying this version will delete the current draft. Do you wish to continue?")"
+                           OkButtonTitle="Yes, replace it"
+                           OnOk="CopyToDraftReplacingExistingAsync"
+                           OnClosed="OnConfirmClosed" />
+            break;
+        case Dialog.Delete:
+            <ConfirmDialog Title="@($"Delete {definition.Name}")" Message="@($"Are you sure you want to delete this {nameLower}?")"
+                           OkButtonTitle="Yes, delete it"
+                           OnOk="DeleteAsync"
+                           OnClosed="OnDeleteClosed" />
+            break;
+        case Dialog.ChangeUrl:
+            <ChangeCustomEntityUrlDialog Module="_module" Entity="_entity" OnClosed="OnChangeUrlClosed" />
+            break;
+        case Dialog.Duplicate:
+            <DuplicateCustomEntityDialog Module="_module" Entity="_entity" OnClosed="OnDuplicateClosed" />
+            break;
+    }
+}
+
+@code {
+    private const int VersionsPageSize = 6;
+
+    private enum Dialog { None, Publish, Unpublish, DiscardDraft, CopyToDraft, Delete, ChangeUrl, Duplicate }
+
+    private AdminForm? _form;
+    private Dialog _dialog;
+    private CustomEntityModule? _module;
+    private CustomEntityDetails? _entity;
+    private UpdateCustomEntityDraftVersionCommand? _command;
+    private PagedQueryResult<CustomEntityVersionSummary>? _versions;
+    private int _versionsPageNumber = 1;
+    private int? _versionToCopy;
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private string? _message;
+    private bool _editMode;
+    private bool _isLoading;
+    private bool _isPublishing;
+    private bool _isVersionsLoading;
+    private bool _notFound;
+    private bool _deleted;
+
+    [Parameter] public string CustomEntityDefinitionCode { get; set; } = string.Empty;
+
+    [Parameter] public int CustomEntityId { get; set; }
+
+    private string? ListUrl => _module == null ? null : AdminBlazorRoutes.CustomEntities(_module.Code);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_module?.Code.Equals(CustomEntityDefinitionCode, StringComparison.OrdinalIgnoreCase) != true)
+        {
+            _module = await CustomEntityModule.LoadAsync(Executor, CustomEntityDefinitionCode);
+        }
+
+        if (_module == null)
+        {
+            _notFound = true;
+            return;
+        }
+
+        _versionsPageNumber = 1;
+        _message = null;
+        _errors = [];
+        await LoadAsync();
+    }
+
+    /// <summary>
+    /// (Re)loads the entity and its versions and resets the form, as AngularJS initData() did. The
+    /// command gets the freshly queried data model, so cancelling an edit discards its changes.
+    /// </summary>
+    private async Task LoadAsync()
+    {
+        _notFound = false;
+        var entity = await Executor.QueryAsync(new GetCustomEntityDetailsByIdQuery(CustomEntityId));
+
+        // A url with another definition's code would otherwise edit this entity with the wrong schema.
+        if (entity == null || entity.LatestVersion.Model.GetType() != _module!.Definition.DataModelType)
+        {
+            _notFound = true;
+            _entity = null;
+            return;
+        }
+
+        _entity = entity;
+        _command = new UpdateCustomEntityDraftVersionCommand
+        {
+            CustomEntityDefinitionCode = _module.Code,
+            CustomEntityId = entity.CustomEntityId,
+            Title = entity.LatestVersion.Title,
+            Model = entity.LatestVersion.Model
+        };
+        _editMode = false;
+
+        if (!_module.Definition.AutoPublish)
+        {
+            await LoadVersionsAsync();
+        }
+    }
+
+    private async Task LoadVersionsAsync()
+    {
+        _isVersionsLoading = true;
+        try
+        {
+            _versions = await Executor.QueryAsync(new GetCustomEntityVersionSummariesByCustomEntityIdQuery
+            {
+                CustomEntityId = CustomEntityId,
+                PageNumber = _versionsPageNumber,
+                PageSize = VersionsPageSize
+            });
+        }
+        finally
+        {
+            _isVersionsLoading = false;
+        }
+    }
+
+    private Task GoToVersionsPage(int pageNumber)
+    {
+        _versionsPageNumber = pageNumber;
+        return LoadVersionsAsync();
+    }
+
+    /* EDITING */
+
+    private void BeginEdit()
+    {
+        _editMode = true;
+        _errors = [];
+        _message = null;
+    }
+
+    private async Task CancelEditAsync()
+    {
+        _errors = [];
+        await LoadAsync();
+    }
+
+    private async Task SaveAsync(bool publish)
+    {
+        if (_isLoading || _form == null || !_form.Validate())
+        {
+            return;
+        }
+
+        _command!.Publish = publish;
+        _isPublishing = publish;
+        _isLoading = true;
+        _errors = [];
+        _message = null;
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(_command);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+
+            await LoadAsync();
+            _message = "Changes were saved successfully";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    /* DIALOG ACTIONS */
+
+    /// <summary>
+    /// Runs a command for a confirm dialog. Errors are surfaced in the form status; the dialog
+    /// closes and the page reloads either way (matching the AngularJS behaviour).
+    /// </summary>
+    private async Task RunAsync(ICommand command, string successMessage)
+    {
+        _errors = [];
+        _message = null;
+
+        var result = await Executor.ExecuteAsync(command);
+
+        if (result.Succeeded)
+        {
+            _message = successMessage;
+        }
+        else
+        {
+            _errors = result.Errors;
+        }
+    }
+
+    private async Task OnConfirmClosed(bool confirmed)
+    {
+        _dialog = Dialog.None;
+
+        if (confirmed)
+        {
+            await ReloadKeepingMessageAsync();
+        }
+    }
+
+    private async Task ReloadKeepingMessageAsync()
+    {
+        var message = _message;
+        await LoadAsync();
+        _message = _errors.Count == 0 ? message : null;
+    }
+
+    private Task PublishAsync() =>
+        RunAsync(new PublishCustomEntityCommand(CustomEntityId), $"{_module!.Definition.Name} published successfully.");
+
+    private Task UnpublishAsync() =>
+        RunAsync(new UnPublishCustomEntityCommand(CustomEntityId),
+            $"The {_module!.Definition.Name.ToLowerInvariant()} has been unpublished and reverted to draft state.");
+
+    private Task DiscardDraftAsync() =>
+        RunAsync(new DeleteCustomEntityDraftVersionCommand { CustomEntityId = CustomEntityId }, "Draft discarded successfully");
+
+    private async Task BeginCopyToDraftAsync(CustomEntityVersionSummary version)
+    {
+        _versionToCopy = version.CustomEntityVersionId;
+
+        if (_entity!.HasDraftVersion)
+        {
+            // Warn first: copying replaces the existing draft.
+            _dialog = Dialog.CopyToDraft;
+            return;
+        }
+
+        await CopyToDraftAsync();
+        await ReloadKeepingMessageAsync();
+    }
+
+    private async Task CopyToDraftReplacingExistingAsync()
+    {
+        var result = await Executor.ExecuteAsync(new DeleteCustomEntityDraftVersionCommand { CustomEntityId = CustomEntityId });
+
+        if (!result.Succeeded)
+        {
+            _errors = result.Errors;
+            return;
+        }
+
+        await CopyToDraftAsync();
+    }
+
+    private Task CopyToDraftAsync() => RunAsync(
+        new AddCustomEntityDraftVersionCommand { CustomEntityId = CustomEntityId, CopyFromCustomEntityVersionId = _versionToCopy },
+        "Draft created successfully.");
+
+    private async Task DeleteAsync()
+    {
+        var result = await Executor.ExecuteAsync(new DeleteCustomEntityCommand { CustomEntityId = CustomEntityId });
+
+        if (!result.Succeeded)
+        {
+            _errors = result.Errors;
+        }
+        else
+        {
+            _deleted = true;
+        }
+    }
+
+    private void OnDeleteClosed(bool confirmed)
+    {
+        _dialog = Dialog.None;
+
+        if (confirmed && _deleted)
+        {
+            Navigation.NavigateTo(ListUrl!);
+        }
+    }
+
+    private async Task OnChangeUrlClosed(bool changed)
+    {
+        _dialog = Dialog.None;
+
+        if (changed)
+        {
+            await LoadAsync();
+            _message = "Url Changed";
+        }
+    }
+
+    private void OnDuplicateClosed(int? newCustomEntityId)
+    {
+        _dialog = Dialog.None;
+
+        if (newCustomEntityId.HasValue)
+        {
+            Navigation.NavigateTo(AdminBlazorRoutes.CustomEntityDetails(_module!.Code, newCustomEntityId.Value));
+        }
+    }
+}

@@ -1,0 +1,16 @@
+@inherits DataModelFieldComponentBase
+
+@* [Image] properties: cms-form-field-image-asset. The id may be an int or an int?; 0 means no image. *@
+<FormFieldImageAsset Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+                     Required="Field.IsRequired" PreviewWidth="PreviewWidth" PreviewHeight="PreviewHeight"
+                     @bind-Value="_binding.Value" />
+
+@code {
+    private DataModelFieldBinding<int?> _binding = default!;
+
+    private int PreviewWidth => Field.GetAttribute<int?>(DataModelAttributes.PreviewWidth) ?? 450;
+
+    private int? PreviewHeight => Field.GetAttribute<int?>(DataModelAttributes.PreviewHeight);
+
+    protected override void OnParametersSet() => _binding = Field.Bind<int?>(emptyWhenDefault: true);
+}

@@ -1,0 +1,18 @@
+@inherits DataModelFieldComponentBase
+
+@* [MultiLineText] properties: cms-form-field-text-area. *@
+<FormFieldTextArea Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+                   Rows="Rows" MaxLength="MaxLength" Placeholder="@Placeholder"
+                   @bind-Value="_binding.Value" />
+
+@code {
+    private DataModelFieldBinding<string?> _binding = default!;
+
+    private int? Rows => Field.GetAttribute<int?>(DataModelAttributes.Rows);
+
+    private int? MaxLength => Field.GetAttribute<int?>(DataModelAttributes.MaxLength);
+
+    private string? Placeholder => Field.GetAttribute<string>(DataModelAttributes.Placeholder);
+
+    protected override void OnParametersSet() => _binding = Field.Bind<string?>();
+}

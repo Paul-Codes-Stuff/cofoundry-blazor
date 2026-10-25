@@ -1,0 +1,110 @@
+@inject IAdminBlazorExecutor Executor
+@inject AdminLookups Lookups
+
+<ModalDialog Title="@($"Duplicate {Module.Definition.Name}: {Entity.LatestVersion.Title}")" Size="large" OnClose="Close">
+
+    @if (_command == null)
+    {
+        <div class="modal-body"><TableContainer IsLoading="true" /></div>
+    }
+    else
+    {
+        <AdminForm Model="_command" IsLoading="_isSaving" OnValidSubmit="SaveAsync">
+
+            <PageActions>
+                <AdminButtonSubmit Text="Create duplicate" IsLoading="_isSaving" Disabled="_isSaving" />
+                <AdminButton Text="Cancel" Disabled="_isSaving" OnClick="Close" />
+            </PageActions>
+
+            <PageBody>
+
+                <FormStatus Errors="_errors" />
+
+                <FormSection Title="Settings">
+
+                    @if (Module.Definition.HasLocale && _locales.Count > 1)
+                    {
+                        <FormFieldDropdown TValue="int?" Title="Market" Options="_locales" @bind-Value="_command.LocaleId" />
+                    }
+
+                    <FormFieldText Title="@Module.TitleTerm" MaxLength="200"
+                                   Value="@_command.Title" ValueChanged="OnTitleChanged"
+                                   ValueExpression="() => _command.Title" />
+
+                    @if (!Module.Definition.AutoGenerateUrlSlug)
+                    {
+                        <FormFieldText Title="@Module.UrlSlugTerm" MaxLength="200"
+                                       Description="Lower case and containing only letter, numbers, underscores and hyphens. E.g. 'rock-and-roll'"
+                                       @bind-Value="_command.UrlSlug" />
+                    }
+
+                </FormSection>
+
+            </PageBody>
+        </AdminForm>
+    }
+
+</ModalDialog>
+
+@code {
+    private DuplicateCustomEntityCommand? _command;
+    private IReadOnlyList<SelectOption<int?>> _locales = [];
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private bool _isSaving;
+
+    [Parameter, EditorRequired] public CustomEntityModule Module { get; set; } = default!;
+
+    [Parameter, EditorRequired] public CustomEntityDetails Entity { get; set; } = default!;
+
+    /// <summary>
+    /// Raised with the id of the new entity when the duplicate was created, or null when cancelled.
+    /// </summary>
+    [Parameter] public EventCallback<int?> OnClosed { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Module.Definition.HasLocale)
+        {
+            _locales = await Lookups.GetLocaleOptionsAsync();
+        }
+
+        _command = new DuplicateCustomEntityCommand
+        {
+            CustomEntityToDuplicateId = Entity.CustomEntityId,
+            LocaleId = Entity.Locale?.LocaleId
+        };
+
+        OnTitleChanged("Copy of " + Entity.LatestVersion.Title);
+    }
+
+    private void OnTitleChanged(string? title)
+    {
+        _command!.Title = title ?? string.Empty;
+        _command.UrlSlug = StringUtilities.Slugify(title, 200);
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errors = [];
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(_command!);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+
+        await OnClosed.InvokeAsync(_command!.OutputCustomEntityId);
+    }
+
+    private Task Close() => OnClosed.InvokeAsync(null);
+}

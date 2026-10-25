@@ -1,0 +1,107 @@
+@inject IAdminBlazorExecutor Executor
+@inject AdminLookups Lookups
+
+<ModalDialog Title="@($"Change Url: {Entity.LatestVersion.Title}")" Size="large" OnClose="Close">
+
+    @if (_command == null)
+    {
+        <div class="modal-body"><TableContainer IsLoading="true" /></div>
+    }
+    else
+    {
+        <AdminForm Model="_command" IsLoading="_isSaving" OnValidSubmit="SaveAsync">
+
+            <PageActions>
+                <AdminButtonSubmit Text="Save" IsLoading="_isSaving" Disabled="_isSaving" />
+                <AdminButton Text="Cancel" Disabled="_isSaving" OnClick="Close" />
+            </PageActions>
+
+            <PageBody>
+
+                @if (Entity.PublishStatus == PublishStatus.Published && !string.IsNullOrEmpty(Entity.FullUrlPath))
+                {
+                    <WarningMessage>
+                        WARNING: This @Module.Definition.Name.ToLowerInvariant() has been published. Changing the url will
+                        break external links to this page (e.g. via google search)
+                    </WarningMessage>
+                }
+
+                <FormStatus Errors="_errors" />
+
+                <FormSection Title="Settings">
+
+                    @if (Module.Definition.HasLocale && _locales.Count > 1)
+                    {
+                        <FormFieldDropdown TValue="int?" Title="Market" Options="_locales" @bind-Value="_command.LocaleId" />
+                    }
+
+                    @if (!Module.Definition.AutoGenerateUrlSlug)
+                    {
+                        <FormFieldText Title="@Module.UrlSlugTerm" MaxLength="200"
+                                       Description="Lower case and containing only letter, numbers and hyphens. E.g. 'rock-and-roll'."
+                                       @bind-Value="_command.UrlSlug" />
+                    }
+
+                </FormSection>
+
+            </PageBody>
+        </AdminForm>
+    }
+
+</ModalDialog>
+
+@code {
+    private UpdateCustomEntityUrlCommand? _command;
+    private IReadOnlyList<SelectOption<int?>> _locales = [];
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private bool _isSaving;
+
+    [Parameter, EditorRequired] public CustomEntityModule Module { get; set; } = default!;
+
+    [Parameter, EditorRequired] public CustomEntityDetails Entity { get; set; } = default!;
+
+    /// <summary>
+    /// Raised with true when the url was changed, false when cancelled.
+    /// </summary>
+    [Parameter] public EventCallback<bool> OnClosed { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Module.Definition.HasLocale)
+        {
+            _locales = await Lookups.GetLocaleOptionsAsync();
+        }
+
+        _command = new UpdateCustomEntityUrlCommand
+        {
+            CustomEntityId = Entity.CustomEntityId,
+            LocaleId = Entity.Locale?.LocaleId,
+            UrlSlug = Entity.UrlSlug
+        };
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errors = [];
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(_command!);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+
+        await OnClosed.InvokeAsync(true);
+    }
+
+    private Task Close() => OnClosed.InvokeAsync(false);
+}

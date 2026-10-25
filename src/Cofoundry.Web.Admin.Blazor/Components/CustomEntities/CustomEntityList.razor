@@ -1,0 +1,293 @@
+@page "/admin-next/custom-entities/{CustomEntityDefinitionCode}"
+@inject IAdminBlazorExecutor Executor
+@inject AdminLookups Lookups
+
+<PageTitle>@(_module?.Definition.NamePlural ?? "Custom Entities") | Admin</PageTitle>
+
+<PageHeader Title="@_module?.Definition.NamePlural" />
+
+@if (_module == null)
+{
+    <PageBody ContentType="form">
+        @if (_notFound)
+        {
+            <p class="message warning perm">Sorry, that custom entity type could not be found.</p>
+        }
+        else
+        {
+            <TableContainer IsLoading="true" />
+        }
+    </PageBody>
+}
+else
+{
+    var definition = _module.Definition;
+    var previewImage = _module.PreviewImageProperty;
+    var previewDescription = _module.PreviewDescriptionProperty;
+
+    <PageSubHeader>
+        <PageHeaderButtons>
+
+            <a class="btn-icon" href="" @onclick="() => _isFilterVisible = !_isFilterVisible" @onclick:preventDefault>
+                <i class="fa fa-search"></i> Filter
+            </a>
+
+            @if (_isFilterVisible)
+            {
+                <AdminForm Model="_filter" OnValidSubmit="ApplyFilter" CssClass="search-filter">
+                    <FormSection Title="Filter this list">
+                        <FormFieldText Title="Text" @bind-Value="_filter.Text" />
+                        <FormFieldDateTimeLocal Title="Created After" @bind-Value="_filter.CreatedAfter" />
+                        <FormFieldDateTimeLocal Title="Created Before" @bind-Value="_filter.CreatedBefore" />
+                        @if (_locales.Count > 1)
+                        {
+                            <FormFieldDropdown TValue="int?" Title="Market" Options="_locales" DefaultItemText="Any"
+                                               @bind-Value="_filter.LocaleId" />
+                        }
+                    </FormSection>
+                    <div class="form-actions">
+                        <AdminButtonSubmit Text="Apply" />
+                        <AdminButton Text="Clear" OnClick="ClearFilter" />
+                    </div>
+                </AdminForm>
+            }
+
+        </PageHeaderButtons>
+    </PageSubHeader>
+
+    <PageActions>
+        @if (_module.Permissions.CanCreate)
+        {
+            <ButtonLink Text="Create" Icon="plus" Class="main-cta" Href="@AdminBlazorRoutes.CustomEntityNew(_module.Code)" />
+        }
+        @* Change Ordering (drag and drop, plus a picker for partial ordering) is not ported yet. *@
+        <Pager PageNumber="_result?.PageNumber ?? 1" PageCount="_result?.PageCount ?? 0" OnPageChanged="GoToPage" />
+    </PageActions>
+
+    <PageBody ContentType="form" HasActions="true">
+        <TableContainer IsLoading="_isLoading">
+            <table class="table">
+                <thead>
+                    <tr>
+                        @if (previewImage != null)
+                        {
+                            <th></th>
+                        }
+                        @if (definition.HasLocale)
+                        {
+                            <th>Market</th>
+                        }
+                        <th>@_module.TitleTerm</th>
+                        @if (previewDescription != null)
+                        {
+                            <th>@previewDescription.DisplayName</th>
+                        }
+                        @if (!definition.AutoPublish)
+                        {
+                            <th>Status</th>
+                            <th>Published</th>
+                        }
+                        <th class="lowPriority">Created</th>
+                        <th class="actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_result != null && _result.Items.Count == 0)
+                    {
+                        <tr><td colspan="100" class="empty">Sorry, no @definition.Name.ToLowerInvariant() could be found.</td></tr>
+                    }
+                    @foreach (var entity in _result?.Items ?? [])
+                    {
+                        var detailsUrl = AdminBlazorRoutes.CustomEntityDetails(_module.Code, entity.CustomEntityId);
+
+                        <tr @key="entity.CustomEntityId">
+                            @if (previewImage != null)
+                            {
+                                <td><TableCellImage Image="GetPreviewImage(entity, previewImage)" /></td>
+                            }
+                            @if (definition.HasLocale)
+                            {
+                                <td>
+                                    @if (entity.Locale != null)
+                                    {
+                                        <span>@entity.Locale.Name (@entity.Locale.IETFLanguageTag)</span>
+                                    }
+                                </td>
+                            }
+                            <td>
+                                <a href="@detailsUrl">@entity.Title</a><br />
+                                @if (!string.IsNullOrEmpty(entity.FullUrlPath))
+                                {
+                                    <span>@entity.FullUrlPath</span>
+                                }
+                            </td>
+                            @if (previewDescription != null)
+                            {
+                                <td>@CustomEntityModule.GetModelValue(entity.Model, previewDescription)</td>
+                            }
+                            @if (!definition.AutoPublish)
+                            {
+                                <td>
+                                    <span>@CustomEntityLabels.PublishStatus(entity.PublishStatus, entity.PublishDate)</span>
+                                    <br />
+                                    @if (entity.HasDraftVersion)
+                                    {
+                                        <span>(Pending Draft)</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (entity.PublishDate.HasValue)
+                                    {
+                                        var date = entity.PublishDate.Value;
+                                        <span title="@($"{date:D} at {date:HH:mm:ss}")">@date.ToString("d MMM yyyy HH:mm")</span>
+                                    }
+                                </td>
+                            }
+                            <td class="lowPriority"><AuditDataCell AuditData="entity.AuditData" /></td>
+                            <td class="actions">
+                                @if (_module.Permissions.CanUpdate)
+                                {
+                                    <IconLink Icon="pencil-square-o" Title="Edit" Href="@detailsUrl" />
+                                }
+                                @if (!string.IsNullOrEmpty(entity.FullUrlPath))
+                                {
+                                    <IconLink Icon="external-link" Title="View" Target="_blank" Href="@entity.FullUrlPath" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </TableContainer>
+    </PageBody>
+}
+
+@code {
+    // The AngularJS SearchQuery default.
+    private const int DefaultPageSize = 30;
+
+    private CustomEntityModule? _module;
+    private EntityFilter _filter = new();
+    private SearchCustomEntitySummariesQuery _query = new();
+    private PagedQueryResult<CustomEntitySummary>? _result;
+    private IReadOnlyDictionary<int, ImageAssetRenderDetails> _images = new Dictionary<int, ImageAssetRenderDetails>();
+    private IReadOnlyList<SelectOption<int?>> _locales = [];
+    private bool _isFilterVisible;
+    private bool _isLoading;
+    private bool _notFound;
+
+    [Parameter] public string CustomEntityDefinitionCode { get; set; } = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // The same component instance is reused when the nav switches between custom entity types.
+        if (_module?.Code.Equals(CustomEntityDefinitionCode, StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return;
+        }
+
+        _module = null;
+        _result = null;
+        _filter = new EntityFilter();
+        _isFilterVisible = false;
+        _module = await CustomEntityModule.LoadAsync(Executor, CustomEntityDefinitionCode);
+        _notFound = _module == null;
+
+        if (_module == null)
+        {
+            return;
+        }
+
+        _locales = await Lookups.GetLocaleOptionsAsync();
+        _query = CreateQuery();
+        await LoadGridAsync();
+    }
+
+    private SearchCustomEntitySummariesQuery CreateQuery()
+    {
+        return new SearchCustomEntitySummariesQuery
+        {
+            CustomEntityDefinitionCode = _module!.Code,
+            PageNumber = 1,
+            PageSize = DefaultPageSize,
+            Text = _filter.Text,
+            LocaleId = _filter.LocaleId,
+            CreatedAfter = _filter.CreatedAfter,
+            CreatedBefore = _filter.CreatedBefore
+        };
+    }
+
+    private async Task LoadGridAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _result = await Executor.QueryAsync(_query);
+            await LoadImagesAsync();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Loads the [PreviewImage] thumbnails for the page of results in one query, as the AngularJS
+    /// ImagePreviewFieldCollection did.
+    /// </summary>
+    private async Task LoadImagesAsync()
+    {
+        var property = _module!.PreviewImageProperty;
+
+        if (property == null || _result == null)
+        {
+            return;
+        }
+
+        var ids = _result.Items
+            .Select(e => CustomEntityModule.GetModelValue(e.Model, property) as int?)
+            .Where(id => id > 0)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+
+        _images = ids.Count == 0
+            ? new Dictionary<int, ImageAssetRenderDetails>()
+            : await Executor.QueryAsync(new GetImageAssetRenderDetailsByIdRangeQuery(ids));
+    }
+
+    private ImageAssetRenderDetails? GetPreviewImage(CustomEntitySummary entity, DynamicDataModelSchemaProperty property)
+    {
+        return CustomEntityModule.GetModelValue(entity.Model, property) is int id ? _images.GetValueOrDefault(id) : null;
+    }
+
+    private async Task ApplyFilter()
+    {
+        _query = CreateQuery();
+        _isFilterVisible = false;
+        await LoadGridAsync();
+    }
+
+    private async Task ClearFilter()
+    {
+        _filter = new EntityFilter();
+        await ApplyFilter();
+    }
+
+    private async Task GoToPage(int pageNumber)
+    {
+        _query.PageNumber = pageNumber;
+        await LoadGridAsync();
+    }
+
+    private sealed class EntityFilter
+    {
+        public string? Text { get; set; }
+
+        public DateTime? CreatedAfter { get; set; }
+
+        public DateTime? CreatedBefore { get; set; }
+
+        public int? LocaleId { get; set; }
+    }
+}

@@ -1,0 +1,11 @@
+@inherits DataModelFieldComponentBase
+
+@* Boolean properties: cms-form-field-checkbox. A nullable bool shows null as unchecked. *@
+<FormFieldCheckbox Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+                   @bind-Value="_binding.Value" />
+
+@code {
+    private DataModelFieldBinding<bool> _binding = default!;
+
+    protected override void OnParametersSet() => _binding = Field.Bind<bool>();
+}

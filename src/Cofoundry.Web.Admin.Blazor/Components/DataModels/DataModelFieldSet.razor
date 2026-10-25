@@ -1,0 +1,142 @@
+@implements IDisposable
+@inject DataModelFieldComponentRegistry Registry
+
+@* Port of cms-form-dynamic-field-set: one field per data model property, chosen by its data template
+   name. Fields bind to the real model instance, and the model's data annotations are validated here
+   because the form's DataAnnotationsValidator only checks the top-level command. *@
+@foreach (var field in _fields)
+{
+    <DynamicComponent @key="field" Type="Registry.GetComponentType(field.Schema.DataTemplateName)"
+                      Parameters="@(new Dictionary<string, object> { [nameof(DataModelFieldComponentBase.Field)] = field })" />
+}
+
+@code {
+    private IReadOnlyList<DataModelField> _fields = [];
+    private object? _fieldsModel;
+    private EditContext? _editContext;
+    private ValidationMessageStore? _messages;
+
+    [CascadingParameter] public EditContext? EditContext { get; set; }
+
+    /// <summary>
+    /// The data model instance to edit, e.g. a custom entity's <see cref="ICustomEntityDataModel"/>.
+    /// Changes are written straight to it.
+    /// </summary>
+    [Parameter, EditorRequired] public object Model { get; set; } = default!;
+
+    [Parameter, EditorRequired] public IDynamicDataModelSchema Schema { get; set; } = default!;
+
+    [Parameter] public DataModelFieldContext Context { get; set; } = new(null);
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_fieldsModel, Model))
+        {
+            _fieldsModel = Model;
+            _fields = CreateFields();
+
+            // Messages filed against the previous model's bindings would never clear.
+            _messages?.Clear();
+        }
+
+        if (!ReferenceEquals(_editContext, EditContext))
+        {
+            Unsubscribe();
+            _editContext = EditContext;
+
+            if (_editContext != null)
+            {
+                _messages = new ValidationMessageStore(_editContext);
+                _editContext.OnValidationRequested += OnValidationRequested;
+                _editContext.OnFieldChanged += OnFieldChanged;
+            }
+        }
+    }
+
+    private List<DataModelField> CreateFields()
+    {
+        var modelType = Model.GetType();
+        var fields = new List<DataModelField>();
+
+        foreach (var schemaProperty in Schema.DataModelProperties)
+        {
+            var property = modelType.GetProperty(schemaProperty.Name);
+
+            if (property != null && property.CanRead && property.CanWrite)
+            {
+                fields.Add(new DataModelField(Model, property, schemaProperty, Context));
+            }
+        }
+
+        return fields;
+    }
+
+    /* VALIDATION */
+
+    private void OnValidationRequested(object? sender, ValidationRequestedEventArgs e)
+    {
+        _messages!.Clear();
+
+        var results = new List<ValidationResult>();
+        Validator.TryValidateObject(Model, new ValidationContext(Model), results, validateAllProperties: true);
+
+        foreach (var field in _fields)
+        {
+            AddMessages(field, results.Where(r => r.MemberNames.Contains(field.Property.Name)));
+        }
+
+        _editContext!.NotifyValidationStateChanged();
+    }
+
+    private void OnFieldChanged(object? sender, FieldChangedEventArgs e)
+    {
+        var field = _fields.FirstOrDefault(f => f.Bindings.Any(b => b.FieldIdentifier.Equals(e.FieldIdentifier)));
+
+        if (field == null)
+        {
+            return;
+        }
+
+        var results = new List<ValidationResult>();
+        var context = new ValidationContext(Model) { MemberName = field.Property.Name };
+        Validator.TryValidateProperty(field.Property.GetValue(Model), context, results);
+
+        foreach (var binding in field.Bindings)
+        {
+            _messages!.Clear(binding.FieldIdentifier);
+        }
+
+        AddMessages(field, results);
+        _editContext!.NotifyValidationStateChanged();
+    }
+
+    private void AddMessages(DataModelField field, IEnumerable<ValidationResult> results)
+    {
+        var messages = results.Select(r => r.ErrorMessage ?? "Invalid value").ToList();
+
+        // The schema also marks properties required without [Required], e.g. a non-nullable image id,
+        // which the AngularJS admin enforced with the html required attribute.
+        if (messages.Count == 0 && field.IsRequired && field.Bindings.Any(b => b.IsEmpty))
+        {
+            messages.Add($"The {field.Title} field is required.");
+        }
+
+        foreach (var binding in field.Bindings)
+        {
+            _messages!.Add(binding.FieldIdentifier, messages);
+        }
+    }
+
+    private void Unsubscribe()
+    {
+        if (_editContext != null)
+        {
+            _editContext.OnValidationRequested -= OnValidationRequested;
+            _editContext.OnFieldChanged -= OnFieldChanged;
+            _messages?.Clear();
+            _editContext.NotifyValidationStateChanged();
+        }
+    }
+
+    public void Dispose() => Unsubscribe();
+}

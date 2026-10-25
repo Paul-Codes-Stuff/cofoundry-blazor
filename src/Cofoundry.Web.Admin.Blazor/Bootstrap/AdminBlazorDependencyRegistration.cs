@@ -1,3 +1,5 @@
+using Cofoundry.Web.Admin.Blazor.Components.DataModels;
+
 namespace Cofoundry.Web.Admin.Blazor;
 
 public class AdminBlazorDependencyRegistration : IDependencyRegistration
@@ -13,6 +15,8 @@ public class AdminBlazorDependencyRegistration : IDependencyRegistration
             .Register<AdminBlazorScopeUser>(RegistrationOptions.Scoped())
             .Register<IUserSessionService, CircuitAwareUserSessionService>(sessionServiceOptions)
             .Register<IAdminBlazorExecutor, AdminBlazorExecutor>(RegistrationOptions.Scoped())
-            .Register<AdminLookups>(RegistrationOptions.Scoped());
+            .Register<AdminLookups>(RegistrationOptions.Scoped())
+            .RegisterAll<IDataModelFieldComponentRegistration>(RegistrationOptions.SingletonScope())
+            .Register<DataModelFieldComponentRegistry>(RegistrationOptions.SingletonScope());
     }
 }

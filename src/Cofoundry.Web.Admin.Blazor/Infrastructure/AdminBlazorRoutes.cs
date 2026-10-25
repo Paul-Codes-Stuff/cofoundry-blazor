@@ -60,6 +60,17 @@ public static class AdminBlazorRoutes
     public static string DirectoryDetails(int pageDirectoryId) => $"{Directories}/{pageDirectoryId}";
 
     /// <summary>
+    /// Each custom entity definition is its own module, keyed by its 6 character definition code,
+    /// e.g. "/admin-next/custom-entities/SIMBLP".
+    /// </summary>
+    public static string CustomEntities(string customEntityDefinitionCode) => $"{Root}/custom-entities/{customEntityDefinitionCode}";
+
+    public static string CustomEntityNew(string customEntityDefinitionCode) => CustomEntities(customEntityDefinitionCode) + "/new";
+
+    public static string CustomEntityDetails(string customEntityDefinitionCode, int customEntityId) =>
+        $"{CustomEntities(customEntityDefinitionCode)}/{customEntityId}";
+
+    /// <summary>
     /// Users are listed per user area, keyed by its 3 character code, e.g. "/admin-next/users/COF".
     /// </summary>
     public static string Users(string userAreaCode) => $"{Root}/users/{userAreaCode}";

@@ -1,0 +1,23 @@
+@inherits DataModelFieldComponentBase
+
+@* String, Char, Url and EmailAddress properties: cms-form-field-text, -url and -email-address. *@
+<FormFieldText Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+               InputType="@InputType" MaxLength="MaxLength" Placeholder="@Placeholder"
+               @bind-Value="_binding.Value" />
+
+@code {
+    private DataModelFieldBinding<string?> _binding = default!;
+
+    private int? MaxLength => Field.ValueType == typeof(char) ? 1 : Field.GetAttribute<int?>(DataModelAttributes.MaxLength);
+
+    private string? Placeholder => Field.GetAttribute<string>(DataModelAttributes.Placeholder);
+
+    private string InputType => Field.Schema.DataTemplateName switch
+    {
+        "Url" => "url",
+        "EmailAddress" => "email",
+        _ => "text"
+    };
+
+    protected override void OnParametersSet() => _binding = Field.Bind<string?>();
+}

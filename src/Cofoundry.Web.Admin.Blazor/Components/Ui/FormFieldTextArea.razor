@@ -12,7 +12,8 @@
                                ValueExpression="ValueExpression"
                                disabled="@Disabled"
                                rows="@Rows"
-                               maxlength="@MaxLength" />
+                               maxlength="@MaxLength"
+                               placeholder="@Placeholder" />
                 <ValidationMessage For="ValueExpression" class="field-validation-error" />
             }
             else if (!string.IsNullOrEmpty(Value))
@@ -32,4 +33,6 @@
     [Parameter] public int? Rows { get; set; }
 
     [Parameter] public int? MaxLength { get; set; }
+
+    [Parameter] public string? Placeholder { get; set; }
 }

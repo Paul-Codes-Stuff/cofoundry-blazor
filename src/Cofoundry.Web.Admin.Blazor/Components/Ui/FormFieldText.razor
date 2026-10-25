@@ -12,7 +12,8 @@
                            ValueChanged="ValueChanged"
                            ValueExpression="ValueExpression"
                            disabled="@Disabled"
-                           maxlength="@MaxLength" />
+                           maxlength="@MaxLength"
+                           placeholder="@Placeholder" />
                 <ValidationMessage For="ValueExpression" class="field-validation-error" />
             }
             else if (!string.IsNullOrEmpty(Value))
@@ -30,6 +31,8 @@
 
 @code {
     [Parameter] public int? MaxLength { get; set; }
+
+    [Parameter] public string? Placeholder { get; set; }
 
     /// <summary>
     /// The input's type attribute, e.g. "email" for cms-form-field-email-address.

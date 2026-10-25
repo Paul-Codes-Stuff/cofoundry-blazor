@@ -1,0 +1,40 @@
+@inherits FormFieldBase<decimal?>
+
+@* cms-form-field-number for floating point values. FormFieldNumber is the integer version. *@
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label" for="@FieldId">@Title:</label>
+        <div class="controls">
+            @if (ShowInput)
+            {
+                <InputNumber id="@FieldId"
+                             TValue="decimal?"
+                             Value="Value"
+                             ValueChanged="ValueChanged"
+                             ValueExpression="ValueExpression"
+                             disabled="@Disabled"
+                             min="@Min"
+                             max="@Max"
+                             step="@(Step ?? "any")" />
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+            }
+            else if (Value.HasValue)
+            {
+                <div class="text-block-display-value">@Value</div>
+            }
+            else
+            {
+                <div class="text-block-display-value">None</div>
+            }
+        </div>
+    </div>
+    <FieldHelp Text="@Description" />
+</div>
+
+@code {
+    [Parameter] public string? Min { get; set; }
+
+    [Parameter] public string? Max { get; set; }
+
+    [Parameter] public string? Step { get; set; }
+}

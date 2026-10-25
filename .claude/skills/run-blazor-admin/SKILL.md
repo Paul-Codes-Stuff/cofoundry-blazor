@@ -1,6 +1,6 @@
 ---
 name: run-blazor-admin
-description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker; roles and permissions; users create, deactivate, reset password, delete; directories; page and directory access rules; page templates).
+description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker; roles and permissions; users create, deactivate, reset password, delete; directories; page and directory access rules; page templates; custom entities and dynamic data-model fields).
 ---
 
 # Run the Blazor admin
@@ -56,6 +56,7 @@ node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-adm
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/roles-users-step.js  # Roles + Users
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/access-rules-step.js  # Directories + access rules
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/page-templates-step.js  # Page Templates
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/custom-entities-step.js  # Custom Entities
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
 ```
 
@@ -82,6 +83,13 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   hides Access Control. It deletes the directory (and with it the child and the page) and the role.
 - **`page-templates-step.js`** checks the read-only Page Templates list, name filter, details and the page count
   link to the filtered pages list. It creates nothing.
+- **`custom-entities-step.js`** covers the sandbox's Authors, Categories, Blog Posts and Examples: the custom
+  title term, create/edit/cancel/duplicate/delete with dynamic text, text area and image fields, data-model
+  validation (`[Required]` and the schema's required non-nullable image id), [PreviewImage]/[PreviewDescription]
+  list columns, and the unsupported-field placeholder showing a validation message (Example's `Blocks` has
+  `MinItems = 2`, so an Example can't be saved yet). Every sandbox entity auto-publishes except Blog Posts, which
+  needs the Author picker, so publish/versions aren't covered yet. Field labels come from MVC metadata, so their
+  casing varies ("Short description:"); the step matches labels case-insensitively. It deletes what it creates.
 - **`run`** loads a module of the form `module.exports = async (page, c) => { ... }`. `page` is a
   Playwright page with `baseURL` already set. `c` provides `settle()`, `shot(name)`, `step(name, fn)`,
   `btn(scope, text)`, `field(scope, label)`, `rows()` and `status()`. See `driver.js`.
