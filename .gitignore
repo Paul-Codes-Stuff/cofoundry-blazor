@@ -91,3 +91,4 @@ appsettings.local.json
 **/App_Data/Files/Other/*
 **/App_Data/Files/Images/*
 
+/samples/src/Dev/Dev.Sandbox/appsettings.Development.json
