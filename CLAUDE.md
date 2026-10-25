@@ -21,6 +21,27 @@ Read `src/Cofoundry.Web.Admin.Blazor/README.md` first: it has the status, what i
   directives, so the copied compiled `wwwroot/css/shared.css` applies unchanged. No component library.
 - **Dropdown data** is loaded up front by `AdminLookups`, not by self-loading selector components.
 
+## Backwards compatibility (open, revisit before retiring the AngularJS admin)
+
+The Blazor admin calling the domain directly does not break anything today, because `Cofoundry.Web.Admin` and its
+`/admin/api` controllers are still installed. But `/admin/api` is a public surface that other code depends on:
+
+- the **Visual Editor**, which stays on the MVC site and calls the API (`VisualEditor/Js/DataServices/PageBlockService.js`)
+- **custom admin modules and plugins** that ship their own controllers deriving from `BaseAdminApiController`
+  (sandbox Products module, `Cofoundry.Plugins.ErrorLogging.Admin`, `Cofoundry.Plugins.YouTube.Admin`)
+- possibly external scripts using the admin cookie (unknown)
+
+Agreed direction, not yet done:
+
+1. Treat `/admin/api` as a supported surface. **Do not remove it** when the AngularJS UI goes. The likely route is
+   moving the API controllers and `BaseAdminApiController` into their own package (e.g. `Cofoundry.Web.Admin.Api`)
+   with no AngularJS dependency.
+2. Keep the Blazor admin on in-process domain calls. Routing it through the API wouldn't help compatibility.
+3. The bigger break is the **AngularJS extension model**: custom modules, custom form-field directives (e.g. the
+   YouTube plugin) and shared AngularJS services. Blazor needs its own extension point for these before the
+   AngularJS admin can be removed. Until then, unported and custom modules stay reachable because `AdminNav` links
+   them to their AngularJS URLs.
+
 ## How to port a module
 
 1. Read the AngularJS module under `src/Cofoundry.Web.Admin/Admin/Modules/<Module>/Js` (routes, controllers,
