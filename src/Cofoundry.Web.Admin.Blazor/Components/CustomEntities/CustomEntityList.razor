@@ -60,7 +60,10 @@ else
         {
             <ButtonLink Text="Create" Icon="plus" Class="main-cta" Href="@AdminBlazorRoutes.CustomEntityNew(_module.Code)" />
         }
-        @* Change Ordering (drag and drop, plus a picker for partial ordering) is not ported yet. *@
+        @if (_module.Permissions.CanUpdate && definition.Ordering != CustomEntityOrdering.None)
+        {
+            <AdminButton Text="Change Ordering" OnClick="() => _isOrderingOpen = true" />
+        }
         <Pager PageNumber="_result?.PageNumber ?? 1" PageCount="_result?.PageCount ?? 0" OnPageChanged="GoToPage" />
     </PageActions>
 
@@ -103,7 +106,7 @@ else
                         <tr @key="entity.CustomEntityId">
                             @if (previewImage != null)
                             {
-                                <td><TableCellImage Image="GetPreviewImage(entity, previewImage)" /></td>
+                                <td><TableCellImage Image="_module.GetPreviewImage(_images, entity)" /></td>
                             }
                             @if (definition.HasLocale)
                             {
@@ -123,7 +126,7 @@ else
                             </td>
                             @if (previewDescription != null)
                             {
-                                <td>@CustomEntityModule.GetModelValue(entity.Model, previewDescription)</td>
+                                <td>@_module.GetPreviewDescription(entity)</td>
                             }
                             @if (!definition.AutoPublish)
                             {
@@ -160,6 +163,11 @@ else
             </table>
         </TableContainer>
     </PageBody>
+
+    @if (_isOrderingOpen)
+    {
+        <ChangeCustomEntityOrderingDialog Module="_module" LocaleId="_filter.LocaleId" OnClosed="OnOrderingClosedAsync" />
+    }
 }
 
 @code {
@@ -173,6 +181,7 @@ else
     private IReadOnlyDictionary<int, ImageAssetRenderDetails> _images = new Dictionary<int, ImageAssetRenderDetails>();
     private IReadOnlyList<SelectOption<int?>> _locales = [];
     private bool _isFilterVisible;
+    private bool _isOrderingOpen;
     private bool _isLoading;
     private bool _notFound;
 
@@ -223,42 +232,12 @@ else
         try
         {
             _result = await Executor.QueryAsync(_query);
-            await LoadImagesAsync();
+            _images = await _module!.LoadPreviewImagesAsync(Executor, _result.Items);
         }
         finally
         {
             _isLoading = false;
         }
-    }
-
-    /// <summary>
-    /// Loads the [PreviewImage] thumbnails for the page of results in one query, as the AngularJS
-    /// ImagePreviewFieldCollection did.
-    /// </summary>
-    private async Task LoadImagesAsync()
-    {
-        var property = _module!.PreviewImageProperty;
-
-        if (property == null || _result == null)
-        {
-            return;
-        }
-
-        var ids = _result.Items
-            .Select(e => CustomEntityModule.GetModelValue(e.Model, property) as int?)
-            .Where(id => id > 0)
-            .Select(id => id!.Value)
-            .Distinct()
-            .ToList();
-
-        _images = ids.Count == 0
-            ? new Dictionary<int, ImageAssetRenderDetails>()
-            : await Executor.QueryAsync(new GetImageAssetRenderDetailsByIdRangeQuery(ids));
-    }
-
-    private ImageAssetRenderDetails? GetPreviewImage(CustomEntitySummary entity, DynamicDataModelSchemaProperty property)
-    {
-        return CustomEntityModule.GetModelValue(entity.Model, property) is int id ? _images.GetValueOrDefault(id) : null;
     }
 
     private async Task ApplyFilter()
@@ -278,6 +257,16 @@ else
     {
         _query.PageNumber = pageNumber;
         await LoadGridAsync();
+    }
+
+    private async Task OnOrderingClosedAsync(bool saved)
+    {
+        _isOrderingOpen = false;
+
+        if (saved)
+        {
+            await LoadGridAsync();
+        }
     }
 
     private sealed class EntityFilter

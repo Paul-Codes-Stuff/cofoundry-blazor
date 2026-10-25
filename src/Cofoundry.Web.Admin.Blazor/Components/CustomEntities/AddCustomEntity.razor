@@ -1,13 +1,12 @@
 @page "/admin-next/custom-entities/{CustomEntityDefinitionCode}/new"
 @inject IAdminBlazorExecutor Executor
-@inject AdminLookups Lookups
 @inject NavigationManager Navigation
 
 <PageTitle>Create @(_module?.Definition.Name) | Admin</PageTitle>
 
 <PageHeader Title="Create" ParentTitle="@_module?.Definition.NamePlural" ParentHref="@ListUrl" />
 
-@if (_command == null || _module == null)
+@if (_module == null)
 {
     <PageBody ContentType="form">
         @if (_notFound)
@@ -22,157 +21,33 @@
 }
 else
 {
-    var definition = _module.Definition;
-
-    <AdminForm @ref="_form" Model="_command" IsLoading="_isSaving" OnValidSubmit="() => SaveAsync(false, false)">
-
-        <PageActions>
-            <AdminButton Text="@_module.SaveAndPublishText" Class="main-cta" IsLoading="_isSaving && _isPublishing" Disabled="_isSaving"
-                         OnClick="() => SaveAsync(true, false)" />
-            @if (!definition.AutoPublish)
-            {
-                <AdminButtonSubmit Text="Save Draft" IsLoading="_isSaving && !_isPublishing" Disabled="_isSaving" />
-            }
-            <AdminButton Text="Cancel" Disabled="_isSaving" OnClick="Cancel" />
-        </PageActions>
-
-        <PageBody ContentType="form">
-
-            <FormStatus Errors="_errors" />
-
-            <FormSection Title="Main">
-
-                @if (definition.HasLocale && _locales.Count > 1)
-                {
-                    <FormFieldDropdown TValue="int?" Title="Market" Options="_locales" @bind-Value="_command.LocaleId" />
-                }
-
-                <FormFieldText Title="@_module.TitleTerm" MaxLength="200"
-                               Value="@_command.Title" ValueChanged="OnTitleChanged"
-                               ValueExpression="() => _command.Title" />
-
-                @if (!definition.AutoGenerateUrlSlug)
-                {
-                    <FormFieldText Title="@_module.UrlSlugTerm" MaxLength="200"
-                                   Description="Lower case and containing only letter, numbers, underscores and hyphens. E.g. 'rock-and-roll'"
-                                   @bind-Value="_command.UrlSlug" />
-                }
-
-            </FormSection>
-
-            @if (_module.HasProperties)
-            {
-                <FormSection Title="Properties">
-                    <DataModelFieldSet Model="_command.Model" Schema="_module.Schema" Context="@(new DataModelFieldContext(_command.LocaleId))" />
-                </FormSection>
-            }
-
-            @foreach (var pageRoute in _pageRoutes)
-            {
-                <FormSection Title="@($"Template: {pageRoute.Title}")">
-                    <FormSectionActions>
-                        <AdminButton Text="@SaveAndEditText" IsLoading="_isSaving && !_isPublishing" Disabled="_isSaving"
-                                     OnClick="() => SaveAsync(false, true)" />
-                    </FormSectionActions>
-                    <FormFieldContainer>
-                        <div>Template content can only be managed after the @definition.Name.ToLowerInvariant() has been created.</div>
-                    </FormFieldContainer>
-                </FormSection>
-            }
-
-        </PageBody>
-    </AdminForm>
+    <CustomEntityAddForm @key="_module" Module="_module" ShowTemplateSections="true" OnSaved="OnSavedAsync" OnCancel="Cancel" />
 }
 
 @code {
-    private AdminForm? _form;
     private CustomEntityModule? _module;
-    private AddCustomEntityCommand? _command;
-    private IReadOnlyList<SelectOption<int?>> _locales = [];
-    private IReadOnlyCollection<PageRoute> _pageRoutes = [];
-    private IReadOnlyCollection<ValidationError> _errors = [];
-    private bool _isSaving;
-    private bool _isPublishing;
     private bool _notFound;
 
     [Parameter] public string CustomEntityDefinitionCode { get; set; } = string.Empty;
 
     private string? ListUrl => _module == null ? null : AdminBlazorRoutes.CustomEntities(_module.Code);
 
-    private string SaveAndEditText => _module!.Definition.AutoPublish ? "Save & Edit Content" : "Save Draft & Edit Content";
-
     protected override async Task OnParametersSetAsync()
     {
         _module = await CustomEntityModule.LoadAsync(Executor, CustomEntityDefinitionCode);
         _notFound = _module == null;
-
-        if (_module == null)
-        {
-            return;
-        }
-
-        var localesTask = Lookups.GetLocaleOptionsAsync();
-        var routesTask = Executor.QueryAsync(new GetPageRoutesByCustomEntityDefinitionCodeQuery(_module.Code));
-        await Task.WhenAll(localesTask, routesTask);
-
-        _locales = localesTask.Result;
-        _pageRoutes = routesTask.Result;
-
-        _command = new AddCustomEntityCommand
-        {
-            CustomEntityDefinitionCode = _module.Code,
-            Model = _module.CreateDefaultModel()
-        };
     }
 
-    private void OnTitleChanged(string? title)
+    private async Task OnSavedAsync(int customEntityId, bool thenEditContent)
     {
-        _command!.Title = title ?? string.Empty;
-        _command.UrlSlug = StringUtilities.Slugify(title, 200);
-    }
-
-    private async Task SaveAsync(bool publish, bool thenEditContent)
-    {
-        if (_isSaving || _form == null || !_form.Validate())
+        if (thenEditContent && await GetVisualEditorUrlAsync(customEntityId) is { } editorUrl)
         {
-            return;
+            // forceLoad: the visual editor is served by the MVC site, not by this Blazor app.
+            Navigation.NavigateTo(editorUrl, forceLoad: true);
         }
-
-        if (_module!.Definition.AutoGenerateUrlSlug)
+        else
         {
-            _command!.UrlSlug = null;
-        }
-
-        _command!.Publish = publish;
-        _isPublishing = publish;
-        _isSaving = true;
-        _errors = [];
-
-        try
-        {
-            var result = await Executor.ExecuteAsync(_command);
-
-            if (!result.Succeeded)
-            {
-                _errors = result.Errors;
-                return;
-            }
-
-            var customEntityId = _command.OutputCustomEntityId;
-
-            if (thenEditContent && await GetVisualEditorUrlAsync(customEntityId) is { } editorUrl)
-            {
-                // forceLoad: the visual editor is served by the MVC site, not by this Blazor app.
-                Navigation.NavigateTo(editorUrl, forceLoad: true);
-            }
-            else
-            {
-                Navigation.NavigateTo(AdminBlazorRoutes.CustomEntityDetails(_module.Code, customEntityId));
-            }
-        }
-        finally
-        {
-            _isSaving = false;
+            Navigation.NavigateTo(AdminBlazorRoutes.CustomEntityDetails(_module!.Code, customEntityId));
         }
     }
 

@@ -15,7 +15,9 @@
                 </div>
             }
 
-            @ChildContent
+            <CascadingValue Name="FieldIdPrefix" Value="_fieldIdPrefix" IsFixed="true">
+                @ChildContent
+            </CascadingValue>
 
         </div>
     </div>
@@ -25,6 +27,11 @@
 
 @code {
     public const string SectionName = "admin-modals";
+
+    private static int _instanceCount;
+
+    // Unique per dialog, so field ids don't clash with the form behind the dialog or another dialog.
+    private readonly string _fieldIdPrefix = $"modal{Interlocked.Increment(ref _instanceCount)}-";
 
     private bool _show;
 

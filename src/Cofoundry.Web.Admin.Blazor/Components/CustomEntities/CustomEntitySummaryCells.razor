@@ -1,0 +1,36 @@
+@* The image, title, description and status cells that the picker, the collection field and the
+   ordering dialog share, as their AngularJS templates did. CustomEntitySummaryHeaders renders the
+   matching headers. The title links to the entity in a new tab (cms-auto-target-blank), because these
+   tables sit in forms and dialogs. *@
+@if (Module.PreviewImageProperty != null)
+{
+    <td><TableCellImage Image="Module.GetPreviewImage(Images, Entity)" /></td>
+}
+<td>
+    <strong>
+        <a href="@AdminBlazorRoutes.CustomEntityDetails(Module.Code, Entity.CustomEntityId)" target="_blank">@Entity.Title</a>
+    </strong>
+</td>
+@if (Module.PreviewDescriptionProperty != null)
+{
+    <td>@Module.GetPreviewDescription(Entity)</td>
+}
+@if (!Module.Definition.AutoPublish)
+{
+    <td>
+        <span>@CustomEntityLabels.PublishStatus(Entity.PublishStatus, Entity.PublishDate)</span>
+        <br />
+        @if (Entity.HasDraftVersion)
+        {
+            <span>(Pending Draft)</span>
+        }
+    </td>
+}
+
+@code {
+    [Parameter, EditorRequired] public CustomEntityModule Module { get; set; } = default!;
+
+    [Parameter, EditorRequired] public CustomEntitySummary Entity { get; set; } = default!;
+
+    [Parameter] public IReadOnlyDictionary<int, ImageAssetRenderDetails> Images { get; set; } = new Dictionary<int, ImageAssetRenderDetails>();
+}

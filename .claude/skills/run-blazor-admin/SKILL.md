@@ -1,6 +1,6 @@
 ---
 name: run-blazor-admin
-description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker; roles and permissions; users create, deactivate, reset password, delete; directories; page and directory access rules; page templates; custom entities and dynamic data-model fields).
+description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker; roles and permissions; users create, deactivate, reset password, delete; directories; page and directory access rules; page templates; custom entities, dynamic data-model fields, custom entity pickers, versions and ordering).
 ---
 
 # Run the Blazor admin
@@ -57,6 +57,7 @@ node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-adm
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/access-rules-step.js  # Directories + access rules
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/page-templates-step.js  # Page Templates
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/custom-entities-step.js  # Custom Entities
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/custom-entity-pickers-step.js  # pickers, versions
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
 ```
 
@@ -87,9 +88,16 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   title term, create/edit/cancel/duplicate/delete with dynamic text, text area and image fields, data-model
   validation (`[Required]` and the schema's required non-nullable image id), [PreviewImage]/[PreviewDescription]
   list columns, and the unsupported-field placeholder showing a validation message (Example's `Blocks` has
-  `MinItems = 2`, so an Example can't be saved yet). Every sandbox entity auto-publishes except Blog Posts, which
-  needs the Author picker, so publish/versions aren't covered yet. Field labels come from MVC metadata, so their
-  casing varies ("Short description:"); the step matches labels case-insensitively. It deletes what it creates.
+  `MinItems = 2`, so an Example can't be saved yet). Field labels come from MVC metadata, so their casing varies
+  ("Short description:"); the step matches labels case-insensitively. It deletes what it creates.
+- **`custom-entity-pickers-step.js`** creates authors, categories and an image, then a Blog Post (the only
+  sandbox type that doesn't auto-publish) through the Author selector (search as you type, Enter, inline Add)
+  and the Categories collection (picker, drag to reorder, remove). It then covers publish, draft + discard, a
+  second version, copy V1 to draft and unpublish. Unpublish turns the published version back into a draft, so
+  copy-to-draft needs two published versions. Change Ordering is only opened: Category declares `Ordering` but
+  doesn't implement `IOrderableCustomEntityDefinition`, so it isn't orderable, and Examples can't be created
+  until nested data models are ported. Drag-reorder is driven with Playwright's `dragTo` (HTML5 drag events
+  work in headless Chrome). It deletes what it creates.
 - **`run`** loads a module of the form `module.exports = async (page, c) => { ... }`. `page` is a
   Playwright page with `baseURL` already set. `c` provides `settle()`, `shot(name)`, `step(name, fn)`,
   `btn(scope, text)`, `field(scope, label)`, `rows()` and `status()`. See `driver.js`.

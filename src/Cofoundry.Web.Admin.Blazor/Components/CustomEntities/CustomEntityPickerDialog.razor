@@ -1,0 +1,231 @@
+@inject IAdminBlazorExecutor Executor
+
+@* Port of CustomEntityPickerDialog. In single mode a click selects one entity; in multi mode clicks toggle
+   entities in and out of the selection. Double-click selects and closes in both. "+" creates a new entity
+   with AddCustomEntityDialog and selects it. *@
+<ModalDialog Title="@($"Find {Module.Definition.Name}")" Size="large" OnClose="CancelAsync">
+
+    <PageActions>
+        <AdminButton Text="Ok" Class="main-cta" OnClick="OkAsync" />
+        <AdminButton Text="Cancel" OnClick="CancelAsync" />
+        <AdminButton Text="Filter" OnClick="() => _isFilterVisible = !_isFilterVisible" />
+
+        @if (_isFilterVisible)
+        {
+            <AdminForm Model="_filter" OnValidSubmit="ApplyFilter" CssClass="search-filter">
+                <FormSection Title="Filter this list">
+                    <FormFieldText Title="Text" @bind-Value="_filter.Text" />
+                </FormSection>
+                <div class="form-actions">
+                    <AdminButtonSubmit Text="Apply" />
+                    <AdminButton Text="Clear" OnClick="ClearFilter" />
+                </div>
+            </AdminForm>
+        }
+
+        <Pager PageNumber="_result?.PageNumber ?? 1" PageCount="_result?.PageCount ?? 0" OnPageChanged="GoToPage" />
+    </PageActions>
+
+    <PageBody>
+        <TableContainer IsLoading="_isLoading">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <CustomEntitySummaryHeaders Module="Module" />
+                        <th class="lowPriority">Created</th>
+                        <th class="actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_result != null && _result.Items.Count == 0)
+                    {
+                        <tr><td colspan="100" class="empty">Sorry, no @Module.Definition.NamePlural.ToLowerInvariant() could be found.</td></tr>
+                    }
+                    @foreach (var entity in _result?.Items ?? [])
+                    {
+                        var isSelected = _selectedIds.Contains(entity.CustomEntityId);
+
+                        <tr @key="entity.CustomEntityId"
+                            class="@(isSelected ? "selected" : "selectable")"
+                            @onclick="() => Select(entity.CustomEntityId)"
+                            @ondblclick="() => SelectAndCloseAsync(entity.CustomEntityId)">
+                            <CustomEntitySummaryCells Module="Module" Entity="entity" Images="_images" />
+                            <td class="lowPriority"><AuditDataCell AuditData="entity.AuditData" /></td>
+                            <td class="actions">
+                                <ButtonIcon Icon="@(isSelected ? "check-square-o" : "square-o")" Title="@(isSelected ? "Selected" : "Select")" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (Module.Permissions.CanCreate)
+            {
+                <div class="collection-actions">
+                    <a href="" class="btn-icon" title="Add" @onclick="() => _isAddOpen = true" @onclick:preventDefault>
+                        <i class="fa fa-plus-circle"></i>
+                    </a>
+                </div>
+            }
+        </TableContainer>
+    </PageBody>
+
+</ModalDialog>
+
+@if (_isAddOpen)
+{
+    <AddCustomEntityDialog Module="Module" OnClosed="OnAddClosedAsync" />
+}
+
+@code {
+    // The AngularJS SearchQuery default.
+    private const int DefaultPageSize = 30;
+
+    private readonly PickerFilter _filter = new();
+    private List<int> _selectedIds = [];
+    private SearchCustomEntitySummariesQuery _query = new();
+    private PagedQueryResult<CustomEntitySummary>? _result;
+    private IReadOnlyDictionary<int, ImageAssetRenderDetails> _images = new Dictionary<int, ImageAssetRenderDetails>();
+    private bool _isFilterVisible;
+    private bool _isLoading;
+    private bool _isAddOpen;
+
+    /// <summary>
+    /// The type of entity to pick.
+    /// </summary>
+    [Parameter, EditorRequired] public CustomEntityModule Module { get; set; } = default!;
+
+    /// <summary>
+    /// Allows several entities to be selected (a collection field) rather than one.
+    /// </summary>
+    [Parameter] public bool MultiMode { get; set; }
+
+    /// <summary>
+    /// The current selection: the field's value in single mode, the collection's ids in multi mode.
+    /// </summary>
+    [Parameter] public IReadOnlyCollection<int> SelectedIds { get; set; } = [];
+
+    /// <summary>
+    /// Restricts the list to a locale, e.g. the locale of the entity being edited.
+    /// </summary>
+    [Parameter] public int? LocaleId { get; set; }
+
+    /// <summary>
+    /// Raised with the selected ids (in selection order) when "Ok" is clicked.
+    /// </summary>
+    [Parameter] public EventCallback<IReadOnlyList<int>> OnSelected { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _selectedIds = SelectedIds.ToList();
+        _query = CreateQuery();
+        await LoadGridAsync();
+    }
+
+    private SearchCustomEntitySummariesQuery CreateQuery()
+    {
+        return new SearchCustomEntitySummariesQuery
+        {
+            CustomEntityDefinitionCode = Module.Code,
+            PageNumber = 1,
+            PageSize = DefaultPageSize,
+            Text = _filter.Text,
+            LocaleId = LocaleId
+        };
+    }
+
+    private async Task LoadGridAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _result = await Executor.QueryAsync(_query);
+            _images = await Module.LoadPreviewImagesAsync(Executor, _result.Items);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ApplyFilter()
+    {
+        _query = CreateQuery();
+        _isFilterVisible = false;
+        await LoadGridAsync();
+    }
+
+    private async Task ClearFilter()
+    {
+        _filter.Text = null;
+        await ApplyFilter();
+    }
+
+    private async Task GoToPage(int pageNumber)
+    {
+        _query.PageNumber = pageNumber;
+        await LoadGridAsync();
+    }
+
+    private void Select(int customEntityId)
+    {
+        if (!MultiMode)
+        {
+            _selectedIds = [customEntityId];
+        }
+        else if (!_selectedIds.Remove(customEntityId))
+        {
+            _selectedIds.Add(customEntityId);
+        }
+    }
+
+    private Task SelectAndCloseAsync(int customEntityId)
+    {
+        // A double-click arrives after the two clicks, which have toggled a multi-mode row back off.
+        if (MultiMode)
+        {
+            if (!_selectedIds.Contains(customEntityId))
+            {
+                _selectedIds.Add(customEntityId);
+            }
+        }
+        else
+        {
+            _selectedIds = [customEntityId];
+        }
+
+        return OkAsync();
+    }
+
+    private Task OkAsync() => OnSelected.InvokeAsync(_selectedIds);
+
+    private Task CancelAsync() => OnCancel.InvokeAsync();
+
+    private async Task OnAddClosedAsync(int? newCustomEntityId)
+    {
+        _isAddOpen = false;
+
+        if (!newCustomEntityId.HasValue)
+        {
+            return;
+        }
+
+        // As in the AngularJS picker: multi mode adds the new entity and stays open, single mode
+        // selects it and closes.
+        if (MultiMode)
+        {
+            _selectedIds.Add(newCustomEntityId.Value);
+            await LoadGridAsync();
+        }
+        else
+        {
+            await SelectAndCloseAsync(newCustomEntityId.Value);
+        }
+    }
+
+    private sealed class PickerFilter
+    {
+        public string? Text { get; set; }
+    }
+}

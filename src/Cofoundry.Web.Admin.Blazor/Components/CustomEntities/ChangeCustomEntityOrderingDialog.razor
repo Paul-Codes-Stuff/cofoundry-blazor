@@ -1,0 +1,234 @@
+@inject IAdminBlazorExecutor Executor
+@inject AdminLookups Lookups
+
+@* Port of the ChangeOrdering modal. Entities with a locale first choose the market (step 1). Step 2 lists
+   up to 60 entities to reorder by dragging rows. With partial ordering only the ordered entities are
+   listed, and the picker adds or removes them. *@
+<ModalDialog Title="Update Ordering" Size="large" OnClose="Close">
+
+    @if (_step == 1)
+    {
+        <AdminForm Model="_command" OnValidSubmit="GoToStep2Async">
+            <PageActions>
+                <AdminButtonSubmit Text="Next" />
+                <AdminButton Text="Cancel" OnClick="Close" />
+            </PageActions>
+            <PageBody>
+                <FormSection Title="Market">
+                    <FormFieldDropdown TValue="int?" Title="Market" Options="_locales" @bind-Value="_command.LocaleId" />
+                </FormSection>
+            </PageBody>
+        </AdminForm>
+    }
+    else
+    {
+        <AdminForm Model="_command" IsLoading="_isSaving" OnValidSubmit="SaveAsync">
+            <PageActions>
+                @if (Module.Definition.HasLocale)
+                {
+                    <AdminButton Text="Previous" Disabled="_isLoading || _isSaving" OnClick="() => _step = 1" />
+                }
+                <AdminButtonSubmit Text="Save" IsLoading="_isSaving" Disabled="_isLoading || _isSaving" />
+                <AdminButton Text="Cancel" OnClick="Close" />
+            </PageActions>
+            <PageBody>
+                <FormStatus Errors="_errors" />
+                @if (_items.Count >= MaxItems)
+                {
+                    <WarningMessage>WARNING: Ordering is only supported on the first @MaxItems items.</WarningMessage>
+                }
+                <TableContainer IsLoading="_isLoading">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>@Module.TitleTerm</th>
+                                @if (!Module.Definition.AutoPublish)
+                                {
+                                    <th>Status</th>
+                                }
+                                @if (IsPartialOrdering)
+                                {
+                                    <th class="actions">Actions</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (_items.Count == 0)
+                            {
+                                <tr><td colspan="100" class="empty">None</td></tr>
+                            }
+                            @for (var i = 0; i < _items.Count; i++)
+                            {
+                                var entity = _items[i];
+                                var index = i;
+
+                                <tr @key="entity.CustomEntityId"
+                                    draggable="true"
+                                    @ondragstart="() => _dragIndex = index"
+                                    @ondragover="() => { }"
+                                    @ondragover:preventDefault
+                                    @ondrop="() => Drop(index)">
+                                    <td>
+                                        <strong>
+                                            <a href="@AdminBlazorRoutes.CustomEntityDetails(Module.Code, entity.CustomEntityId)" target="_blank">@entity.Title</a>
+                                        </strong>
+                                    </td>
+                                    @if (!Module.Definition.AutoPublish)
+                                    {
+                                        <td>@CustomEntityLabels.PublishStatus(entity.PublishStatus, entity.PublishDate)</td>
+                                    }
+                                    @if (IsPartialOrdering)
+                                    {
+                                        <td class="actions">
+                                            <ButtonIcon Icon="trash-o" Title="Remove" OnClick="() => _items.Remove(entity)" />
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @if (IsPartialOrdering)
+                    {
+                        <div class="collection-actions">
+                            <a href="" class="btn-icon" title="Add" @onclick="() => _isPickerOpen = true" @onclick:preventDefault>
+                                <i class="fa fa-plus-circle"></i>
+                            </a>
+                        </div>
+                    }
+                </TableContainer>
+            </PageBody>
+        </AdminForm>
+    }
+
+</ModalDialog>
+
+@if (_isPickerOpen)
+{
+    <CustomEntityPickerDialog Module="Module" MultiMode="true" LocaleId="_command.LocaleId"
+                              SelectedIds="_items.Select(e => e.CustomEntityId).ToList()"
+                              OnSelected="OnPickedAsync" OnCancel="() => _isPickerOpen = false" />
+}
+
+@code {
+    private const int MaxItems = 60;
+
+    private ReOrderCustomEntitiesCommand _command = new();
+    private IReadOnlyList<SelectOption<int?>> _locales = [];
+    private List<CustomEntitySummary> _items = [];
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private int _step;
+    private int? _dragIndex;
+    private bool _isLoading;
+    private bool _isSaving;
+    private bool _isPickerOpen;
+
+    [Parameter, EditorRequired] public CustomEntityModule Module { get; set; } = default!;
+
+    /// <summary>
+    /// The market filtered on in the list, if any.
+    /// </summary>
+    [Parameter] public int? LocaleId { get; set; }
+
+    /// <summary>
+    /// Raised with true when the ordering was saved, false when cancelled.
+    /// </summary>
+    [Parameter] public EventCallback<bool> OnClosed { get; set; }
+
+    private bool IsPartialOrdering => Module.Definition.Ordering == CustomEntityOrdering.Partial;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _command = new ReOrderCustomEntitiesCommand
+        {
+            CustomEntityDefinitionCode = Module.Code,
+            LocaleId = LocaleId
+        };
+
+        if (Module.Definition.HasLocale)
+        {
+            _locales = await Lookups.GetLocaleOptionsAsync();
+            _step = 1;
+        }
+        else
+        {
+            await GoToStep2Async();
+        }
+    }
+
+    private async Task GoToStep2Async()
+    {
+        _step = 2;
+        _isLoading = true;
+
+        try
+        {
+            var result = await Executor.QueryAsync(new SearchCustomEntitySummariesQuery
+            {
+                CustomEntityDefinitionCode = Module.Code,
+                LocaleId = _command.LocaleId,
+                InterpretNullLocaleAsNone = true,
+                PageNumber = 1,
+                PageSize = MaxItems
+            });
+
+            _items = IsPartialOrdering
+                ? result.Items.Where(e => e.Ordering.HasValue).ToList()
+                : result.Items.ToList();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void Drop(int toIndex)
+    {
+        if (_dragIndex is not int fromIndex || fromIndex == toIndex)
+        {
+            return;
+        }
+
+        _dragIndex = null;
+        var item = _items[fromIndex];
+        _items.RemoveAt(fromIndex);
+        _items.Insert(toIndex, item);
+    }
+
+    /// <summary>
+    /// Keeps the order of the entities already listed, drops the deselected ones and appends new ones.
+    /// </summary>
+    private async Task OnPickedAsync(IReadOnlyList<int> ids)
+    {
+        _isPickerOpen = false;
+        _items = _items.Where(e => ids.Contains(e.CustomEntityId)).ToList();
+
+        var newIds = ids.Except(_items.Select(e => e.CustomEntityId)).ToList();
+        _items.AddRange(await CustomEntityModule.GetSummariesAsync(Executor, newIds));
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errors = [];
+        _command.OrderedCustomEntityIds = _items.Select(e => e.CustomEntityId).ToList();
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(_command);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+
+        await OnClosed.InvokeAsync(true);
+    }
+
+    private Task Close() => OnClosed.InvokeAsync(false);
+}

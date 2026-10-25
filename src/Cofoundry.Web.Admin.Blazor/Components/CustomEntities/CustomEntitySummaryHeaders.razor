@@ -1,0 +1,18 @@
+@* Headers for CustomEntitySummaryCells. *@
+@if (Module.PreviewImageProperty != null)
+{
+    <th></th>
+}
+<th>@Module.TitleTerm</th>
+@if (Module.PreviewDescriptionProperty is { } description)
+{
+    <th>@description.DisplayName</th>
+}
+@if (!Module.Definition.AutoPublish)
+{
+    <th>Status</th>
+}
+
+@code {
+    [Parameter, EditorRequired] public CustomEntityModule Module { get; set; } = default!;
+}

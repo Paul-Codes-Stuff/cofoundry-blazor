@@ -1,3 +1,4 @@
+using Cofoundry.Web.Admin.Blazor.Components.CustomEntities;
 using Microsoft.AspNetCore.Components;
 
 namespace Cofoundry.Web.Admin.Blazor.Components.DataModels;
@@ -53,6 +54,9 @@ public class DefaultDataModelFieldComponentRegistration : IDataModelFieldCompone
         }
 
         yield return new("ImageAsset", typeof(DataModelImageField));
+
+        yield return new("CustomEntitySelector", typeof(DataModelCustomEntitySelectorField));
+        yield return new("CustomEntityCollection", typeof(DataModelCustomEntityCollectionField));
     }
 }
 

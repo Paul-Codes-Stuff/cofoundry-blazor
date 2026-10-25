@@ -1,6 +1,6 @@
 // Custom entities (phase 1: simple fields, image fields, unsupported placeholder) on the sandbox's
-// Authors (SIMAUT), Categories (SIMCAT), Blog Posts (SIMBLP) and Examples (SIMEXA, never saved: its nested collection can't be edited yet). All but Blog Posts
-// auto-publish, and a blog post needs the Author picker, so drafts/versions/publish are not covered yet.
+// Authors (SIMAUT), Categories (SIMCAT), Blog Posts (SIMBLP) and Examples (SIMEXA, never saved: its nested
+// collection can't be edited yet). Pickers, drafts, versions and publishing are in custom-entity-pickers-step.js.
 // Uploads an image, creates authors and a category, and deletes them all again.
 module.exports = async (page, c) => {
   const stamp = Date.now().toString(36);
@@ -98,7 +98,7 @@ module.exports = async (page, c) => {
     await page.goto('/admin-next/custom-entities/SIMBLP/new'); await c.settle();
     if (!(await c.btn('.page-actions', 'Save Draft').count())) throw new Error('no Save Draft for a non auto-publish entity');
     if (!(await page.locator('.page-body label:text-is("Url Slug:")').count())) throw new Error('no slug field');
-    if (!/can't be edited in this admin yet/.test(await control('Author:').innerText())) throw new Error('no unsupported placeholder');
+    if (!(await control('Author:').locator('input.ui-select-search').count())) throw new Error('no author selector');
     await c.field('.page-body', 'Title:').fill(`CE Post ${stamp}`); await c.field('.page-body', 'Title:').blur();
     await page.waitForTimeout(400);
     if (await c.field('.page-body', 'Url Slug:').inputValue() !== `ce-post-${stamp}`) throw new Error('slug not generated');

@@ -21,6 +21,20 @@ public abstract class FormFieldBase<TValue> : ComponentBase, IDisposable
     [CascadingParameter]
     public EditContext? CascadingEditContext { get; set; }
 
+    /// <summary>
+    /// Set by <see cref="Dialogs.ModalDialog"/> so a dialog's fields don't repeat the ids of the form
+    /// behind it, which would point their labels at the wrong input.
+    /// </summary>
+    [CascadingParameter(Name = "FieldIdPrefix")]
+    public string? FieldIdPrefix { get; set; }
+
+    /// <summary>
+    /// The element id. Defaults to the bound property name; set it when that isn't unique, e.g. a dynamic
+    /// data model field, which binds to an adapter's "Value" property.
+    /// </summary>
+    [Parameter]
+    public string? Id { get; set; }
+
     [Parameter]
     public string? Title { get; set; }
 
@@ -51,9 +65,17 @@ public abstract class FormFieldBase<TValue> : ComponentBase, IDisposable
     protected bool ShowInput => EditMode && !ReadOnly;
 
     /// <summary>
-    /// The element id, derived from the bound model property name.
+    /// The element id: <see cref="Id"/>, else the bound model property name, prefixed inside a dialog.
     /// </summary>
-    protected string FieldId => _hasFieldIdentifier ? _fieldIdentifier.FieldName : string.Empty;
+    protected string FieldId
+    {
+        get
+        {
+            var id = Id ?? (_hasFieldIdentifier ? _fieldIdentifier.FieldName : null);
+
+            return string.IsNullOrEmpty(id) ? string.Empty : FieldIdPrefix + id;
+        }
+    }
 
     protected bool IsInvalid => _hasFieldIdentifier
         && CascadingEditContext != null

@@ -66,7 +66,7 @@ else
             <PageActions>
                 @if (!definition.AutoPublish)
                 {
-                    <AdminButtonSubmit Text="Save Draft" Class="main-cta" IsLoading="_isLoading && !_isPublishing" Disabled="_isLoading" />
+                    <AdminButtonSubmit Text="Save Draft" IsLoading="_isLoading && !_isPublishing" Disabled="_isLoading" />
                 }
                 @if (permissions.CanPublish)
                 {

@@ -1,0 +1,251 @@
+@inherits FormFieldBase<int?>
+
+@* Port of cms-form-field-filtered-dropdown: a search-as-you-type single select for long lists (e.g. a
+   custom entity selector). The AngularJS version used ui-select's selectize theme, so this renders the
+   same classes for the copied css. Options are chosen on mousedown, which fires before the search box
+   loses focus and closes the list. Arrow keys, Enter and Escape work as in ui-select. *@
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label" for="@FieldId">@Title:</label>
+        @if (ShowInput && Actions != null)
+        {
+            <div class="filtered-dd--actions">@Actions</div>
+        }
+        <div class="controls filtered-dd">
+            @if (ShowInput)
+            {
+                @if (_selectedText != null)
+                {
+                    <button type="button" class="btn-icon btn-remove" title="Clear" disabled="@Disabled" @onclick="ClearAsync">
+                        <i class="fa fa-times"></i>
+                    </button>
+                }
+                <div class="ui-select-container selectize-control single @(_isOpen ? "open" : null)">
+                    <div class="selectize-input @(_isOpen ? "focus input-active" : null)">
+                        @if (!_isOpen && _selectedText != null)
+                        {
+                            <div class="ui-select-match" @onclick="FocusSearchAsync">
+                                <span class="ui-select-match-text">@_selectedText</span>
+                            </div>
+                        }
+                        <input @ref="_searchInput"
+                               id="@FieldId"
+                               type="search"
+                               autocomplete="off"
+                               form="@NoForm"
+                               class="ui-select-search"
+                               style="@(!_isOpen && _selectedText != null ? "position:absolute;opacity:0;width:0" : null)"
+                               placeholder="@(_selectedText == null ? Placeholder : null)"
+                               disabled="@Disabled"
+                               value="@_search"
+                               @oninput="OnSearchInput"
+                               @onfocus="OpenAsync"
+                               @onblur="Close"
+                               @onkeydown="OnKeyDownAsync" />
+                    </div>
+                    @if (_isOpen)
+                    {
+                        <div class="ui-select-dropdown selectize-dropdown single">
+                            <div class="ui-select-choices selectize-dropdown-content">
+                                @if (_options.Count == 0)
+                                {
+                                    <div class="ui-select-choices-row"><div class="option">@(_isSearching ? "Searching..." : "No matches")</div></div>
+                                }
+                                @for (var i = 0; i < _options.Count; i++)
+                                {
+                                    var option = _options[i];
+                                    var index = i;
+
+                                    <div class="ui-select-choices-row @(index == _activeIndex ? "active" : null)"
+                                         @onmousedown="() => SelectAsync(option)"
+                                         @onmouseover="() => _activeIndex = index">
+                                        <div class="option ui-select-choices-row-inner" data-selectable>@option.Text</div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+            }
+            else if (_selectedText == null)
+            {
+                <div class="text-block-display-value">None</div>
+            }
+            else if (!string.IsNullOrEmpty(Href))
+            {
+                <div class="text-block-display-value"><a href="@Href">@_selectedText</a></div>
+            }
+            else
+            {
+                <div class="text-block-display-value">@_selectedText</div>
+            }
+        </div>
+    </div>
+    <FieldHelp Text="@Description" />
+</div>
+
+@code {
+    private const int SearchDelayMilliseconds = 200;
+
+    // Points the search box at a form that doesn't exist, so Enter picks an option instead of
+    // submitting the surrounding form (an input without a form owner has no implicit submission).
+    private const string NoForm = "filtered-dd-no-form";
+
+    private ElementReference _searchInput;
+    private IReadOnlyList<SelectOption<int>> _options = [];
+    private CancellationTokenSource? _searchCancellation;
+    private string? _search;
+    private string? _selectedText;
+    private int? _selectedTextFor;
+    private int _activeIndex = -1;
+    private bool _isOpen;
+    private bool _isSearching;
+
+    /// <summary>
+    /// Returns the options matching the search text (null or empty for the first page).
+    /// </summary>
+    [Parameter, EditorRequired] public Func<string?, Task<IReadOnlyList<SelectOption<int>>>> Search { get; set; } = default!;
+
+    /// <summary>
+    /// Returns the display text for the current value, the AngularJS cms-initial-item-function.
+    /// </summary>
+    [Parameter, EditorRequired] public Func<int, Task<string?>> GetText { get; set; } = default!;
+
+    [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary>
+    /// Link for the selected item when the form is read-only.
+    /// </summary>
+    [Parameter] public string? Href { get; set; }
+
+    /// <summary>
+    /// Buttons shown next to the field in edit mode, e.g. "Add".
+    /// </summary>
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        base.OnParametersSet();
+
+        if (Value == _selectedTextFor)
+        {
+            return;
+        }
+
+        _selectedTextFor = Value;
+        _selectedText = Value.HasValue ? await GetText(Value.Value) : null;
+    }
+
+    private async Task OpenAsync()
+    {
+        if (_isOpen)
+        {
+            return;
+        }
+
+        _isOpen = true;
+        _search = null;
+        await RunSearchAsync(null, delay: false);
+    }
+
+    private async Task FocusSearchAsync()
+    {
+        await _searchInput.FocusAsync();
+        await OpenAsync();
+    }
+
+    private void Close()
+    {
+        _isOpen = false;
+        _search = null;
+        _searchCancellation?.Cancel();
+    }
+
+    private Task OnSearchInput(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString();
+        _isOpen = true;
+        return RunSearchAsync(_search, delay: true);
+    }
+
+    /// <summary>
+    /// Debounced like ui-select's refresh-delay: only the last search typed within the delay runs.
+    /// </summary>
+    private async Task RunSearchAsync(string? search, bool delay)
+    {
+        _searchCancellation?.Cancel();
+        var cancellation = _searchCancellation = new CancellationTokenSource();
+        _isSearching = true;
+
+        try
+        {
+            if (delay)
+            {
+                await Task.Delay(SearchDelayMilliseconds, cancellation.Token);
+            }
+
+            var options = await Search(search);
+
+            if (!cancellation.IsCancellationRequested)
+            {
+                _options = options;
+                _activeIndex = options.Count > 0 ? 0 : -1;
+            }
+        }
+        catch (TaskCanceledException)
+        {
+        }
+        finally
+        {
+            if (!cancellation.IsCancellationRequested)
+            {
+                _isSearching = false;
+            }
+        }
+    }
+
+    private async Task OnKeyDownAsync(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                await OpenAsync();
+                _activeIndex = Math.Min(_activeIndex + 1, _options.Count - 1);
+                break;
+            case "ArrowUp":
+                _activeIndex = Math.Max(_activeIndex - 1, 0);
+                break;
+            case "Enter":
+                if (_isOpen && _activeIndex >= 0 && _activeIndex < _options.Count)
+                {
+                    await SelectAsync(_options[_activeIndex]);
+                }
+                break;
+            case "Escape":
+                Close();
+                break;
+        }
+    }
+
+    private async Task SelectAsync(SelectOption<int> option)
+    {
+        Close();
+        await SetAsync(option.Value, option.Text);
+    }
+
+    private Task ClearAsync() => SetAsync(null, null);
+
+    private async Task SetAsync(int? value, string? text)
+    {
+        _selectedText = text;
+        _selectedTextFor = value;
+        await ValueChanged.InvokeAsync(value);
+        NotifyFieldChanged();
+    }
+
+    protected override void OnDisposing()
+    {
+        _searchCancellation?.Cancel();
+    }
+}

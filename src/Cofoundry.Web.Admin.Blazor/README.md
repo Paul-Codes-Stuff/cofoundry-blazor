@@ -5,7 +5,7 @@ installed **alongside** the AngularJS admin while modules are migrated one at a 
 
 > **Status: first slice.** Builds cleanly. The Dashboard, Pages (list, filter, create, details/edit, publish,
 > unpublish, change URL, duplicate, access rules), Directories, Page Templates, Images, Documents, Site Settings, Roles, Users
-> and Custom Entities (first phase) modules have been smoke-tested in `Dev.Sandbox`.
+> and Custom Entities (phases 1 and 2) modules have been smoke-tested in `Dev.Sandbox`.
 
 ## Installing side-by-side
 
@@ -81,9 +81,11 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
 * Custom Entities: one module per definition at `/admin-next/custom-entities/{DefinitionCode}`, with list (filter
   by text/created dates/market, paging, [PreviewImage] and [PreviewDescription] columns), create (Save, Save &
   Publish, Save Draft, Save & Edit Content), details (edit, publish/unpublish, versions, discard draft, copy to
-  draft, change URL, duplicate, delete, template regions). The definition's custom terms, `AutoPublish`,
-  `AutoGenerateUrlSlug` and `HasLocale` drive the UI as in the AngularJS module. The nav maps every module
-  restricted by `CustomEntityAdminModulePermission` to its Blazor list
+  draft, change URL, duplicate, delete, template regions) and Change Ordering (market step, drag to reorder,
+  partial ordering's add/remove). The definition's custom terms, `AutoPublish`, `AutoGenerateUrlSlug`,
+  `HasLocale` and `Ordering` drive the UI as in the AngularJS module. Ordering only applies to definitions that
+  implement `IOrderableCustomEntityDefinition`. The nav maps every module restricted by
+  `CustomEntityAdminModulePermission` to its Blazor list
 
 ### Dynamic data-model forms
 
@@ -98,12 +100,18 @@ chosen by the schema's data template name:
   only checks the top-level command. Messages are filed against the bindings so they show under each field.
   The schema's `IsRequired` (e.g. a non-nullable image id) is also enforced, as the AngularJS `required` was.
 * Supported so far: text (String, Char, Url, EmailAddress), MultilineText, Boolean, numbers (including plain
-  integers, which the AngularJS admin didn't render) and ImageAsset. Anything else shows a "can't be edited in this
+  integers, which the AngularJS admin didn't render), ImageAsset, CustomEntitySelector (a search-as-you-type
+  `FormFieldFilteredDropdown` with an "Add" button that creates one in a dialog) and CustomEntityCollection (a
+  table filled from `CustomEntityPickerDialog`, which filters, pages and can also create; orderable
+  collections reorder by dragging rows). Anything else shows a "can't be edited in this
   admin yet" placeholder that keeps the value and still shows its validation messages.
 * **Extension point:** implement `IDataModelFieldComponentRegistration` (discovered automatically) to map
   template names to components deriving from `DataModelFieldComponentBase`. Registrations are applied after the
   built-in `DefaultDataModelFieldComponentRegistration`, so they can replace a built-in field. This is the
   Blazor replacement for plugins adding `cms-form-field-*` directives (e.g. the YouTube plugin).
+* Field ids: `FormFieldBase` builds the input id from an optional `Id` parameter (the data model fields pass the
+  property name, since they all bind to a binding's `Value`) and a cascaded `FieldIdPrefix`. `ModalDialog`
+  cascades a unique prefix, so a dialog's `Title` field doesn't clash with the page's.
 
 ### File uploads
 
@@ -115,10 +123,11 @@ to a JPEG in the browser first (`wwwroot/js/image-upload.js`), and the title def
 
 ## Known gaps
 
-* Custom entities, still to come: custom entity pickers (single and collection, needed by Blog Posts), nested
-  data models (single and multi-type collections), and the remaining field types (HTML, document, page,
-  directory, date/time, color, option lists). Change Ordering on custom entity lists isn't ported. The image
-  field ignores `[Image]` size restrictions (the picker has no filters yet)
+* Custom entities, still to come: nested data models (single and multi-type collections, phase 3), and the
+  remaining field types (HTML, document, page, directory, date/time, color, option lists, phase 4).
+  `[CustomEntityMultiTypeCollection]` (only used by page blocks) isn't ported. The image field ignores `[Image]`
+  size restrictions (the picker has no filters yet). Reordering in Change Ordering hasn't been exercised end to
+  end: the sandbox's only orderable type (Example) needs nested blocks, which arrive in phase 3
 * The image picker is single-select only. Its multi-select mode backs the image (and document) collection
   fields, which only appear in dynamic data-model forms (`[ImageCollection]` on custom entity / page block
   models), so they come with that form. Preset filter restrictions (`cms-width`, `cms-min-width`, ...) aren't

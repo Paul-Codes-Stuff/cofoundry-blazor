@@ -1,7 +1,7 @@
 @inherits DataModelFieldComponentBase
 
 @* [MultiLineText] properties: cms-form-field-text-area. *@
-<FormFieldTextArea Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+<FormFieldTextArea Id="@Field.Property.Name" Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
                    Rows="Rows" MaxLength="MaxLength" Placeholder="@Placeholder"
                    @bind-Value="_binding.Value" />
 

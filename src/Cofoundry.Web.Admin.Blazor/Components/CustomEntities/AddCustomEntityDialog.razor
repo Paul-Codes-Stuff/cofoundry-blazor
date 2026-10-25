@@ -1,0 +1,17 @@
+@* Port of AddCustomEntityDialog: creates an entity from a picker's "Add" button without leaving the form. *@
+<ModalDialog Title="@($"Create {Module.Definition.Name}")" Size="large" OnClose="Cancel">
+    <CustomEntityAddForm Module="Module" OnSaved="OnSavedAsync" OnCancel="Cancel" />
+</ModalDialog>
+
+@code {
+    [Parameter, EditorRequired] public CustomEntityModule Module { get; set; } = default!;
+
+    /// <summary>
+    /// Raised with the new entity's id, or null when cancelled.
+    /// </summary>
+    [Parameter] public EventCallback<int?> OnClosed { get; set; }
+
+    private Task OnSavedAsync(int customEntityId, bool thenEditContent) => OnClosed.InvokeAsync(customEntityId);
+
+    private Task Cancel() => OnClosed.InvokeAsync(null);
+}

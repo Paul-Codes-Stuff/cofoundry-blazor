@@ -1,7 +1,7 @@
 @inherits DataModelFieldComponentBase
 
 @* String, Char, Url and EmailAddress properties: cms-form-field-text, -url and -email-address. *@
-<FormFieldText Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+<FormFieldText Id="@Field.Property.Name" Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
                InputType="@InputType" MaxLength="MaxLength" Placeholder="@Placeholder"
                @bind-Value="_binding.Value" />
 

@@ -64,3 +64,12 @@ public static class CustomEntityUrls
         return url + "&edittype=entity";
     }
 }
+
+/// <summary>
+/// Additional attribute keys set by [CustomEntity] and [CustomEntityCollection].
+/// </summary>
+public static class CustomEntityFieldAttributes
+{
+    public const string DefinitionCode = "CustomEntityDefinitionCode";
+    public const string Orderable = "Orderable";
+}

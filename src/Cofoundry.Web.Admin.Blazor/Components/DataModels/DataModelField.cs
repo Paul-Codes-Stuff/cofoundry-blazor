@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Globalization;
 using System.Reflection;
 using Microsoft.AspNetCore.Components.Forms;
@@ -169,6 +170,7 @@ public sealed class DataModelFieldBinding<T> : IDataModelFieldBinding
 
             return value == null
                 || (value is string text && string.IsNullOrWhiteSpace(text))
+                || (value is ICollection collection && collection.Count == 0)
                 || (_emptyWhenDefault && IsDefault(value));
         }
     }
@@ -203,11 +205,58 @@ internal static class DataModelValueConverter
             return value;
         }
 
+        if (value is IEnumerable items and not string && TryGetCollectionItemType(type, out var itemType))
+        {
+            return ConvertCollection(items, type, itemType);
+        }
+
         if (type.IsEnum)
         {
             return value is string name ? Enum.Parse(type, name, true) : Enum.ToObject(type, value);
         }
 
         return System.Convert.ChangeType(value, type, CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// Arrays, List&lt;T&gt; and the collection interfaces an array or list implements, which covers the
+    /// id collections data models use (int[], ICollection&lt;int&gt;, IReadOnlyCollection&lt;int&gt;...).
+    /// </summary>
+    private static bool TryGetCollectionItemType(Type type, out Type itemType)
+    {
+        if (type.IsArray)
+        {
+            itemType = type.GetElementType()!;
+            return true;
+        }
+
+        if (type.IsGenericType && type.GetGenericArguments().Length == 1)
+        {
+            itemType = type.GetGenericArguments()[0];
+            return type.IsAssignableFrom(typeof(List<>).MakeGenericType(itemType));
+        }
+
+        itemType = typeof(object);
+        return false;
+    }
+
+    private static object ConvertCollection(IEnumerable items, Type type, Type itemType)
+    {
+        var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType))!;
+
+        foreach (var item in items)
+        {
+            list.Add(Convert(item, itemType));
+        }
+
+        if (!type.IsArray)
+        {
+            return list;
+        }
+
+        var array = Array.CreateInstance(itemType, list.Count);
+        list.CopyTo(array, 0);
+
+        return array;
     }
 }

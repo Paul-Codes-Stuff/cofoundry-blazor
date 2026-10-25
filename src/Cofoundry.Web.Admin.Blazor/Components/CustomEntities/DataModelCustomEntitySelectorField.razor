@@ -1,0 +1,88 @@
+@inherits DataModelFieldComponentBase
+@inject IAdminBlazorExecutor Executor
+
+@* [CustomEntity] properties: cms-form-field-custom-entity-selector, a search-as-you-type dropdown of one
+   custom entity type with an "Add" button that creates one in a dialog. *@
+@if (_module == null)
+{
+    <FormFieldContainer Title="@Field.Title" Description="@Field.Description">
+        <div class="text-block-display-value">@(_notFound ? $"Unknown custom entity type '{DefinitionCode}'." : "Loading...")</div>
+    </FormFieldContainer>
+}
+else
+{
+    <FormFieldFilteredDropdown Id="@Field.Property.Name" Title="@Field.Title" Description="@Field.Description" ReadOnly="Field.IsReadOnly"
+                               Search="SearchAsync" GetText="GetTextAsync" Href="@DetailsHref"
+                               @bind-Value="_binding.Value">
+        <Actions>
+            @if (_module.Permissions.CanCreate)
+            {
+                <ButtonIcon Icon="plus-circle" Title="Add" OnClick="() => _isAddOpen = true" />
+            }
+        </Actions>
+    </FormFieldFilteredDropdown>
+
+    @if (_isAddOpen)
+    {
+        <AddCustomEntityDialog Module="_module" OnClosed="OnAddClosed" />
+    }
+}
+
+@code {
+    // ui-select asked for 20 results per search.
+    private const int SearchPageSize = 20;
+
+    private DataModelFieldBinding<int?> _binding = default!;
+    private CustomEntityModule? _module;
+    private bool _isAddOpen;
+    private bool _notFound;
+
+    [CascadingParameter] public EditContext? EditContext { get; set; }
+
+    private string DefinitionCode => Field.GetAttribute<string>(CustomEntityFieldAttributes.DefinitionCode) ?? string.Empty;
+
+    private string? DetailsHref => _binding.Value is int id ? AdminBlazorRoutes.CustomEntityDetails(DefinitionCode, id) : null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _binding = Field.Bind<int?>(emptyWhenDefault: true);
+
+        if (_module == null && !_notFound)
+        {
+            _module = await CustomEntityModule.LoadAsync(Executor, DefinitionCode);
+            _notFound = _module == null;
+        }
+    }
+
+    private async Task<IReadOnlyList<SelectOption<int>>> SearchAsync(string? text)
+    {
+        var result = await Executor.QueryAsync(new SearchCustomEntitySummariesQuery
+        {
+            CustomEntityDefinitionCode = DefinitionCode,
+            Text = text,
+            LocaleId = Field.Context.LocaleId,
+            PageNumber = 1,
+            PageSize = SearchPageSize
+        });
+
+        return result.Items.Select(e => new SelectOption<int>(e.CustomEntityId, e.Title)).ToList();
+    }
+
+    private async Task<string?> GetTextAsync(int customEntityId)
+    {
+        var summaries = await CustomEntityModule.GetSummariesAsync(Executor, [customEntityId]);
+
+        return summaries.FirstOrDefault()?.Title;
+    }
+
+    private void OnAddClosed(int? newCustomEntityId)
+    {
+        _isAddOpen = false;
+
+        if (newCustomEntityId.HasValue)
+        {
+            _binding.Value = newCustomEntityId;
+            EditContext?.NotifyFieldChanged(_binding.FieldIdentifier);
+        }
+    }
+}

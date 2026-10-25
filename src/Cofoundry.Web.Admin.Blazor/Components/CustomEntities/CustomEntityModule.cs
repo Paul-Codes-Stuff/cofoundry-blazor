@@ -78,6 +78,61 @@ public sealed class CustomEntityModule
     }
 
     /// <summary>
+    /// Loads the [PreviewImage] thumbnails for a set of entities in one query, as the AngularJS
+    /// ImagePreviewFieldCollection did. Empty when the model has no preview image.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<int, ImageAssetRenderDetails>> LoadPreviewImagesAsync(
+        IAdminBlazorExecutor executor,
+        IEnumerable<CustomEntitySummary> entities)
+    {
+        var property = PreviewImageProperty;
+        var ids = property == null
+            ? []
+            : entities
+                .Select(e => GetModelValue(e.Model, property) as int?)
+                .Where(id => id > 0)
+                .Select(id => id!.Value)
+                .Distinct()
+                .ToList();
+
+        return ids.Count == 0
+            ? new Dictionary<int, ImageAssetRenderDetails>()
+            : await executor.QueryAsync(new GetImageAssetRenderDetailsByIdRangeQuery(ids));
+    }
+
+    public ImageAssetRenderDetails? GetPreviewImage(IReadOnlyDictionary<int, ImageAssetRenderDetails> images, CustomEntitySummary entity)
+    {
+        var property = PreviewImageProperty;
+
+        return property != null && GetModelValue(entity.Model, property) is int id ? images.GetValueOrDefault(id) : null;
+    }
+
+    public string? GetPreviewDescription(CustomEntitySummary entity)
+    {
+        var property = PreviewDescriptionProperty;
+
+        return property == null ? null : GetModelValue(entity.Model, property)?.ToString();
+    }
+
+    /// <summary>
+    /// Loads summaries by id, in the order of <paramref name="ids"/>. Ids that no longer exist are dropped.
+    /// </summary>
+    public static async Task<List<CustomEntitySummary>> GetSummariesAsync(IAdminBlazorExecutor executor, IReadOnlyCollection<int> ids)
+    {
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var summaries = await executor.QueryAsync(new GetCustomEntitySummariesByIdRangeQuery(ids));
+
+        return ids
+            .Where(summaries.ContainsKey)
+            .Select(id => summaries[id])
+            .ToList();
+    }
+
+    /// <summary>
     /// Reads a data model property for the list columns.
     /// </summary>
     public static object? GetModelValue(ICustomEntityDataModel? model, DynamicDataModelSchemaProperty property)
