@@ -1,0 +1,39 @@
+<EditForm @ref="_editForm"
+          Model="Model"
+          OnValidSubmit="OnValidSubmit"
+          class="form-horizontal @CssClass @(EditMode ? "form-edit-on" : "form-edit-off") @(IsLoading ? "loading" : string.Empty)"
+          novalidate>
+    <DataAnnotationsValidator />
+
+    <CascadingValue Value="EditMode" Name="EditMode">
+        @ChildContent
+    </CascadingValue>
+</EditForm>
+
+@code {
+    private EditForm? _editForm;
+
+    /// <summary>
+    /// The object being edited, typically a domain command. Its data annotations drive client-side validation.
+    /// </summary>
+    [Parameter, EditorRequired] public object Model { get; set; } = default!;
+
+    /// <summary>
+    /// When false the fields render as read-only values rather than inputs.
+    /// </summary>
+    [Parameter] public bool EditMode { get; set; } = true;
+
+    [Parameter] public bool IsLoading { get; set; }
+
+    [Parameter] public string? CssClass { get; set; }
+
+    [Parameter] public EventCallback<EditContext> OnValidSubmit { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Runs validation for buttons that save without being the form's submit button (e.g.
+    /// "Save &amp; Publish"). Returns true if the model is valid.
+    /// </summary>
+    public bool Validate() => _editForm?.EditContext?.Validate() ?? true;
+}

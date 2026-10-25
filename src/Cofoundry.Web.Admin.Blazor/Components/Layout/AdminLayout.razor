@@ -1,0 +1,19 @@
+@inherits LayoutComponentBase
+
+<div id="wrapper">
+
+    <main id="main">
+
+        <AdminNav />
+
+        <div class="content">
+            @Body
+        </div>
+
+    </main>
+
+    <footer>
+        <p class="copyright">&copy; @DateTime.Now.Year Cofoundry. All Rights Reserved.</p>
+    </footer>
+
+</div>

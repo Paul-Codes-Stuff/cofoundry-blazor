@@ -1,0 +1,28 @@
+@* The icon-only action buttons used in table rows, e.g. publish, edit, browse. *@
+@if (OnClick.HasDelegate)
+{
+    <a href="" class="btn-icon" title="@Title" @onclick="OnClick" @onclick:preventDefault>
+        <i class="fa fa-@Icon"></i>
+    </a>
+}
+else
+{
+    <a href="@Href" class="btn-icon" title="@Title" target="@Target">
+        <i class="fa fa-@Icon"></i>
+    </a>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Icon { get; set; } = string.Empty;
+
+    [Parameter] public string? Title { get; set; }
+
+    [Parameter] public string? Href { get; set; }
+
+    [Parameter] public string? Target { get; set; }
+
+    /// <summary>
+    /// When set the icon renders as a click action instead of a link.
+    /// </summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+}

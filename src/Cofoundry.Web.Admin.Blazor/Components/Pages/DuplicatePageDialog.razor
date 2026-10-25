@@ -1,0 +1,142 @@
+@inject IAdminBlazorExecutor Executor
+@inject AdminLookups Lookups
+
+<ModalDialog Title="@($"Duplicate Page: {Page.LatestVersion.Title}")" Size="large" OnClose="Close">
+
+    @if (_command == null)
+    {
+        <div class="modal-body"><TableContainer IsLoading="true" /></div>
+    }
+    else
+    {
+        <AdminForm Model="_command" IsLoading="_isSaving" OnValidSubmit="SaveAsync">
+
+            <PageActions>
+                <AdminButtonSubmit Text="Create duplicate" IsLoading="_isSaving" Disabled="_isSaving" />
+                <AdminButton Text="Cancel" Disabled="_isSaving" OnClick="Close" />
+            </PageActions>
+
+            <PageBody>
+
+                <FormStatus Errors="_errors" />
+
+                <FormSection Title="Settings">
+
+                    <FormFieldText Title="Title" MaxLength="70"
+                                   Description="A few words descriptive page title, e.g. 'About the team'."
+                                   Value="_command.Title" ValueChanged="OnTitleChanged"
+                                   ValueExpression="() => _command.Title" />
+
+                    @if (_locales.Count > 1)
+                    {
+                        <FormFieldDropdown TValue="int?" Title="Market" Options="_locales" @bind-Value="_command.LocaleId" />
+                    }
+
+                    <FormFieldDropdown TValue="int" Title="Directory" Options="_directories" Required="true"
+                                       @bind-Value="_command.PageDirectoryId" />
+
+                    @if (!_isCustomEntityRoute)
+                    {
+                        <FormFieldText Title="Url path" MaxLength="64"
+                                       Description="Lower case and containing only letter, numbers and hyphens. E.g. 'about-the-team'."
+                                       @bind-Value="_command.UrlPath" />
+                    }
+                    else
+                    {
+                        <FormFieldDropdown TValue="string?" Title="Route Format" Options="_routingRules" Required="true"
+                                           @bind-Value="_command.CustomEntityRoutingRule" />
+                    }
+
+                </FormSection>
+
+            </PageBody>
+        </AdminForm>
+    }
+
+</ModalDialog>
+
+@code {
+    private DuplicatePageCommand? _command;
+    private IReadOnlyList<SelectOption<int>> _directories = [];
+    private IReadOnlyList<SelectOption<int?>> _locales = [];
+    private IReadOnlyList<SelectOption<string?>> _routingRules = [];
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private bool _isSaving;
+    private bool _isCustomEntityRoute;
+
+    [Parameter, EditorRequired] public PageDetails Page { get; set; } = default!;
+
+    /// <summary>
+    /// Raised with the id of the new page when the duplicate was created, or null when cancelled.
+    /// </summary>
+    [Parameter] public EventCallback<int?> OnClosed { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var route = Page.PageRoute;
+        _isCustomEntityRoute = route.PageType == PageType.CustomEntityDetails;
+
+        var directoriesTask = Lookups.GetDirectoryOptionsAsync();
+        var localesTask = Lookups.GetLocaleOptionsAsync();
+        var rulesTask = _isCustomEntityRoute
+            ? Lookups.GetRoutingRulesAsync()
+            : Task.FromResult<IReadOnlyCollection<ICustomEntityRoutingRule>>([]);
+
+        await Task.WhenAll(directoriesTask, localesTask, rulesTask);
+
+        _directories = directoriesTask.Result;
+        _locales = localesTask.Result;
+        _routingRules = rulesTask.Result
+            .Select(r => new SelectOption<string?>(r.RouteFormat, r.RouteFormat))
+            .ToList();
+
+        _command = new DuplicatePageCommand
+        {
+            PageToDuplicateId = Page.PageId,
+            LocaleId = route.Locale?.LocaleId,
+            PageDirectoryId = route.PageDirectory.PageDirectoryId,
+            Title = "Copy of " + Page.LatestVersion.Title,
+            CustomEntityRoutingRule = _isCustomEntityRoute ? route.UrlPath : null
+        };
+
+        if (!_isCustomEntityRoute)
+        {
+            _command.UrlPath = StringUtilities.Slugify(_command.Title, 64);
+        }
+    }
+
+    private void OnTitleChanged(string? title)
+    {
+        _command!.Title = title ?? string.Empty;
+
+        if (!_isCustomEntityRoute)
+        {
+            _command.UrlPath = StringUtilities.Slugify(title, 64);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errors = [];
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(_command!);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+
+        await OnClosed.InvokeAsync(_command!.OutputPageId);
+    }
+
+    private Task Close() => OnClosed.InvokeAsync(null);
+}

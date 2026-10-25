@@ -1,0 +1,55 @@
+@* Tags are edited as a comma separated string, matching the AngularJS tags input. *@
+<div class="control-group">
+    <div class="control-group-area @(EditMode ? "editmode" : string.Empty)">
+        <label class="control-label" for="tags-input">@(Title ?? "Tags"):</label>
+        <div class="controls">
+            @if (EditMode)
+            {
+                <input id="tags-input" type="text" value="@_text" @onchange="OnTextChanged" />
+            }
+            else if (Value.Count > 0)
+            {
+                <span>@string.Join(", ", Value)</span>
+            }
+            else
+            {
+                <div class="text-block-display-value">None</div>
+            }
+        </div>
+    </div>
+    <p class="help-inline">
+        <small>Separate each tag with a comma: dog, animal, canine. Used internally for searching for things.</small>
+    </p>
+</div>
+
+@code {
+    private string _text = string.Empty;
+
+    [CascadingParameter(Name = "EditMode")] public bool EditMode { get; set; } = true;
+
+    [Parameter] public string? Title { get; set; }
+
+    [Parameter] public IReadOnlyCollection<string> Value { get; set; } = [];
+
+    [Parameter] public EventCallback<IReadOnlyCollection<string>> ValueChanged { get; set; }
+
+    // Accepted so @bind-Value compiles; tags have no per-field validation messages to show.
+    [Parameter] public System.Linq.Expressions.Expression<Func<IReadOnlyCollection<string>>>? ValueExpression { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        _text = string.Join(", ", Value);
+    }
+
+    private async Task OnTextChanged(ChangeEventArgs e)
+    {
+        _text = e.Value?.ToString() ?? string.Empty;
+
+        var tags = _text
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        await ValueChanged.InvokeAsync(tags);
+    }
+}

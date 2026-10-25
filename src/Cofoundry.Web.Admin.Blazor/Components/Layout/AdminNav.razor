@@ -1,0 +1,127 @@
+@implements IDisposable
+@inject IAdminBlazorExecutor Executor
+@inject NavigationManager Navigation
+@inject AdminSettings AdminSettings
+
+<nav class="main-nav fix">
+    <a href="/" class="home"><i></i></a>
+    <ol class="no-js categories">
+        @if (_manageSiteModules.Count > 0)
+        {
+            <li class="category manage @SelectedIf(AdminModuleMenuCategory.ManageSite)">
+                <a href="@GetUrl(_manageSiteModules[0])" class="main-button @SelectedIf(AdminModuleMenuCategory.ManageSite)"><i class="fa fa-pencil"></i> Content</a>
+                <div class="sub-nav">
+                    <div class="results">
+                        <ol>
+                            @foreach (var module in _manageSiteModules)
+                            {
+                                <li class="result @ActiveIf(module)">
+                                    <a href="@GetUrl(module)" title="@module.Description">@module.Title</a>
+                                </li>
+                            }
+                        </ol>
+                    </div>
+                </div>
+            </li>
+        }
+        @if (_settingsModules.Count > 0)
+        {
+            <li class="category settings @SelectedIf(AdminModuleMenuCategory.Settings)">
+                <a href="@GetUrl(_settingsModules[0])" class="main-button @SelectedIf(AdminModuleMenuCategory.Settings)"><i class="fa fa-cog"></i> Settings</a>
+                <div class="sub-nav">
+                    <div class="results">
+                        <ol>
+                            @foreach (var module in _settingsModules)
+                            {
+                                <li class="result @ActiveIf(module)">
+                                    <a href="@GetUrl(module)" title="@module.Description">@module.Title</a>
+                                </li>
+                            }
+                        </ol>
+                    </div>
+                </div>
+            </li>
+        }
+    </ol>
+
+    <div class="logout">
+        <a href="@AdminBlazorRoutes.Logout(AdminSettings.DirectoryName)">Sign Out</a>
+    </div>
+
+    <div class="view-site">
+        <a href="/" target="_blank">
+            <i class="fa fa-external-link"></i> <span>View website</span>
+        </a>
+    </div>
+</nav>
+
+@code {
+    /// <summary>
+    /// Modules that have been ported to Blazor, keyed by AdminModuleCode. Any module not listed
+    /// here still links to its AngularJS admin URL so both admins work side-by-side while the
+    /// migration is in progress. Add an entry as each module is ported.
+    /// </summary>
+    private static readonly Dictionary<string, string> PortedModuleUrls = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["COFPAG"] = AdminBlazorRoutes.Pages
+    };
+
+    private IReadOnlyList<AdminModule> _manageSiteModules = [];
+    private IReadOnlyList<AdminModule> _settingsModules = [];
+    private string _currentPath = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        _currentPath = GetCurrentPath();
+
+        var modules = await Executor.QueryAsync(new GetPermittedAdminModulesQuery());
+
+        _manageSiteModules = modules
+            .Where(m => m.MenuCategory == AdminModuleMenuCategory.ManageSite)
+            .SetStandardOrdering()
+            .ToList();
+
+        _settingsModules = modules
+            .Where(m => m.MenuCategory == AdminModuleMenuCategory.Settings)
+            .SetStandardOrdering()
+            .ToList();
+    }
+
+    private static string GetUrl(AdminModule module)
+    {
+        if (PortedModuleUrls.TryGetValue(module.AdminModuleCode, out var url))
+        {
+            return url;
+        }
+
+        return module.Url.StartsWith('/') ? module.Url : "/" + module.Url;
+    }
+
+    private bool IsActive(AdminModule module)
+    {
+        return _currentPath.StartsWith(GetUrl(module), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string ActiveIf(AdminModule module) => IsActive(module) ? "active" : string.Empty;
+
+    private string SelectedIf(AdminModuleMenuCategory category)
+    {
+        var modules = category == AdminModuleMenuCategory.ManageSite ? _manageSiteModules : _settingsModules;
+
+        return modules.Any(IsActive) ? "selected" : string.Empty;
+    }
+
+    private string GetCurrentPath() => new Uri(Navigation.Uri).AbsolutePath;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _currentPath = GetCurrentPath();
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

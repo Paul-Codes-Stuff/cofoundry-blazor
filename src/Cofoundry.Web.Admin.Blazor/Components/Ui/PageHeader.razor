@@ -1,0 +1,19 @@
+<h1 class="page-header">
+    @if (!string.IsNullOrEmpty(ParentTitle))
+    {
+        <a href="@ParentHref">@ParentTitle</a>
+    }
+    @if (!string.IsNullOrEmpty(ParentTitle) && !string.IsNullOrEmpty(Title))
+    {
+        <span> &gt; </span>
+    }
+    @Title
+</h1>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+
+    [Parameter] public string? ParentTitle { get; set; }
+
+    [Parameter] public string? ParentHref { get; set; }
+}

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <base href="/" />
+
+    <link rel="stylesheet" href="_content/Cofoundry.Web.Admin.Blazor/css/shared.css" />
+
+    <HeadOutlet @rendermode="AdminRenderMode" />
+</head>
+<body>
+    <Routes @rendermode="AdminRenderMode" />
+
+    <script src="_framework/blazor.web.js"></script>
+</body>
+</html>
+
+@code {
+    // Prerendering is off: it would run every page's data loading twice (once for the HTTP
+    // request and once when the circuit starts) for no benefit in an authenticated tool.
+    private static readonly IComponentRenderMode AdminRenderMode = new InteractiveServerRenderMode(prerender: false);
+}

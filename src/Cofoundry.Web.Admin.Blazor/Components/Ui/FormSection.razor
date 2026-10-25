@@ -1,0 +1,16 @@
+<fieldset>
+    <legend>
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <span>@Title</span>
+        }
+        <button class="toggle-helpers" type="button"><i class="fa fa-question-circle"></i> Help</button>
+    </legend>
+    <div>@ChildContent</div>
+</fieldset>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

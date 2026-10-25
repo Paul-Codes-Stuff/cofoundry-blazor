@@ -1,0 +1,22 @@
+@inject AdminSettings AdminSettings
+@inject NavigationManager Navigation
+
+<Router AppAssembly="typeof(App).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)">
+            <NotAuthorized>
+                <LayoutView Layout="typeof(AdminLayout)">
+                    <p class="message warning perm">
+                        You are not signed in or do not have access to this page.
+                        <a href="@AdminBlazorRoutes.Login(AdminSettings.DirectoryName, Navigation.ToBaseRelativePath(Navigation.Uri))">Sign in</a>
+                    </p>
+                </LayoutView>
+            </NotAuthorized>
+        </AuthorizeRouteView>
+    </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(AdminLayout)">
+            <p class="message warning perm">Sorry, that page could not be found.</p>
+        </LayoutView>
+    </NotFound>
+</Router>

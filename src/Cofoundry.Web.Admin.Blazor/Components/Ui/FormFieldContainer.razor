@@ -1,0 +1,23 @@
+<div class="control-group">
+    <div class="control-group-area">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <label class="control-label">@Title:</label>
+        }
+        <div class="controls">
+            <div>@ChildContent</div>
+        </div>
+    </div>
+    @if (!string.IsNullOrEmpty(Description))
+    {
+        <p class="help-inline"><small>@Description</small></p>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+
+    [Parameter] public string? Description { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

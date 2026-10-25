@@ -1,0 +1,35 @@
+@inherits FormFieldBase<string?>
+
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label" for="@FieldId">@Title:</label>
+        <div class="controls">
+            @if (ShowInput)
+            {
+                <InputText id="@FieldId"
+                           Value="Value"
+                           ValueChanged="ValueChanged"
+                           ValueExpression="ValueExpression"
+                           disabled="@Disabled"
+                           maxlength="@MaxLength" />
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+            }
+            else if (!string.IsNullOrEmpty(Value))
+            {
+                <div class="text-block-display-value">@Value</div>
+            }
+            else
+            {
+                <div class="text-block-display-value">None</div>
+            }
+        </div>
+    </div>
+    @if (!string.IsNullOrEmpty(Description))
+    {
+        <p class="help-inline"><small>@Description</small></p>
+    }
+</div>
+
+@code {
+    [Parameter] public int? MaxLength { get; set; }
+}

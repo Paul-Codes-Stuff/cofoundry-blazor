@@ -1,0 +1,26 @@
+@inherits FormFieldBase<bool>
+
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label" for="@FieldId">@Title:</label>
+        <div class="controls">
+            @if (ShowInput)
+            {
+                <InputCheckbox id="@FieldId"
+                               Value="Value"
+                               ValueChanged="ValueChanged"
+                               ValueExpression="ValueExpression"
+                               disabled="@Disabled" />
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+            }
+            else
+            {
+                <div class="text-block-display-value">@(Value ? "Yes" : "No")</div>
+            }
+        </div>
+    </div>
+    @if (!string.IsNullOrEmpty(Description))
+    {
+        <p class="help-inline"><small>@Description</small></p>
+    }
+</div>

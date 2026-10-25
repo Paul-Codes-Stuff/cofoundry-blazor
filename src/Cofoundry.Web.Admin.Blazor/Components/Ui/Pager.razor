@@ -1,0 +1,56 @@
+@if (PageCount > 1)
+{
+    var isFirstPage = PageNumber <= 1;
+    var isLastPage = PageNumber >= PageCount;
+
+    <div class="pagination">
+
+        @if (isFirstPage)
+        {
+            <button title="Previous page" type="button" class="btn pager previous disabled" disabled>
+                <i class="fa fa-chevron-left"></i>
+            </button>
+        }
+        else
+        {
+            <button title="Previous page" type="button" class="btn pager previous"
+                    @onclick="() => OnPageChanged.InvokeAsync(PageNumber - 1)">
+                <i class="fa fa-chevron-left"></i>
+            </button>
+        }
+
+        <div class="info disabled">@PageNumber of @PageCount</div>
+
+        @if (isLastPage)
+        {
+            <button title="Next page" type="button" class="btn pager next disabled" disabled>
+                <i class="fa fa-chevron-right"></i>
+            </button>
+        }
+        else
+        {
+            <button title="Next page" type="button" class="btn pager next"
+                    @onclick="() => OnPageChanged.InvokeAsync(PageNumber + 1)">
+                <i class="fa fa-chevron-right"></i>
+            </button>
+        }
+
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// The current 1-based page number.
+    /// </summary>
+    [Parameter] public int PageNumber { get; set; }
+
+    /// <summary>
+    /// The total number of pages. Nothing is rendered when there is only one page.
+    /// </summary>
+    [Parameter] public int PageCount { get; set; }
+
+    /// <summary>
+    /// Raised with the 1-based number of the page that was requested.
+    /// </summary>
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+}

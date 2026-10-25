@@ -1,0 +1,14 @@
+<div class="page-body @ContentType @(HasActions ? "with-actions" : string.Empty)">
+    <div class="form-wrap">@ChildContent</div>
+</div>
+
+@code {
+    /// <summary>
+    /// Optional content type class, e.g. "form".
+    /// </summary>
+    [Parameter] public string? ContentType { get; set; }
+
+    [Parameter] public bool HasActions { get; set; } = true;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

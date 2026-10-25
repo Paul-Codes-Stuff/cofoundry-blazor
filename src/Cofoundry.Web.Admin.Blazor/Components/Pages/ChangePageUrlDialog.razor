@@ -1,0 +1,131 @@
+@inject IAdminBlazorExecutor Executor
+@inject AdminLookups Lookups
+
+<ModalDialog Title="@($"Change Url: {Page.LatestVersion.Title}")" Size="large" OnClose="Close">
+
+    @if (_command == null)
+    {
+        <div class="modal-body"><TableContainer IsLoading="true" /></div>
+    }
+    else
+    {
+        <AdminForm Model="_command" IsLoading="_isSaving" OnValidSubmit="SaveAsync">
+
+            <PageActions>
+                <AdminButtonSubmit Text="Save" IsLoading="_isSaving" Disabled="_isSaving" />
+                <AdminButton Text="Cancel" Disabled="_isSaving" OnClick="Close" />
+            </PageActions>
+
+            <PageBody>
+
+                <FormStatus Errors="_errors" />
+
+                @if (Page.PageRoute.PublishStatus == PublishStatus.Published)
+                {
+                    <WarningMessage>
+                        WARNING: This page has been published. Changing the url will
+                        break external links to this page (e.g. links from search engines).
+                    </WarningMessage>
+                }
+
+                <FormSection Title="Settings">
+
+                    @if (_locales.Count > 1)
+                    {
+                        <FormFieldDropdown TValue="int?" Title="Market" Options="_locales" @bind-Value="_command.LocaleId" />
+                    }
+
+                    <FormFieldDropdown TValue="int" Title="Directory" Options="_directories" Required="true"
+                                       @bind-Value="_command.PageDirectoryId" />
+
+                    @if (!_isCustomEntityRoute)
+                    {
+                        <FormFieldText Title="Url path" MaxLength="200"
+                                       Description="Lower case and containing only letter, numbers and hyphens. E.g. 'about-the-team'."
+                                       @bind-Value="_command.UrlPath" />
+                    }
+                    else
+                    {
+                        <FormFieldDropdown TValue="string?" Title="Route Format" Options="_routingRules" Required="true"
+                                           @bind-Value="_command.CustomEntityRoutingRule" />
+                    }
+
+                </FormSection>
+
+            </PageBody>
+        </AdminForm>
+    }
+
+</ModalDialog>
+
+@code {
+    private UpdatePageUrlCommand? _command;
+    private IReadOnlyList<SelectOption<int>> _directories = [];
+    private IReadOnlyList<SelectOption<int?>> _locales = [];
+    private IReadOnlyList<SelectOption<string?>> _routingRules = [];
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private bool _isSaving;
+    private bool _isCustomEntityRoute;
+
+    [Parameter, EditorRequired] public PageDetails Page { get; set; } = default!;
+
+    /// <summary>
+    /// Raised when the dialog closes: true when the url was changed, false when cancelled.
+    /// </summary>
+    [Parameter] public EventCallback<bool> OnClosed { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var route = Page.PageRoute;
+        _isCustomEntityRoute = route.PageType == PageType.CustomEntityDetails;
+
+        var directoriesTask = Lookups.GetDirectoryOptionsAsync();
+        var localesTask = Lookups.GetLocaleOptionsAsync();
+        var rulesTask = _isCustomEntityRoute
+            ? Lookups.GetRoutingRulesAsync()
+            : Task.FromResult<IReadOnlyCollection<ICustomEntityRoutingRule>>([]);
+
+        await Task.WhenAll(directoriesTask, localesTask, rulesTask);
+
+        _directories = directoriesTask.Result;
+        _locales = localesTask.Result;
+        _routingRules = rulesTask.Result
+            .Select(r => new SelectOption<string?>(r.RouteFormat, r.RouteFormat))
+            .ToList();
+
+        // For custom entity pages the "url path" is the routing rule's route format.
+        _command = new UpdatePageUrlCommand
+        {
+            PageId = Page.PageId,
+            LocaleId = route.Locale?.LocaleId,
+            PageDirectoryId = route.PageDirectory.PageDirectoryId,
+            UrlPath = _isCustomEntityRoute ? null : route.UrlPath,
+            CustomEntityRoutingRule = _isCustomEntityRoute ? route.UrlPath : null
+        };
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errors = [];
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(_command!);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+
+        await OnClosed.InvokeAsync(true);
+    }
+
+    private Task Close() => OnClosed.InvokeAsync(false);
+}

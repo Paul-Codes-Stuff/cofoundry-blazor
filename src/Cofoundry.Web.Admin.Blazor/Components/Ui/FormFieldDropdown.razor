@@ -1,0 +1,65 @@
+@typeparam TValue
+@inherits FormFieldBase<TValue>
+
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label" for="@FieldId">@Title:</label>
+        <div class="controls">
+            @if (ShowInput)
+            {
+                <InputSelect id="@FieldId"
+                             TValue="TValue"
+                             Value="Value"
+                             ValueChanged="ValueChanged"
+                             ValueExpression="ValueExpression"
+                             disabled="@Disabled">
+                    @if (!Required || IsDefaultValue)
+                    {
+                        @* The empty option's value is default(TValue) so it parses for int, int? and string alike. *@
+                        <option value="@EmptyOptionValue">@DefaultItemText</option>
+                    }
+                    @foreach (var option in Options)
+                    {
+                        <option value="@option.Value">@option.Text</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+            }
+            else if (DisplayText != null)
+            {
+                <div class="text-block-display-value">@DisplayText</div>
+            }
+            else
+            {
+                <div class="text-block-display-value">None</div>
+            }
+        </div>
+    </div>
+    @if (!string.IsNullOrEmpty(Description))
+    {
+        <p class="help-inline"><small>@Description</small></p>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<SelectOption<TValue>> Options { get; set; } = [];
+
+    /// <summary>
+    /// Text for the empty option, shown when the field is not required or nothing has been chosen yet.
+    /// </summary>
+    [Parameter] public string DefaultItemText { get; set; } = "None";
+
+    /// <summary>
+    /// A required field hides the empty option once a value has been chosen.
+    /// </summary>
+    [Parameter] public bool Required { get; set; }
+
+    private bool IsDefaultValue => EqualityComparer<TValue?>.Default.Equals(Value, default);
+
+    private string EmptyOptionValue => default(TValue)?.ToString() ?? string.Empty;
+
+    private string? DisplayText => Options
+        .Where(o => EqualityComparer<TValue?>.Default.Equals(o.Value, Value))
+        .Select(o => o.Text)
+        .FirstOrDefault();
+}

@@ -1,0 +1,55 @@
+@* Mirrors the modal markup and class behaviour of the AngularJS cmsModalDialogContainer directive. *@
+<div class="modal @SizeCssClass is-root-modal @ShowCssClass">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            @if (!string.IsNullOrEmpty(Title))
+            {
+                <div class="modal-header">
+                    <a href="" class="close btn-icon" aria-hidden="true" @onclick="OnClose" @onclick:preventDefault>
+                        <i class="fa fa-times"></i>
+                    </a>
+                    <h4 class="modal-title">@Title</h4>
+                </div>
+            }
+
+            @ChildContent
+
+        </div>
+    </div>
+</div>
+<div class="modal-background @SizeCssClass @ShowCssClass" @onclick="OnClose"></div>
+
+@code {
+    private bool _show;
+
+    /// <summary>
+    /// Header text. When empty the header (and its close button) is not rendered.
+    /// </summary>
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>
+    /// Use "large" for form dialogs. Anything else gives the default size.
+    /// </summary>
+    [Parameter] public string? Size { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string SizeCssClass => Size == "large" ? "modal-lg" : string.Empty;
+
+    // The css keeps the modal transparent until 'modal--show' is added, which is what drives the
+    // fade/slide-in. The AngularJS directive adds it a tick after render; we do it after first render.
+    private string ShowCssClass => _show ? "modal--show" : string.Empty;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Task.Delay(1);
+            _show = true;
+            StateHasChanged();
+        }
+    }
+}

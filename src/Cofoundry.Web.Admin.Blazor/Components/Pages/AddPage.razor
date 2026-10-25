@@ -1,0 +1,231 @@
+@page "/admin-next/pages/new"
+@inject IAdminBlazorExecutor Executor
+@inject AdminLookups Lookups
+@inject NavigationManager Navigation
+
+<PageTitle>Create Page | Admin</PageTitle>
+
+<PageHeader Title="Create" ParentTitle="Pages" ParentHref="@AdminBlazorRoutes.Pages" />
+
+@if (_command == null)
+{
+    <PageBody ContentType="form"><TableContainer IsLoading="true" /></PageBody>
+}
+else
+{
+    <AdminForm @ref="_form" Model="_command" IsLoading="_isSaving" OnValidSubmit="() => SaveAsync(false, false)">
+
+        <PageActions>
+            <AdminButtonSubmit Text="Save Draft" IsLoading="_isSaving && !_isPublishing" Disabled="_isSaving" />
+            <AdminButton Text="Save & Publish" IsLoading="_isSaving && _isPublishing" Disabled="_isSaving"
+                         OnClick="() => SaveAsync(true, false)" />
+            <AdminButton Text="Cancel" Disabled="_isSaving" OnClick="Cancel" />
+        </PageActions>
+
+        <PageBody ContentType="form">
+
+            <FormStatus Errors="_errors" />
+
+            <FormSection Title="Main">
+
+                <FormFieldDropdown TValue="PageType" Title="Page Type" Options="_pageTypes" Required="true"
+                                   Description="Usually this will be 'Generic' but other page types can be used for special functions"
+                                   Value="_command.PageType" ValueChanged="OnPageTypeChanged"
+                                   ValueExpression="() => _command.PageType" />
+
+                <FormFieldText Title="Title" MaxLength="300"
+                               Description="A few words descriptive page title, e.g. 'About the team'. Google SERP typically shows 50-60 characters"
+                               Value="_command.Title" ValueChanged="OnTitleChanged"
+                               ValueExpression="() => _command.Title" />
+
+                <FormFieldDropdown TValue="int" Title="Page Template" Options="_templateOptions" Required="true"
+                                   DefaultItemText="Please choose" @bind-Value="_command.PageTemplateId" />
+
+                <FormFieldTags Title="CMS Tags" @bind-Value="_command.Tags" />
+
+            </FormSection>
+
+            <FormSection Title="Page url">
+
+                @if (_locales.Count > 1)
+                {
+                    <FormFieldDropdown TValue="int?" Title="Market" Options="_locales" @bind-Value="_command.LocaleId" />
+                }
+
+                <FormFieldDropdown TValue="int" Title="Directory" Options="_directories" Required="true"
+                                   DefaultItemText="Please choose" @bind-Value="_command.PageDirectoryId" />
+
+                @if (_command.PageType != PageType.CustomEntityDetails)
+                {
+                    <FormFieldText Title="Page Path" MaxLength="200"
+                                   Description="Lower case and containing only letter, numbers, underscores and hyphens. E.g. 'about-the-team'"
+                                   @bind-Value="_command.UrlPath" />
+                }
+                else
+                {
+                    <FormFieldDropdown TValue="string?" Title="Route Format" Options="_routingRules" Required="true"
+                                       DefaultItemText="Please choose" @bind-Value="_command.CustomEntityRoutingRule" />
+                }
+
+            </FormSection>
+
+            <FormSection Title="SEO">
+
+                <FormFieldTextArea Title="Meta Description" MaxLength="300" Rows="3"
+                                   Description="Ideally 25-250 characters. The Google SERP shows only the first 150 characters"
+                                   @bind-Value="_command.MetaDescription" />
+
+                <FormFieldText Title="OpenGraph Title" MaxLength="300"
+                               Description="Optional. The title that shows up when sharing the page on social media"
+                               @bind-Value="_command.OpenGraphTitle" />
+
+                <FormFieldTextArea Title="OpenGraph Description" Rows="3"
+                                   Description="Optional. The description that shows up when sharing the page on social media"
+                                   @bind-Value="_command.OpenGraphDescription" />
+
+                @* TODO: OpenGraph image picker - depends on the Images module being ported. *@
+
+                <FormFieldCheckbox Title="Show in sitemap"
+                                   Description="Indicates whether this page should be included in the site map file used by search engine robots"
+                                   @bind-Value="_command.ShowInSiteMap" />
+
+            </FormSection>
+
+            @if (_command.PageType != PageType.CustomEntityDetails)
+            {
+                <FormSection Title="Template Content">
+                    <FormSectionActions>
+                        <AdminButton Text="Save Draft & Edit Content" Disabled="_isSaving"
+                                     OnClick="() => SaveAsync(false, true)" />
+                    </FormSectionActions>
+                    <FormFieldContainer>
+                        <div>Template content can only be managed after the page has been created.</div>
+                    </FormFieldContainer>
+                </FormSection>
+            }
+
+        </PageBody>
+    </AdminForm>
+}
+
+@code {
+    private static readonly IReadOnlyList<SelectOption<PageType>> _pageTypes =
+    [
+        new(PageType.Generic, "Generic"),
+        new(PageType.CustomEntityDetails, "Custom Entity Details"),
+        new(PageType.NotFound, "Not Found")
+    ];
+
+    private AdminForm? _form;
+    private AddPageCommand? _command;
+    private IReadOnlyList<PageTemplateSummary> _allTemplates = [];
+    private IReadOnlyList<SelectOption<int>> _templateOptions = [];
+    private IReadOnlyList<SelectOption<int>> _directories = [];
+    private IReadOnlyList<SelectOption<int?>> _locales = [];
+    private IReadOnlyList<SelectOption<string?>> _routingRules = [];
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private bool _isSaving;
+    private bool _isPublishing;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var directoriesTask = Lookups.GetDirectoryOptionsAsync();
+        var localesTask = Lookups.GetLocaleOptionsAsync();
+        var templatesTask = Lookups.GetPageTemplatesAsync();
+        var rulesTask = Lookups.GetRoutingRulesAsync();
+
+        await Task.WhenAll(directoriesTask, localesTask, templatesTask, rulesTask);
+
+        _directories = directoriesTask.Result;
+        _locales = localesTask.Result;
+        _allTemplates = templatesTask.Result;
+        _routingRules = rulesTask.Result
+            .Select(r => new SelectOption<string?>(r.RouteFormat, r.RouteFormat))
+            .ToList();
+
+        _command = new AddPageCommand { ShowInSiteMap = true, PageType = PageType.Generic };
+        FilterTemplates();
+    }
+
+    private void OnPageTypeChanged(PageType pageType)
+    {
+        _command!.PageType = pageType;
+        _command.PageTemplateId = 0;
+        FilterTemplates();
+    }
+
+    private void OnTitleChanged(string? title)
+    {
+        _command!.Title = title ?? string.Empty;
+        _command.UrlPath = StringUtilities.Slugify(title, 200);
+    }
+
+    // Custom entity pages only offer custom entity templates; everything else offers generic ones.
+    private void FilterTemplates()
+    {
+        var filterBy = _command!.PageType == PageType.CustomEntityDetails ? PageType.CustomEntityDetails : PageType.Generic;
+
+        _templateOptions = _allTemplates
+            .Where(t => t.PageType == filterBy)
+            .Select(t => new SelectOption<int>(t.PageTemplateId, t.Name))
+            .ToList();
+    }
+
+    private async Task SaveAsync(bool publish, bool thenEditContent)
+    {
+        if (_isSaving || _form == null || !_form.Validate())
+        {
+            return;
+        }
+
+        if (_command!.PageType == PageType.CustomEntityDetails)
+        {
+            _command.UrlPath = null;
+        }
+        else
+        {
+            _command.CustomEntityRoutingRule = null;
+        }
+
+        _command.Publish = publish;
+        _isPublishing = publish;
+        _isSaving = true;
+        _errors = [];
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(_command);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+
+            var pageId = _command.OutputPageId;
+
+            if (thenEditContent)
+            {
+                await RedirectToVisualEditorAsync(pageId);
+            }
+            else
+            {
+                Navigation.NavigateTo(AdminBlazorRoutes.PageDetails(pageId));
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task RedirectToVisualEditorAsync(int pageId)
+    {
+        var page = await Executor.QueryAsync(new GetPageDetailsByIdQuery(pageId));
+
+        // forceLoad: the visual editor is served by the MVC site, not by this Blazor app.
+        Navigation.NavigateTo(page!.PageRoute.FullUrlPath + "?mode=edit", forceLoad: true);
+    }
+
+    private void Cancel() => Navigation.NavigateTo(AdminBlazorRoutes.Pages);
+}

@@ -1,0 +1,30 @@
+@if (Errors.Count > 0)
+{
+    <div class="form-message error perm">
+        @(ErrorMessage ?? "Sorry, the changes could not be saved.")
+        <ul>
+            @foreach (var message in Errors.Select(e => e.Message).Distinct())
+            {
+                <li>@message</li>
+            }
+        </ul>
+    </div>
+}
+else if (!string.IsNullOrEmpty(SuccessMessage))
+{
+    <div class="form-message success perm">@SuccessMessage</div>
+}
+
+@code {
+    /// <summary>
+    /// Errors returned from running a command, e.g. <see cref="AdminCommandResult.Errors"/>.
+    /// </summary>
+    [Parameter] public IReadOnlyCollection<ValidationError> Errors { get; set; } = [];
+
+    [Parameter] public string? SuccessMessage { get; set; }
+
+    /// <summary>
+    /// Optional heading shown above the list of errors.
+    /// </summary>
+    [Parameter] public string? ErrorMessage { get; set; }
+}

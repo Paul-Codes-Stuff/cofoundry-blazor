@@ -1,0 +1,13 @@
+@* "5 minutes ago by Jane Smith" - the created audit cell used in list tables. *@
+@if (AuditData != null)
+{
+    <TimeAgo Time="AuditData.CreateDate" />
+    @if (AuditData.Creator != null)
+    {
+        <div>by @AuditData.Creator.DisplayName</div>
+    }
+}
+
+@code {
+    [Parameter] public CreateAuditData? AuditData { get; set; }
+}

@@ -1,0 +1,9 @@
+<div class="table-cont @(IsLoading ? "loading" : string.Empty)">
+    <div class="table-wrap">@ChildContent</div>
+</div>
+
+@code {
+    [Parameter] public bool IsLoading { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

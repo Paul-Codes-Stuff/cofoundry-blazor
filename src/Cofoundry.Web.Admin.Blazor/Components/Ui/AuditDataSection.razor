@@ -1,0 +1,19 @@
+@if (AuditData != null)
+{
+    <FormSection Title="Audit Data">
+
+        @if (AuditData.Creator != null)
+        {
+            <FormFieldContainer Title="Created By">@AuditData.Creator.DisplayName</FormFieldContainer>
+        }
+
+        <FormFieldContainer Title="Create Date">
+            <TimeAgo Time="AuditData.CreateDate" />
+        </FormFieldContainer>
+
+    </FormSection>
+}
+
+@code {
+    [Parameter] public CreateAuditData? AuditData { get; set; }
+}

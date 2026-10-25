@@ -1,0 +1,24 @@
+@* Like the AngularJS version, a read-only field with no value renders nothing at all. *@
+@if (!string.IsNullOrEmpty(Value))
+{
+    <div class="control-group">
+        <div class="control-group-area">
+            <label class="control-label">@Title:</label>
+            <div class="controls">
+                <div class="text-block-display-value">@Value</div>
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(Description))
+        {
+            <p class="help-inline"><small>@Description</small></p>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string? Title { get; set; }
+
+    [Parameter] public string? Description { get; set; }
+
+    [Parameter] public string? Value { get; set; }
+}

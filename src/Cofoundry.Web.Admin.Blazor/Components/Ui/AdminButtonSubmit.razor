@@ -1,0 +1,12 @@
+<input class="btn main-cta @(IsLoading ? "loading" : string.Empty)"
+       type="submit"
+       value="@Text"
+       disabled="@(Disabled || IsLoading)" />
+
+@code {
+    [Parameter] public string? Text { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public bool IsLoading { get; set; }
+}

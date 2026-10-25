@@ -1,0 +1,55 @@
+<ModalDialog Title="@Title" OnClose="Cancel">
+    <div class="modal-actions">
+        <AdminButton Text="@OkButtonTitle" Class="main-cta" IsLoading="_isBusy" OnClick="Confirm" />
+        <AdminButton Text="@CancelButtonTitle" Disabled="_isBusy" OnClick="Cancel" />
+    </div>
+    <div class="modal-body">@Message</div>
+</ModalDialog>
+
+@code {
+    private bool _isBusy;
+
+    [Parameter] public string? Title { get; set; }
+
+    [Parameter] public string? Message { get; set; }
+
+    [Parameter] public string OkButtonTitle { get; set; } = "OK";
+
+    [Parameter] public string CancelButtonTitle { get; set; } = "Cancel";
+
+    /// <summary>
+    /// Work to run when the user confirms. The dialog stays open with the OK button in its loading
+    /// state until this completes, then closes with a result of true.
+    /// </summary>
+    [Parameter] public Func<Task>? OnOk { get; set; }
+
+    /// <summary>
+    /// Raised when the dialog closes: true when confirmed, false when cancelled.
+    /// </summary>
+    [Parameter] public EventCallback<bool> OnClosed { get; set; }
+
+    private async Task Confirm()
+    {
+        if (_isBusy)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        try
+        {
+            if (OnOk != null)
+            {
+                await OnOk();
+            }
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+
+        await OnClosed.InvokeAsync(true);
+    }
+
+    private Task Cancel() => _isBusy ? Task.CompletedTask : OnClosed.InvokeAsync(false);
+}

@@ -1,0 +1,270 @@
+@page "/admin-next/pages"
+@inject IAdminBlazorExecutor Executor
+@inject AdminLookups Lookups
+@inject NavigationManager Navigation
+
+<PageTitle>Pages | Admin</PageTitle>
+
+<PageHeader Title="Pages" />
+
+<PageSubHeader>
+    <PageHeaderButtons>
+
+        <a class="btn-icon" href="" @onclick="ToggleFilter" @onclick:preventDefault>
+            <i class="fa fa-search"></i> Filter
+        </a>
+
+        @if (_isFilterVisible)
+        {
+            <AdminForm Model="_filter" OnValidSubmit="ApplyFilter" CssClass="search-filter">
+                <FormSection Title="Filter this list">
+
+                    <FormFieldText Title="Tags" @bind-Value="_filter.Tags" />
+
+                    @if (_locales.Count > 1)
+                    {
+                        <FormFieldDropdown TValue="int?" Title="Market" Options="_locales"
+                                           DefaultItemText="Any" @bind-Value="_filter.LocaleId" />
+                    }
+
+                    <FormFieldDropdown TValue="int?" Title="Directory" Options="_directories"
+                                       DefaultItemText="Any" @bind-Value="_filter.PageDirectoryId" />
+
+                    <FormFieldDropdown TValue="PublishStatus?" Title="Publish Status" Options="_publishStatuses"
+                                       DefaultItemText="Any" @bind-Value="_filter.PublishStatus" />
+
+                    <FormFieldDropdown TValue="int?" Title="Template" Options="_templates"
+                                       DefaultItemText="Any" @bind-Value="_filter.PageTemplateId" />
+
+                </FormSection>
+                <div class="form-actions">
+                    <AdminButtonSubmit Text="Apply" />
+                    <AdminButton Text="Clear" OnClick="ClearFilter" />
+                </div>
+            </AdminForm>
+        }
+
+    </PageHeaderButtons>
+</PageSubHeader>
+
+<PageActions>
+    @if (_permissions?.CanCreate == true)
+    {
+        <ButtonLink Class="main-cta" Text="Create" Icon="plus" Href="@AdminBlazorRoutes.PageNew" />
+    }
+
+    <Pager PageNumber="_result?.PageNumber ?? 1" PageCount="_result?.PageCount ?? 0" OnPageChanged="GoToPage" />
+</PageActions>
+
+<PageBody ContentType="form">
+    <FormStatus SuccessMessage="@_message" />
+
+    <TableContainer IsLoading="_isLoading">
+        <table>
+            <thead>
+                <tr>
+                    <th>Page</th>
+                    <th>Status</th>
+                    <th>Published</th>
+                    <th>Created</th>
+                    <th class="actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_result != null && _result.Items.Count == 0)
+                {
+                    <tr><td colspan="100" class="empty">Sorry, no pages could be found.</td></tr>
+                }
+                @foreach (var page in _result?.Items ?? [])
+                {
+                    <tr @key="page.PageId">
+                        <td>
+                            <a href="@AdminBlazorRoutes.PageDetails(page.PageId)">@page.FullUrlPath</a><br />
+                            <span>@page.Title</span>
+                        </td>
+                        <td>
+                            <span>@GetPublishStatusLabel(page)</span>
+                            <br />
+                            @if (page.HasDraftVersion && page.PageType == PageType.Generic)
+                            {
+                                <a href="@page.FullUrlPath">(Pending Draft)</a>
+                            }
+                            else if (page.HasDraftVersion)
+                            {
+                                <span>(Pending Draft)</span>
+                            }
+                        </td>
+                        <td>
+                            @if (page.PublishDate.HasValue)
+                            {
+                                <span title="@page.PublishDate.Value.ToString("D") at @page.PublishDate.Value.ToString("HH:mm:ss")">
+                                    @page.PublishDate.Value.ToString("d MMM yyyy HH:mm")
+                                </span>
+                            }
+                        </td>
+                        <td class="lowPriority">
+                            <AuditDataCell AuditData="page.AuditData" />
+                        </td>
+                        <td class="actions">
+                            @if (_permissions?.CanPublish == true && (!IsPublished(page) || page.HasDraftVersion))
+                            {
+                                <IconLink Icon="globe" Title="Publish" OnClick="() => ConfirmPublish(page.PageId)" />
+                            }
+                            @if (_permissions?.CanUpdate == true)
+                            {
+                                <IconLink Icon="pencil-square-o" Title="Edit" Href="@AdminBlazorRoutes.PageDetails(page.PageId)" />
+                            }
+                            @if (page.PageType == PageType.Generic)
+                            {
+                                <IconLink Icon="external-link" Title="Browse to page" Href="@page.FullUrlPath" Target="_blank" />
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </TableContainer>
+</PageBody>
+
+@if (_pageToPublish.HasValue)
+{
+    <ConfirmDialog Title="Publish Page"
+                   Message="Are you sure you want to publish this page?"
+                   OkButtonTitle="Yes, publish it"
+                   OnOk="PublishAsync"
+                   OnClosed="OnPublishDialogClosed" />
+}
+
+@code {
+    private static readonly IReadOnlyList<SelectOption<PublishStatus?>> _publishStatuses =
+    [
+        new(Domain.PublishStatus.Unpublished, "Unpublished"),
+        new(Domain.PublishStatus.Published, "Published")
+    ];
+
+    private readonly PageFilter _filter = new();
+    private const int DefaultPageSize = 40;
+    private SearchPageSummariesQuery _query = new() { PageNumber = 1, PageSize = DefaultPageSize };
+    private PagedQueryResult<PageSummary>? _result;
+    private PagePermissions? _permissions;
+    private IReadOnlyList<SelectOption<int>> _directoriesRaw = [];
+    private IReadOnlyList<SelectOption<int?>> _directories = [];
+    private IReadOnlyList<SelectOption<int?>> _locales = [];
+    private IReadOnlyList<SelectOption<int?>> _templates = [];
+    private bool _isFilterVisible;
+    private bool _isLoading;
+    private int? _pageToPublish;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var permissionsTask = PagePermissions.LoadAsync(Executor);
+        var directoriesTask = Lookups.GetDirectoryOptionsAsync();
+        var localesTask = Lookups.GetLocaleOptionsAsync();
+        var templatesTask = Lookups.GetPageTemplatesAsync();
+
+        await Task.WhenAll(permissionsTask, directoriesTask, localesTask, templatesTask);
+
+        _permissions = permissionsTask.Result;
+        _directoriesRaw = directoriesTask.Result;
+        _directories = _directoriesRaw.Select(d => new SelectOption<int?>(d.Value, d.Text)).ToList();
+        _locales = localesTask.Result;
+        _templates = templatesTask.Result
+            .Select(t => new SelectOption<int?>(t.PageTemplateId, t.Name))
+            .ToList();
+
+        await LoadGridAsync();
+    }
+
+    private async Task LoadGridAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _result = await Executor.QueryAsync(_query);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ToggleFilter() => _isFilterVisible = !_isFilterVisible;
+
+    private async Task ApplyFilter()
+    {
+        _query = new SearchPageSummariesQuery
+        {
+            PageNumber = 1,
+            PageSize = DefaultPageSize,
+            Tags = _filter.Tags,
+            LocaleId = _filter.LocaleId,
+            PageDirectoryId = _filter.PageDirectoryId,
+            PublishStatus = _filter.PublishStatus,
+            PageTemplateId = _filter.PageTemplateId
+        };
+
+        _isFilterVisible = false;
+        await LoadGridAsync();
+    }
+
+    private async Task ClearFilter()
+    {
+        _filter.Tags = null;
+        _filter.LocaleId = null;
+        _filter.PageDirectoryId = null;
+        _filter.PublishStatus = null;
+        _filter.PageTemplateId = null;
+
+        await ApplyFilter();
+    }
+
+    private async Task GoToPage(int pageNumber)
+    {
+        _query.PageNumber = pageNumber;
+        await LoadGridAsync();
+    }
+
+    private void ConfirmPublish(int pageId) => _pageToPublish = pageId;
+
+    private async Task PublishAsync()
+    {
+        var result = await Executor.ExecuteAsync(new PublishPageCommand(_pageToPublish!.Value));
+
+        _message = result.Succeeded ? "Page published successfully." : null;
+    }
+
+    private async Task OnPublishDialogClosed(bool confirmed)
+    {
+        _pageToPublish = null;
+
+        if (confirmed)
+        {
+            await LoadGridAsync();
+        }
+    }
+
+    private static bool IsPublished(PageSummary page) =>
+        page.PublishStatus == Domain.PublishStatus.Published && page.HasPublishedVersion;
+
+    private static string GetPublishStatusLabel(PageSummary page)
+    {
+        if (page.PublishStatus == Domain.PublishStatus.Published
+            && page.PublishDate.HasValue
+            && page.PublishDate.Value > DateTime.UtcNow)
+        {
+            return "Pending Publish";
+        }
+
+        return page.PublishStatus.ToString();
+    }
+
+    private sealed class PageFilter
+    {
+        public string? Tags { get; set; }
+        public int? LocaleId { get; set; }
+        public int? PageDirectoryId { get; set; }
+        public PublishStatus? PublishStatus { get; set; }
+        public int? PageTemplateId { get; set; }
+    }
+}

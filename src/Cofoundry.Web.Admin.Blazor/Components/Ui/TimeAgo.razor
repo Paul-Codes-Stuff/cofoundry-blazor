@@ -1,0 +1,54 @@
+@if (Time.HasValue)
+{
+    <time datetime="@Time.Value.ToString("O")"
+          title="@Time.Value.ToString("d", CultureInfo.CurrentCulture) at @Time.Value.ToString("t", CultureInfo.CurrentCulture)">@Format(Time.Value)</time>
+}
+
+@code {
+    [Parameter] public DateTime? Time { get; set; }
+
+    /// <summary>
+    /// Mirrors the relative formatting of the AngularJS cmsTimeAgo directive.
+    /// </summary>
+    private static string Format(DateTime time)
+    {
+        var utcTime = time.Kind == DateTimeKind.Local ? time.ToUniversalTime() : DateTime.SpecifyKind(time, DateTimeKind.Utc);
+        var seconds = (DateTime.UtcNow - utcTime).TotalSeconds;
+        var isPast = seconds >= 0;
+        var abs = Math.Abs(seconds);
+
+        // (limit in seconds, singular label past/future, unit divisor) in ascending order
+        var thresholds = new (double Limit, string? Past, string? Future, string Unit, double Divisor)[]
+        {
+            (60, null, null, "seconds", 1),
+            (120, "1 minute ago", "1 minute from now", "", 0),
+            (3600, null, null, "minutes", 60),
+            (7200, "1 hour ago", "1 hour from now", "", 0),
+            (86400, null, null, "hours", 3600),
+            (172800, "Yesterday", "Tomorrow", "", 0),
+            (604800, null, null, "days", 86400),
+            (1209600, "Last week", "Next week", "", 0),
+            (2419200, null, null, "weeks", 604800),
+            (4838400, "Last month", "Next month", "", 0),
+            (29030400, null, null, "months", 2419200),
+            (58060800, "Last year", "Next year", "", 0),
+            (2903040000, null, null, "years", 29030400)
+        };
+
+        foreach (var t in thresholds)
+        {
+            if (abs < t.Limit)
+            {
+                if (t.Past != null)
+                {
+                    return isPast ? t.Past : t.Future!;
+                }
+
+                var amount = (int)Math.Floor(abs / t.Divisor);
+                return isPast ? $"{amount} {t.Unit} ago" : $"{amount} {t.Unit} from now";
+            }
+        }
+
+        return time.ToString("d", CultureInfo.CurrentCulture);
+    }
+}

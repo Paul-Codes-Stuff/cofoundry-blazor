@@ -1,0 +1,25 @@
+<a href="@Href" class="btn @Class" target="@Target">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <i class="fa fa-@Icon"></i>
+    }
+    @Text
+</a>
+
+@code {
+    [Parameter] public string? Text { get; set; }
+
+    [Parameter] public string? Href { get; set; }
+
+    /// <summary>
+    /// Font Awesome icon name without the "fa-" prefix, e.g. "plus".
+    /// </summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>
+    /// Additional css classes, e.g. "main-cta".
+    /// </summary>
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Target { get; set; }
+}
