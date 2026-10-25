@@ -25,6 +25,7 @@
                                       Value="_command.File"
                                       ValueChanged="OnFileChanged"
                                       ValueExpression="() => _command.File"
+                                      Filter="Filter"
                                       Disabled="_isSaving" />
 
                 <FormFieldText Title="Title" MaxLength="130" @bind-Value="_command.Title" />

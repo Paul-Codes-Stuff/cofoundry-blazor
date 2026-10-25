@@ -1,5 +1,6 @@
 <EditForm @ref="_editForm"
           Model="Model"
+          FormName="@FormName"
           OnValidSubmit="OnValidSubmit"
           class="@FormCssClass"
           novalidate>
@@ -38,6 +39,12 @@
     [Parameter] public bool IsLoading { get; set; }
 
     [Parameter] public string? CssClass { get; set; }
+
+    /// <summary>
+    /// Only needed on a static SSR page, where it names the form so a POST reaches its handler. Bind
+    /// <see cref="Model"/> to a <c>[SupplyParameterFromForm]</c> property there.
+    /// </summary>
+    [Parameter] public string? FormName { get; set; }
 
     [Parameter] public EventCallback<EditContext> OnValidSubmit { get; set; }
 

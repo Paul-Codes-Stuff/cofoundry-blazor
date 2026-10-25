@@ -14,8 +14,6 @@ public abstract class AuthPageBase : ComponentBase
 
     [Inject] protected NavigationManager Navigation { get; set; } = default!;
 
-    [Inject] protected AdminSettings AdminSettings { get; set; } = default!;
-
     [CascadingParameter] protected HttpContext HttpContext { get; set; } = default!;
 
     /// <summary>
@@ -35,7 +33,7 @@ public abstract class AuthPageBase : ComponentBase
         var internalSettings = await Repository.ExecuteQueryAsync(new GetSettingsQuery<InternalSettings>());
         if (!internalSettings.IsSetup)
         {
-            Navigation.NavigateTo(AdminBlazorRoutes.Mvc.Setup(AdminSettings.DirectoryName));
+            Navigation.NavigateTo(AdminBlazorRoutes.Setup);
             return;
         }
 

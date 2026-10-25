@@ -1,0 +1,133 @@
+@page "/admin-next/setup"
+@inject IAdminBlazorExecutor Executor
+@inject NavigationManager Navigation
+
+@* Port of the AngularJS admin's Setup module (SetupController and the SetupDetails route): names the
+   application and creates the first admin user. Only available until the site is set up. *@
+
+<PageTitle>Setup | Admin</PageTitle>
+
+<h1>Cofoundry</h1>
+
+<div class="wrap">
+    @if (_isSetupComplete)
+    {
+        <PageBody HasActions="false">
+            <FormSection Title="Setup complete">
+                <p>You're all set to go. Please follow the link below to sign in to Cofoundry.</p>
+                <div class="actions">
+                    <a class="btn main-cta" href="@AdminBlazorRoutes.Login">Login</a>
+                </div>
+            </FormSection>
+        </PageBody>
+    }
+    else if (_canSetup)
+    {
+        <AdminForm Model="Input" FormName="admin-setup" OnValidSubmit="SetupAsync">
+            <PageBody ContentType="form-basic" HasActions="false">
+
+                <FormStatus Errors="_errors" />
+
+                <FormSection Title="Site setup">
+
+                    <p>Before we get started, we're gonna need some basic setup information from you. This will give your application a name and also create the default user account.</p>
+
+                    <FormFieldText Title="Application Name" MaxLength="50" Placeholder="e.g. My Application" @bind-Value="Input.ApplicationName"
+                                   Description="A name to describe your application, up to 50 characters." />
+
+                    <div class="control-group">
+                        <div class="control-group-area">
+                            <h4 class="form-field-heading">Default User Account</h4>
+                        </div>
+                    </div>
+
+                    <FormFieldText Title="Name" MaxLength="150" Placeholder="e.g. Example User" @bind-Value="Input.DisplayName"
+                                   Description="A display name for the default user account, can be up to 150 characters." />
+                    <FormFieldText Title="Email" InputType="email" MaxLength="150" Placeholder="e.g. user@example.com" @bind-Value="Input.Email"
+                                   Description="An email address to use as the username for the default account and to send account recovery notifications to." />
+                    <FormFieldText Title="Password" InputType="password" @bind-Value="Input.Password"
+                                   Description="@_passwordPolicy?.Description" />
+                    <FormFieldText Title="Confirm password" InputType="password" MaxLength="2048" @bind-Value="Input.ConfirmPassword" />
+
+                    <div class="actions">
+                        <AdminButtonSubmit Text="Save" />
+                    </div>
+                </FormSection>
+
+            </PageBody>
+        </AdminForm>
+    }
+</div>
+
+@code {
+    private PasswordPolicyDescription? _passwordPolicy;
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private bool _canSetup;
+    private bool _isSetupComplete;
+
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm(FormName = "admin-setup")] private SetupFormModel Input { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new();
+
+        var settings = await Executor.QueryAsync(new GetSettingsQuery<InternalSettings>());
+        if (settings.IsSetup)
+        {
+            Navigation.NavigateTo(AdminBlazorRoutes.Dashboard);
+            return;
+        }
+
+        // As the AngularJS admin: sign out, in case you were signed in to a previous install on this db.
+        if (!HttpMethods.IsPost(HttpContext.Request.Method))
+        {
+            await Executor.ExecuteAsync(new SignOutCurrentUserFromAllUserAreasCommand());
+        }
+
+        _passwordPolicy = await Executor.QueryAsync(new GetPasswordPolicyDescriptionByUserAreaCodeQuery(CofoundryAdminUserArea.Code));
+        _canSetup = true;
+    }
+
+    private async Task SetupAsync()
+    {
+        var result = await Executor.ExecuteAsync(new SetupCofoundryCommand()
+        {
+            ApplicationName = Input.ApplicationName!,
+            DisplayName = Input.DisplayName,
+            Email = Input.Email!,
+            Password = Input.Password!
+        });
+
+        if (!result.Succeeded)
+        {
+            _errors = result.Errors;
+            return;
+        }
+
+        _isSetupComplete = true;
+    }
+
+    private sealed class SetupFormModel
+    {
+        [Required]
+        [StringLength(50)]
+        public string? ApplicationName { get; set; }
+
+        [StringLength(150)]
+        public string? DisplayName { get; set; }
+
+        [Required]
+        [EmailAddress]
+        [StringLength(150)]
+        public string? Email { get; set; }
+
+        [Required]
+        public string? Password { get; set; }
+
+        [Required]
+        [Compare(nameof(Password), ErrorMessage = "Passwords must match")]
+        public string? ConfirmPassword { get; set; }
+    }
+}

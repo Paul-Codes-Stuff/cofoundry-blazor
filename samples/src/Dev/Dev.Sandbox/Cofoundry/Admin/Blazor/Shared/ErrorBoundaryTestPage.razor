@@ -1,0 +1,33 @@
+@page "/admin-next/test/error"
+@namespace Dev.Sandbox
+
+@* Dev-only page that throws, so the Blazor admin's error boundary (AdminLayout) can be tested.
+   ?onload=true throws while the page initializes; the button throws from an event handler. *@
+<PageTitle>Error Test | Admin</PageTitle>
+
+<PageHeader Title="Error Test" />
+
+<PageActions>
+    <AdminButton Text="Throw" Class="main-cta" OnClick="Throw" />
+</PageActions>
+
+<PageBody ContentType="form">
+    <p>Click "Throw" to raise an unhandled exception.</p>
+</PageBody>
+
+@code {
+    [SupplyParameterFromQuery] private bool OnLoad { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (OnLoad)
+        {
+            throw new InvalidOperationException("Error boundary test (on load)");
+        }
+    }
+
+    private void Throw()
+    {
+        throw new InvalidOperationException("Error boundary test");
+    }
+}

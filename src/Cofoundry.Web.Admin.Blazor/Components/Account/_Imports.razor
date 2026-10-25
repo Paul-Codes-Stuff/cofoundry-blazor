@@ -1,0 +1,6 @@
+@* Everything under Components/Account requires a signed-in admin user. Applied here rather than the root
+   _Imports so it does not land on App.razor or Routes.razor, which must render for signed-out users.
+   These pages are static SSR (see App.razor): changing your own email or password updates your security
+   stamp, and the domain then re-issues the auth cookie, which needs a real HTTP request. *@
+@attribute [AdminBlazorAuthorize]
+@attribute [ExcludeFromInteractiveRouting]

@@ -1,0 +1,164 @@
+@page "/admin-next/account"
+@inject IAdminBlazorExecutor Executor
+@inject NavigationManager Navigation
+@using Microsoft.Extensions.DependencyInjection
+
+@* Port of the AngularJS Account module's AccountDetails route. Static SSR (see _Imports): "Edit" links to
+   ?edit=true and the form posts back, then redirects so a refresh doesn't post again. *@
+
+<PageTitle>My Account | Admin</PageTitle>
+
+<PageHeader Title="My Account" />
+
+@if (_user == null || Input == null)
+{
+    <PageBody ContentType="form">
+        <p class="message warning perm">Sorry, your account could not be found.</p>
+    </PageBody>
+}
+else
+{
+    <AdminForm Model="Input" FormName="admin-account" EditMode="_editMode" OnValidSubmit="SaveAsync">
+
+        @if (!_editMode)
+        {
+            <PageActions>
+                @if (_canUpdate)
+                {
+                    <ButtonLink Text="Edit" Class="main-cta" Href="@AdminBlazorRoutes.AccountEdit" />
+                    <ButtonLink Text="Change Password" Href="@AdminBlazorRoutes.AccountChangePassword" />
+                }
+            </PageActions>
+        }
+        else
+        {
+            <PageActions>
+                <AdminButtonSubmit Text="Save" />
+                <ButtonLink Text="Cancel" Href="@AdminBlazorRoutes.Account" />
+            </PageActions>
+        }
+
+        <PageBody ContentType="form">
+
+            <FormStatus Errors="_errors" SuccessMessage="@SuccessMessage" />
+
+            <FormSection Title="My Profile">
+
+                @if (_showDisplayName)
+                {
+                    <FormFieldText Title="Display Name" MaxLength="150" @bind-Value="Input.DisplayName"
+                                   Description="A display-friendly name such as a real name or pseudonym." />
+                }
+                <FormFieldText Title="Email" InputType="email" MaxLength="150" @bind-Value="Input.Email" />
+
+            </FormSection>
+
+            <FormSection Title="Audit Data">
+
+                <FormFieldContainer Title="Password Last Changed">
+                    <TimeAgo Time="_user.LastPasswordChangeDate" />
+                </FormFieldContainer>
+
+                <FormFieldContainer Title="Last signed in">
+                    @if (_user.LastSignInDate.HasValue)
+                    {
+                        <TimeAgo Time="_user.LastSignInDate" />
+                    }
+                    else
+                    {
+                        <span>Never</span>
+                    }
+                </FormFieldContainer>
+
+                <FormFieldContainer Title="Created">
+                    <TimeAgo Time="_user.AuditData.CreateDate" />
+                </FormFieldContainer>
+
+            </FormSection>
+
+        </PageBody>
+
+    </AdminForm>
+}
+
+@code {
+    private UserDetails? _user;
+    private bool _canUpdate;
+    private bool _showDisplayName;
+    private bool _useEmailAsUsername;
+    private bool _editMode;
+    private IReadOnlyCollection<ValidationError> _errors = [];
+
+    [SupplyParameterFromQuery] private bool Edit { get; set; }
+
+    [SupplyParameterFromQuery] private string? Saved { get; set; }
+
+    [SupplyParameterFromForm(FormName = "admin-account")] private AccountFormModel? Input { get; set; }
+
+    private string? SuccessMessage => Saved switch
+    {
+        "details" => "Changes were saved successfully",
+        "password" => "Your password has been changed",
+        _ => null
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _user = await Executor.QueryAsync(new GetCurrentUserDetailsQuery());
+        if (_user == null)
+        {
+            return;
+        }
+
+        _canUpdate = await Executor.WithServicesAsync(services => services
+            .GetRequiredService<IPermissionValidationService>()
+            .HasPermissionAsync<CurrentUserUpdatePermission>());
+
+        var userArea = await UserAreaInfo.LoadAsync(Executor, _user.UserArea.UserAreaCode);
+        _showDisplayName = userArea?.ShowDisplayName ?? true;
+        _useEmailAsUsername = userArea?.UseEmailAsUsername ?? true;
+
+        // A POST has already bound Input from the form.
+        Input ??= new AccountFormModel()
+        {
+            DisplayName = _user.DisplayName,
+            Email = _user.Email
+        };
+        _editMode = _canUpdate && Edit;
+    }
+
+    private async Task SaveAsync()
+    {
+        _editMode = true;
+
+        // As the AngularJS admin's PATCH: only the display name and email change.
+        var result = await Executor.ExecuteAsync(new UpdateCurrentUserCommand()
+        {
+            DisplayName = _showDisplayName ? Input!.DisplayName : _user!.DisplayName,
+            Email = Input!.Email,
+            FirstName = _user!.FirstName,
+            LastName = _user.LastName,
+            // The domain requires it to be empty when the email is the username.
+            Username = _useEmailAsUsername ? null : _user.Username
+        });
+
+        if (!result.Succeeded)
+        {
+            _errors = result.Errors;
+            return;
+        }
+
+        Navigation.NavigateTo(AdminBlazorRoutes.Account + "?saved=details");
+    }
+
+    private sealed class AccountFormModel
+    {
+        [StringLength(150)]
+        public string? DisplayName { get; set; }
+
+        [Required]
+        [EmailAddress]
+        [StringLength(150)]
+        public string? Email { get; set; }
+    }
+}

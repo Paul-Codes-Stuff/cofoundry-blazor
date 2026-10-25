@@ -8,13 +8,25 @@
     <base href="/" />
 
     <link rel="stylesheet" href="_content/Cofoundry.Web.Admin.Blazor/css/shared.css" />
+    <link rel="stylesheet" href="_content/Cofoundry.Web.Admin.Blazor/css/admin-blazor.css" />
 
     <HeadOutlet @rendermode="PageRenderMode" />
 </head>
 <body>
     <Routes @rendermode="PageRenderMode" />
 
+    @* Blazor shows this when the circuit fails outside a page's error boundary (see AdminLayout), after
+       which the page no longer responds. *@
+    <div id="blazor-error-ui" class="form-message error">
+        Sorry, an unexpected error has occurred and the page has stopped responding.
+        <a href="" class="reload">Reload</a>
+    </div>
+
     <script src="_framework/blazor.web.js"></script>
+    @if (PageRenderMode != null)
+    {
+        <script src="@AdminAssetPaths.SessionCheckScript" data-url="@AdminBlazorRoutes.SessionCheck"></script>
+    }
 </body>
 </html>
 

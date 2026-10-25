@@ -79,9 +79,26 @@ public static class AdminBlazorRoutes
 
     public static string UserDetails(string userAreaCode, int userId) => $"{Users(userAreaCode)}/{userId}";
 
+    /// <summary>
+    /// The signed-in user's own details ("My Account").
+    /// </summary>
+    public const string Account = Root + "/account";
+    public const string AccountEdit = Account + "?edit=true";
+    public const string AccountChangePassword = Account + "/change-password";
+
+    /// <summary>
+    /// First-run setup, only available until the site is set up.
+    /// </summary>
+    public const string Setup = Root + "/setup";
+
     public const string Login = Root + "/auth/login";
     public const string Logout = Root + "/auth/logout";
     public const string ForgotPassword = Root + "/auth/forgot-password";
+
+    /// <summary>
+    /// Returns 204 while the admin is signed in, else 401. Polled by <c>js/session-check.js</c>.
+    /// </summary>
+    public const string SessionCheck = Root + "/auth/session";
 
     /// <summary>
     /// The account recovery page linked from the reset password email, which adds the token as a
@@ -117,14 +134,5 @@ public static class AdminBlazorRoutes
         return !string.IsNullOrEmpty(url)
             && url[0] == '/'
             && (url.Length == 1 || (url[1] != '/' && url[1] != '\\'));
-    }
-
-    /// <summary>
-    /// Pages that still live in the AngularJS admin's MVC controllers. Each takes the
-    /// <see cref="AdminSettings.DirectoryName"/> of that admin.
-    /// </summary>
-    public static class Mvc
-    {
-        public static string Setup(string adminDirectoryName) => $"/{adminDirectoryName}/setup";
     }
 }

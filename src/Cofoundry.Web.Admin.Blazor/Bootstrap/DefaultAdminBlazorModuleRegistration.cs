@@ -1,3 +1,4 @@
+using Cofoundry.Web.Admin.Blazor.Components.Account;
 using Cofoundry.Web.Admin.Blazor.Components.Dashboard;
 using Cofoundry.Web.Admin.Blazor.Components.Directories;
 using Cofoundry.Web.Admin.Blazor.Components.Documents;
@@ -25,5 +26,6 @@ public class DefaultAdminBlazorModuleRegistration : IAdminBlazorModuleRegistrati
         yield return new("COFROL", typeof(RoleList));
         yield return new("COFDIR", typeof(DirectoryList));
         yield return new("COFPGT", typeof(PageTemplateList));
+        yield return new("COFACC", typeof(AccountDetailsPage));
     }
 }

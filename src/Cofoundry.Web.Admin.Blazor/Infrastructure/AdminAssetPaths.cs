@@ -17,6 +17,8 @@ public static class AdminAssetPaths
 
     public const string OptionSourceScript = ContentRoot + "/js/option-source.js";
 
+    public const string SessionCheckScript = ContentRoot + "/js/session-check.js";
+
     public const string HtmlEditorScript = ContentRoot + "/js/html-editor.js";
 
     /// <summary>

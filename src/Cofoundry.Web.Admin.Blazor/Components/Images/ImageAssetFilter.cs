@@ -56,6 +56,22 @@ public sealed record ImageAssetFilter
     }
 
     /// <summary>
+    /// True if an image of this size meets the size restrictions. As the AngularJS image upload field, a
+    /// restriction of 0 or 1 is ignored.
+    /// </summary>
+    public bool IsSizeMet(int width, int height)
+    {
+        return IsMinSize(MinWidth, width)
+            && IsMinSize(MinHeight, height)
+            && IsSize(Width, width)
+            && IsSize(Height, height);
+
+        static bool IsMinSize(int? size, int value) => !(size > 1) || value >= size;
+
+        static bool IsSize(int? size, int value) => !(size > 1) || value == size;
+    }
+
+    /// <summary>
     /// Joins tags into the format <see cref="Tags"/> uses.
     /// </summary>
     public static string? JoinTags(IEnumerable<string>? tags)

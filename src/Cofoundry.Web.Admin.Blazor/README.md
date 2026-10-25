@@ -25,7 +25,8 @@ when the host itself contains `.razor` files, so without it the admin renders a 
 * The Blazor admin lives under **`/admin-next`** (the AngularJS admin stays at `/admin`).
 * Sign-in/out is at `/admin-next/auth/login` and `/logout`. Signed-out requests to `/admin-next/...` are sent
   there; `/admin/...` still uses the MVC login. Forgot password, reset password and forced password change
-  are at `/admin-next/auth/forgot-password`, `reset-password` and `change-password`.
+  are at `/admin-next/auth/forgot-password`, `reset-password` and `change-password`. First-run setup is at
+  `/admin-next/setup`, where the auth pages send you until the site is set up.
 * The nav lists every permitted module. Modules with a Blazor page (see "Extending the admin") link to it;
   the others, including custom modules not yet ported, link to their AngularJS admin URL.
 
@@ -45,6 +46,9 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
 | `$routeProvider` per module | `@page` routes |
 | `validationErrorService` sends a server error to the field registered for its property | Fields join their `AdminForm` (`AdminFormFields`); `FormStatus` files each command error under the field showing that property and lists only the rest. Data model fields join under the data model property's name |
 | Client-side messages per validation attribute ("This field is required") | The command's DataAnnotations messages, with the field's label in place of the property name (`FieldValidationMessage`): "The Application Name field is required." |
+| A server error opens an error dialog | `AdminLayout` wraps each page in an `ErrorBoundary`: the page shows the error (with the exception where the developer exception page is allowed) and the nav keeps working. Errors outside a page show Blazor's `#blazor-error-ui` bar (`App.razor`) |
+| A 401 from the api sends you to sign in | A circuit keeps its user, so `js/session-check.js` asks `/admin-next/auth/session` whenever the tab is shown again and reloads the page if you've been signed out (in another tab, expired, or your password changed elsewhere), which sends you to sign in |
+| Every request can re-issue the auth cookie | A circuit can't set cookies. Pages where you change your own email or password (My Account) are static SSR, so the domain can re-issue the cookie with the new security stamp; the Users screens make those fields read-only on yourself, and `CircuitAwareUserSessionService` skips the refresh inside a circuit instead of throwing |
 
 `wwwroot/css` is a copy of the compiled AngularJS admin CSS and assets. Eventually the SCSS should move here.
 
@@ -61,6 +65,10 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
   `/admin-next/auth/reset-password` and sign-in links at `/admin-next`. That applies to emails sent from
   either admin, so the AngularJS forgot password page also emails a Blazor link. A site with its own builder
   for the admin user area replaces this one and keeps the AngularJS links
+* My Account (`Components/Account`, static SSR): your details (display name, email, audit data) and change
+  password, at `/admin-next/account`. "Edit" links to `?edit=true` and the form posts back, then redirects
+* First-run setup (`Components/Setup`, static SSR) at `/admin-next/setup`: application name and the first admin
+  user, then a link to sign in. Once set up it redirects to the dashboard
 * Shared UI: page layout, buttons, form + fields (text, number, text area, checkbox, dropdown, tags, read-only,
   container, image upload, document upload, image anchor location, date-time-local, decimal), table (incl. image thumbnail, tag list,
   created/updated audit cells), pager, status/warning messages, time-ago, audit data, modal + confirm dialog
@@ -82,7 +90,8 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
   create (with an emailed temporary password when the area allows password sign in), details (edit,
   deactivate, verify, reset password, delete). Which fields show and are required follows the user area's
   settings (`UserAreaInfo`), as in the AngularJS `UsersModuleOptions`. The nav maps every `COFUSR` + area code
-  module to its Blazor list
+  module to its Blazor list. On your own user, the role, active status, email, username, "Require Password
+  Change" and "Account Verified" are read-only (see My Account)
 * Access rules for pages and directories (`Components/AccessRules`): `EntityAccessEditorDialog` edits either,
   through an `EntityAccessRuleSource` (`PageAccessRuleSource`, `DirectoryAccessRuleSource`). It shows inherited
   directory rules, adds rules (user area plus optional role), removes them, and sets the sign-in redirect and
@@ -135,7 +144,9 @@ chosen by the schema's data template name:
 * Asset fields: `[Image]`, `[ImageCollection]`, `[Document]` and `[DocumentCollection]` pass their
   restrictions (tags, sizes, file extensions; `DataModelAssetFilters`) to the pickers, which apply them, show
   them disabled in the filter form and keep them on Clear. The upload dialogs opened from a picker warn about
-  the restrictions, and the image upload is tagged with the field's tags. The image and document pickers
+  the restrictions, and the image upload is tagged with the field's tags and rejects an image that doesn't
+  meet its sizes ("The image is 100x100 which does not meet the size requirements."), as the AngularJS
+  upload field did. The image and document pickers
   have a multi-select mode for the collection fields, which share `IdCollectionFieldBase` with the page
   collection.
 * Html: `FormFieldHtml` runs TinyMCE through `wwwroot/js/html-editor.js`. It's the same TinyMCE 4.4.3 build the
@@ -244,9 +255,12 @@ references both versions of each.
 * `[CustomEntityMultiTypeCollection]` (only used by page blocks) isn't ported; it comes with page block editing
 * The page picker (page collection field) is multi-select only, since the single page field is a
   search-as-you-type dropdown, as in the AngularJS admin
-* Upload fields have no "Remove" button (only needed for optional uploads, which no ported form has yet). As in
-  the AngularJS admin, an image uploaded from a picker isn't checked against the field's size restrictions; the
-  upload dialog only warns about them
+* Upload fields have no "Remove" button (only needed for optional uploads, which no ported form has yet)
+* The setup form itself hasn't been run in a browser: the sandbox's database is already set up, so the browser
+  steps only check that `/admin-next/setup` then redirects. Try it against an empty database before relying on it
+* Editing yourself on the Users screens can't change your email (or username, "Require Password Change" and
+  "Account Verified"), which the AngularJS admin allowed: use My Account for the email. The others would sign
+  you out
 * The role picker in "Add Access Rule" is a plain dropdown of the area's roles, not the AngularJS search-as-you-type
   filtered dropdown. Fine for now, may be revisited
 * **To revisit:** the close icon (top right) on modal dialogs (`ModalDialog`) was reported as doing nothing. It
@@ -260,5 +274,6 @@ references both versions of each.
 * A role can't be deleted while any user references it, including soft-deleted users (a domain rule, the same
   in the AngularJS admin). Move users to another role before deleting them if the role should go too
 * Unit tests (`test/Cofoundry.Web.Admin.Blazor.Tests`) cover the pure helpers only (routes, string utilities,
-  the server-error field matching, message wording, video id parsing). Components and pages are covered by
+  the server-error field matching, message wording, video id parsing, image size restrictions). Components and
+  pages are covered by
   the browser steps in `.claude/skills/run-blazor-admin`

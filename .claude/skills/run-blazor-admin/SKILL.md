@@ -64,6 +64,10 @@ node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-adm
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/plugins-step.js  # error log, YouTube and Vimeo fields
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/server-validation-step.js  # errors under fields
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/auth-step.js  # forgot/reset/change password
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/account-step.js  # My Account, editing yourself
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/error-boundary-step.js  # unexpected errors
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/session-step.js  # signed out in another tab
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/image-upload-size-step.js  # picker upload size rules
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
 ```
 
@@ -137,6 +141,20 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   requests a reset from forgot password, opens the emailed link (and a bad token), resets the password and
   signs in with it. It reads the emails from `samples/src/Dev/Dev.Sandbox/App_Data/Emails`, so run it from the
   repo root, and checks their links point at `/admin-next`. It deletes the user (a soft-deleted row remains).
+  It also checks `/admin-next/setup` redirects to the dashboard (the sandbox is already set up, so the setup
+  form can't be run). `mail.js` has the email reader it shares with `account-step.js`.
+- **`account-step.js`** creates an admin user the same way and, signed in as it, opens My Account from the nav
+  (an interactive link to a static SSR page), edits the email (validation first), changes the password
+  (required, mismatch, wrong current password) and checks each save re-issued the auth cookie. Then it edits
+  itself in Users: the email must be read-only there, and saving must not crash the circuit. It deletes the user.
+- **`error-boundary-step.js`** throws from the sandbox's dev-only `/admin-next/test/error` page
+  (`Cofoundry/Admin/Blazor/Shared/ErrorBoundaryTestPage.razor`), on a click and on load, and checks the error
+  message, "Try again" and that navigating away recovers. It logs four "Error boundary test" errors in
+  `sandbox.log`; they're expected.
+- **`session-step.js`** copies the admin's cookies into a new browser context, signs out in a second tab and
+  checks the first goes to sign in when focused. The check is throttled, so it waits 15 seconds.
+- **`image-upload-size-step.js`** opens the blog post thumbnail's picker (min 460x460), uploads a 100x100 image
+  (rejected) and a 500x500 one (accepted), and saves nothing.
 - **`extension-module-step.js`** covers the module extension point through the sandbox's Products module, a
   Blazor page in Dev.Sandbox (`Cofoundry/Admin/Blazor`): the nav link, direct load (endpoints) and in-app
   navigation (router), the signed-out redirect, validation, its custom selector field, save and cancel. The

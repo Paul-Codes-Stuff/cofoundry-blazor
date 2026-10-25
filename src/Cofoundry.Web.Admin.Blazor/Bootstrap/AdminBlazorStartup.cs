@@ -1,6 +1,9 @@
 using Cofoundry.Web.Auth.Internal;
+using Cofoundry.Web.Internal;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -95,5 +98,16 @@ public class AdminBlazorRouteRegistration : IOrderedRouteRegistration
             .MapRazorComponents<App>()
             .AddInteractiveServerRenderMode()
             .AddAdditionalAssemblies([.. _moduleRegistry.AdditionalAssemblies]);
+
+        // Authenticating runs the cookie's checks (expiry, and the security stamp once its validation
+        // interval has passed). A plain 401 rather than a challenge, which would redirect to sign in.
+        routeBuilder.MapGet(AdminBlazorRoutes.SessionCheck, async (HttpContext context) =>
+        {
+            var result = await context.AuthenticateAsync(AuthenticationSchemeNames.UserArea(CofoundryAdminUserArea.Code));
+            var isSignedIn = result.Succeeded
+                && result.Principal.FindFirst(CofoundryClaimTypes.UserAreaCode)?.Value == CofoundryAdminUserArea.Code;
+
+            return isSignedIn ? Results.NoContent() : Results.Unauthorized();
+        });
     }
 }

@@ -15,6 +15,13 @@ Read `src/Cofoundry.Web.Admin.Blazor/README.md` first: it has the status, what i
   per page. Forgot/reset/change password are ported too (same folder, static SSR, `AuthPageBase`).
   `AdminBlazorMailTemplateBuilder` points the admin emails' reset and sign-in links at `/admin-next`, for mail
   sent from either admin (the domain would otherwise build them from `AdminSettings.DirectoryName`).
+  My Account (`Components/Account`) and first-run setup (`Components/Setup`, `/admin-next/setup`) are static SSR
+  too: changing your own email or password updates your security stamp and the domain re-issues the cookie.
+- **A circuit can't set cookies.** `CircuitAwareUserSessionService.RefreshAsync` skips the refresh inside a
+  circuit (it used to throw "Headers are read-only" after saving). So anything that changes the signed-in
+  user's security stamp (email, username, password, "Require Password Change", verification) must be on a
+  static SSR page; the Users screens make those fields read-only on yourself. A circuit also keeps its user, so
+  `js/session-check.js` checks `/admin-next/auth/session` when the tab is shown and reloads if signed out.
 - **Data access:** components call the domain layer in-process through `IAdminBlazorExecutor`
   (`Infrastructure/AdminBlazorExecutor.cs`), not the `/admin/api` controllers. Each call runs in its own DI
   scope seeded with the circuit's signed-in user (`CircuitAwareUserSessionService`), because Cofoundry's
@@ -82,13 +89,17 @@ Agreed direction, not yet done:
 - The host needs `<RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>` or `blazor.web.js` 404s.
 - Field help text goes through `FieldHelp`, which registers with the enclosing `FormSection` so its "Help"
   button appears and toggles `show-helpers`. Don't hand-write `<p class="help-inline">`: it would stay hidden.
+- **Static SSR pages** (`[ExcludeFromInteractiveRouting]`) get no circuit: buttons with `@onclick` do nothing.
+  Use links (e.g. "Edit" is `?edit=true`) and a form post. Give `AdminForm` a `FormName` and bind its model to
+  a `[SupplyParameterFromForm]` property, which a GET leaves null.
 - Uploads: buffer into `BufferedFileSource` (the domain reads files more than once). A field that sets its value
   itself must call `NotifyFieldChanged()`, and a page that changes another field in code (e.g. a title from the
   file name) calls `AdminForm.NotifyFieldChanged`, or a stale "required" message stays visible.
 
 ## Status and next steps
 
-- **Ported:** shell/nav, sign in/out, forgot/reset/forced change password, shared UI components, Dashboard (`/admin-next` and `/admin-next/dashboard`),
+- **Ported:** shell/nav, sign in/out, forgot/reset/forced change password, My Account, first-run setup, error
+  boundary and session check, shared UI components, Dashboard (`/admin-next` and `/admin-next/dashboard`),
   Pages (list, create, details, change URL, duplicate), Images and Documents (list, filter, upload, details,
   replace file, delete), Site Settings (edit, clear cache), image picker (OpenGraph image on pages), Roles
   (permissions editor), Users (per user area: list, create, edit, reset password, delete), Directories (list,
@@ -107,7 +118,10 @@ Agreed direction, not yet done:
   for Pages, `assets-step.js` for Images/Documents, `settings-step.js` for Site Settings, `image-picker-step.js` for the picker, `roles-users-step.js` for Roles
   and Users, `access-rules-step.js` for Directories and access rules, `page-templates-step.js` for Page Templates, `custom-entities-step.js`, `custom-entity-pickers-step.js`, `nested-data-models-step.js` and `field-types-step.js` (run with `BROWSER_TZ`, uses the dev-only Field Tests entity `SIMFLD`) for Custom Entities, `plugins-step.js`
   for the Error Logging, YouTube and Vimeo plugins; its Vimeo steps need internet access; `auth-step.js` for
-  forgot/reset/change password; `smoke` also deletes the page it duplicates).
+  forgot/reset/change password and the setup redirect; `account-step.js` for My Account and editing yourself
+  in Users; `error-boundary-step.js` (uses the sandbox's dev-only `/admin-next/test/error` page) for the error
+  boundary; `session-step.js` for the session check; `image-upload-size-step.js` for picker upload size rules;
+  `smoke` also deletes the page it duplicates).
 - **Dev.Sandbox has a "Member" user area** (`Cofoundry/UserAreas/MemberUserArea.cs`, code `MEM`) so access rules
   and a non-admin users list can be exercised. Access Control is hidden on sites with only the admin area.
 - **To revisit:** the modal dialog close icon (top right, `Components/Dialogs/ModalDialog.razor`) was reported as
@@ -129,8 +143,8 @@ Agreed direction, not yet done:
   package. Page block editing (and `[CustomEntityMultiTypeCollection]`) only matters
   if the Visual Editor moves; it stays on the MVC site for now.
 - **Unit tests:** `test/Cofoundry.Web.Admin.Blazor.Tests` (xunit v3, like the repo's other test projects) covers
-  pure helpers only: routes, `StringUtilities`, `AdminFormFields`, `FieldValidationMessage.UseTitle` and the
-  plugins' `ParseVideoId`. Run `dotnet test test/Cofoundry.Web.Admin.Blazor.Tests`. UI is covered by the skill's
+  pure helpers only: routes, `StringUtilities`, `AdminFormFields`, `FieldValidationMessage.UseTitle`,
+  `ImageAssetFilter` and the plugins' `ParseVideoId`. Run `dotnet test test/Cofoundry.Web.Admin.Blazor.Tests`. UI is covered by the skill's
   browser steps.
 
 ## Git

@@ -1,4 +1,8 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject NavigationManager Navigation
+@inject DebugSettings DebugSettings
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnvironment
 
 <div id="wrapper">
 
@@ -11,7 +15,25 @@
                this wrapper, which is what pushes the fixed .page-actions column below the header. *@
             <div>
                 <CascadingValue Value="_modalDialogStack" IsFixed="true">
-                    @Body
+                    @* An unexpected exception in a page shows here (and is logged) instead of ending the
+                       circuit, as the AngularJS admin's error dialog did. Navigating away recovers. *@
+                    <ErrorBoundary @ref="_errorBoundary">
+                        <ChildContent>
+                            @Body
+                        </ChildContent>
+                        <ErrorContent Context="exception">
+                            <PageBody ContentType="form">
+                                <div class="form-message error perm">
+                                    <p>Sorry, an unexpected error has occurred.</p>
+                                    <p><a href="@Navigation.Uri" @onclick="Recover" @onclick:preventDefault>Try again</a></p>
+                                    @if (DebugSettings.CanShowDeveloperExceptionPage(HostEnvironment))
+                                    {
+                                        <pre class="developer-exception">@exception</pre>
+                                    }
+                                </div>
+                            </PageBody>
+                        </ErrorContent>
+                    </ErrorBoundary>
                 </CascadingValue>
             </div>
         </div>
@@ -36,7 +58,22 @@
 
 @code {
     private readonly ModalDialogStack _modalDialogStack = new();
+    private ErrorBoundary? _errorBoundary;
 
     // As the AngularJS layout: the version of Cofoundry.Web, the assembly of its ICofoundryHelper.
     private static readonly Version? CofoundryVersion = typeof(ICofoundryHelper).Assembly.GetName().Version;
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => Recover();
+
+    private void Recover() => _errorBoundary?.Recover();
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
 }

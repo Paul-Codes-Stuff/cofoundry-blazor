@@ -91,6 +91,11 @@
     [Parameter] public IImageAssetRenderable? CurrentAsset { get; set; }
 
     /// <summary>
+    /// Size restrictions the image must meet, e.g. from the image picker that opened the upload dialog.
+    /// </summary>
+    [Parameter] public ImageAssetFilter? Filter { get; set; }
+
+    /// <summary>
     /// True if <paramref name="file"/> is an SVG, which can't be resized so has no anchor location.
     /// </summary>
     public static bool IsSvg(IFileSource file) =>
@@ -152,6 +157,13 @@
             _module ??= await JS.InvokeAsync<IJSObjectReference>("import", AdminAssetPaths.ImageUploadScript);
             var input = _inputFile!.Element!.Value;
             var info = await _module.InvokeAsync<ImageInfo?>("readImage", input, ImageAssetsSettings.MaxUploadWidth, ImageAssetsSettings.MaxUploadHeight);
+
+            // As the AngularJS field. A format the browser can't read (e.g. TIFF) has no size to check.
+            if (info != null && Filter != null && !Filter.IsSizeMet(info.Width, info.Height))
+            {
+                _error = $"The image is {info.Width}x{info.Height} which does not meet the size requirements.";
+                return;
+            }
 
             BufferedFileSource source;
             if (info?.IsResized == true)

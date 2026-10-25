@@ -56,6 +56,14 @@ else
             {
                 <div class="form-message error perm">@_editLockReason</div>
             }
+            else if (_editMode && _isCurrentUser)
+            {
+                @* These changes update your security stamp, so the auth cookie must be re-issued, which a
+                   circuit can't do. My Account is a static SSR page that can. *@
+                <WarningMessage>
+                    This is your own account. Change your email in <a href="@AdminBlazorRoutes.Account">My Account</a>.
+                </WarningMessage>
+            }
 
             <FormSection Title="Main">
 
@@ -66,23 +74,24 @@ else
                 }
                 @if (!_userArea.UseEmailAsUsername)
                 {
-                    <FormFieldText Title="Username" MaxLength="150" @bind-Value="_model.Username"
+                    <FormFieldText Title="Username" MaxLength="150" ReadOnly="_isCurrentUser" @bind-Value="_model.Username"
                                    Description="The username that the user uses to sign in with." />
                 }
-                <FormFieldText Title="Email Address" InputType="email" MaxLength="150" @bind-Value="_model.Email" />
+                <FormFieldText Title="Email Address" InputType="email" MaxLength="150" ReadOnly="_isCurrentUser" @bind-Value="_model.Email" />
 
-                @* Changing your own role or deactivating yourself could lock you out. *@
+                @* Changing your own role or deactivating yourself could lock you out. Your email, username,
+                   "Require Password Change" and "Account Verified" are read-only too (see the warning above). *@
                 <FormFieldDropdown TValue="int?" Title="Role" Options="_roles" Required="true" ReadOnly="_isCurrentUser"
                                    Description="The role dictates which permissions a user has."
                                    @bind-Value="_model.RoleId" />
 
                 @if (_userArea.AllowPasswordSignIn)
                 {
-                    <FormFieldCheckbox Title="Require Password Change" @bind-Value="_model.RequirePasswordChange"
+                    <FormFieldCheckbox Title="Require Password Change" ReadOnly="_isCurrentUser" @bind-Value="_model.RequirePasswordChange"
                                        Description="If selected, the user will be required to change their password the next time they sign in." />
                 }
 
-                @if (_editMode)
+                @if (_editMode && !_isCurrentUser)
                 {
                     <FormFieldCheckbox Title="Account Verified" @bind-Value="_model.IsAccountVerified"
                                        Description="If selected, the user will be marked as a verified account." />

@@ -1,0 +1,4 @@
+@* First-run setup, used before any user exists, so no auth attribute. Static SSR (see App.razor), because
+   it signs out any old session cookie, which needs a real HTTP request. *@
+@layout SetupLayout
+@attribute [ExcludeFromInteractiveRouting]
