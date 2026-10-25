@@ -18,6 +18,11 @@ public static class AdminBlazorRoutes
 
     public const string Root = "/" + Prefix;
 
+    /// <summary>
+    /// The landing page. <see cref="Root"/> also renders the dashboard.
+    /// </summary>
+    public const string Dashboard = Root + "/dashboard";
+
     public const string Pages = Root + "/pages";
     public const string PageNew = Pages + "/new";
     public const string PageDetailsTemplate = Pages + "/{PageId:int}";

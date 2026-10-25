@@ -73,7 +73,7 @@ Get-Process Dev.Sandbox | Stop-Process -Confirm:$false
 
 ## Run (human path)
 
-Launch it the same way, open http://localhost:5006/admin-next/pages, and sign in. The AngularJS admin
+Launch it the same way, open http://localhost:5006/admin-next (the dashboard), and sign in. The AngularJS admin
 is at `/<Cofoundry:Admin:DirectoryName>` (`/admin` or `/sandbox-admin`, depending on appsettings), so you
 can compare the two side by side.
 

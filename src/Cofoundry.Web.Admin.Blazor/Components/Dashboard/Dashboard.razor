@@ -1,0 +1,30 @@
+@page "/admin-next"
+@page "/admin-next/dashboard"
+@inject IAdminBlazorExecutor Executor
+
+<PageTitle>Dashboard | Admin</PageTitle>
+
+<PageHeader Title="Dashboard" />
+
+<PageBody ContentType="page">
+    <div class="dashboard">
+        @if (_content?.CustomHtml != null)
+        {
+            @((MarkupString)_content.CustomHtml)
+        }
+        else if (_content != null)
+        {
+            <h2>@_content.ApplicationName</h2>
+            <p>Welcome to the administration panel.</p>
+        }
+    </div>
+</PageBody>
+
+@code {
+    private DashboardContent? _content;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _content = await DashboardContent.LoadAsync(Executor);
+    }
+}

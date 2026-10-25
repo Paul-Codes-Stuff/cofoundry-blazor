@@ -63,6 +63,7 @@
     /// </summary>
     private static readonly Dictionary<string, string> PortedModuleUrls = new(StringComparer.OrdinalIgnoreCase)
     {
+        ["COFDSH"] = AdminBlazorRoutes.Dashboard,
         ["COFPAG"] = AdminBlazorRoutes.Pages
     };
 
@@ -112,7 +113,13 @@
         return modules.Any(IsActive) ? "selected" : string.Empty;
     }
 
-    private string GetCurrentPath() => new Uri(Navigation.Uri).AbsolutePath;
+    private string GetCurrentPath()
+    {
+        var path = new Uri(Navigation.Uri).AbsolutePath.TrimEnd('/');
+
+        // The admin root renders the dashboard, so highlight it there too.
+        return string.Equals(path, AdminBlazorRoutes.Root, StringComparison.OrdinalIgnoreCase) ? AdminBlazorRoutes.Dashboard : path;
+    }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {

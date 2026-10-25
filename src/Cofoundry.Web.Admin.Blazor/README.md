@@ -3,8 +3,8 @@
 A Blazor (Interactive Server) port of the AngularJS admin in `Cofoundry.Web.Admin`. It is designed to be
 installed **alongside** the AngularJS admin while modules are migrated one at a time.
 
-> **Status: first slice.** Builds cleanly and the Pages module (list, filter, create, details/edit, publish,
-> unpublish, change URL, duplicate) has been smoke-tested in `Dev.Sandbox`. Only the shell and Pages exist.
+> **Status: first slice.** Builds cleanly. The Dashboard and Pages modules (list, filter, create, details/edit,
+> publish, unpublish, change URL, duplicate) have been smoke-tested in `Dev.Sandbox`.
 
 ## Installing side-by-side
 
@@ -47,6 +47,8 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
 * Shell: layout, permitted-module nav, auth
 * Shared UI: page layout, buttons, form + fields (text, text area, checkbox, dropdown, tags, read-only, container),
   table, pager, status/warning messages, time-ago, audit data, modal + confirm dialog
+* Dashboard: at `/admin-next/dashboard` and the `/admin-next` root. It shows the site's
+  `/Cofoundry/Admin/Dashboard/Dashboard.html` if one exists, otherwise the application name and a welcome message
 * Pages: list (filter, paging, publish), create, details (edit, publish/unpublish, versions, discard draft,
   copy to draft, delete), change URL, duplicate
 
@@ -55,5 +57,7 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
 * OpenGraph image picker (needs the Images module)
 * Page/directory access rules editor (needs user areas + the shared access editor)
 * Visual editor (stays on the MVC site; links use `?mode=edit`)
+* After sign-in the shared MVC login sends users to the AngularJS dashboard, not `/admin-next`
+* The footer doesn't show the Cofoundry version, which the AngularJS layout does
 * Server-side validation messages are shown in the form status area, not against individual fields
 * No tests yet

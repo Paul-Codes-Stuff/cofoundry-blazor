@@ -50,7 +50,8 @@ Read `src/Cofoundry.Web.Admin.Blazor/README.md` first: it has the status, what i
 
 ## Status and next steps
 
-- **Ported:** shell/nav, shared UI components, Pages module (list, create, details, change URL, duplicate).
+- **Ported:** shell/nav, shared UI components, Dashboard (`/admin-next` and `/admin-next/dashboard`), Pages
+  module (list, create, details, change URL, duplicate).
 - **Builds and runs.** Smoke-tested in `samples/src/Dev/Dev.Sandbox` (http://localhost:5006/admin-next/pages):
   list, filter, create, edit, publish/unpublish, change URL and duplicate all work. Delete not yet exercised.
 - **Next:** Images module (unblocks the OpenGraph image picker), then Roles and Users (unblocks page access
