@@ -12,7 +12,7 @@
         <AdminForm Model="_model" OnValidSubmit="Add">
 
             <PageActions>
-                <AdminButtonSubmit Text="Add" Disabled="_isLoadingRoles" />
+                <AdminButtonSubmit Text="Add" />
                 <AdminButton Text="Cancel" OnClick="Cancel" />
             </PageActions>
 
@@ -23,13 +23,15 @@
                     <FormFieldDropdown TValue="string" Title="User Area" Options="_userAreas" Required="true" DefaultItemText="Please choose"
                                        Description="The user area to restrict access to."
                                        Value="@_model.UserAreaCode"
-                                       ValueChanged="OnUserAreaChangedAsync"
+                                       ValueChanged="OnUserAreaChanged"
                                        ValueExpression="() => _model.UserAreaCode" />
 
-                    <FormFieldDropdown TValue="int?" Title="Role" Options="_roles" DefaultItemText="Any role"
-                                       Description="Optionally you can restrict access to a specific role within the user area."
-                                       Disabled="_isLoadingRoles"
-                                       @bind-Value="_model.RoleId" />
+                    @* Searched as you type, as AngularJS searchRoles. Keyed by user area so a new area starts a new search. *@
+                    <FormFieldFilteredDropdown @key="_model.UserAreaCode" Title="Role" Placeholder="Any role"
+                                               Description="Optionally you can restrict access to a specific role within the user area."
+                                               Disabled="string.IsNullOrEmpty(_model.UserAreaCode)"
+                                               Search="SearchRolesAsync" GetText="GetRoleTitleAsync"
+                                               @bind-Value="_model.RoleId" />
 
                 </FormSection>
 
@@ -42,8 +44,7 @@
 @code {
     private readonly RuleModel _model = new();
     private IReadOnlyList<SelectOption<string>>? _userAreas;
-    private IReadOnlyList<SelectOption<int?>> _roles = [];
-    private bool _isLoadingRoles;
+    private readonly Dictionary<int, string> _roleTitles = [];
 
     /// <summary>
     /// Raised with the new rule, or null if the dialog was cancelled.
@@ -63,38 +64,47 @@
 
         if (_userAreas.Count == 1)
         {
-            await OnUserAreaChangedAsync(_userAreas[0].Value);
+            _model.UserAreaCode = _userAreas[0].Value;
         }
     }
 
-    private async Task OnUserAreaChangedAsync(string? userAreaCode)
+    private void OnUserAreaChanged(string? userAreaCode)
     {
         _model.UserAreaCode = userAreaCode;
         _model.RoleId = null;
-        _roles = [];
-
-        if (string.IsNullOrEmpty(userAreaCode))
-        {
-            return;
-        }
-
-        _isLoadingRoles = true;
-        try
-        {
-            _roles = await Users.UserRoleOptions.LoadAsync(Executor, userAreaCode);
-        }
-        finally
-        {
-            _isLoadingRoles = false;
-        }
     }
+
+    private async Task<IReadOnlyList<SelectOption<int>>> SearchRolesAsync(string? text)
+    {
+        if (string.IsNullOrEmpty(_model.UserAreaCode))
+        {
+            return [];
+        }
+
+        var roles = await Executor.QueryAsync(new SearchRolesQuery
+        {
+            Text = text,
+            UserAreaCode = _model.UserAreaCode,
+            ExcludeAnonymous = true
+        });
+
+        foreach (var role in roles.Items)
+        {
+            _roleTitles[role.RoleId] = role.Title;
+        }
+
+        return roles.Items.Select(r => new SelectOption<int>(r.RoleId, r.Title)).ToList();
+    }
+
+    // Only roles picked from a search can be selected, so their titles are already known.
+    private Task<string?> GetRoleTitleAsync(int roleId) => Task.FromResult(_roleTitles.GetValueOrDefault(roleId));
 
     private Task Add()
     {
         var userArea = _userAreas!.First(a => a.Value == _model.UserAreaCode);
-        var role = _roles.FirstOrDefault(r => r.Value == _model.RoleId);
+        var roleTitle = _model.RoleId is int roleId ? _roleTitles.GetValueOrDefault(roleId) : null;
 
-        return OnClosed.InvokeAsync(new AccessRuleItem(null, userArea.Value, userArea.Text, role?.Value, role?.Text));
+        return OnClosed.InvokeAsync(new AccessRuleItem(null, userArea.Value, userArea.Text, _model.RoleId, roleTitle));
     }
 
     private Task Cancel() => OnClosed.InvokeAsync(null);

@@ -19,7 +19,15 @@ module.exports = async (page, c) => {
   const addRule = async (userArea, role) => {
     await modal().locator('a.btn-icon[title="Add"]').click(); await page.waitForTimeout(800);
     await c.field('.modal', 'User Area:').selectOption({ label: userArea }); await page.waitForTimeout(600);
-    if (role) await c.field('.modal', 'Role:').selectOption({ label: role });
+    if (role) {
+      // A search-as-you-type dropdown: the search goes to the domain, so only the matching role is listed.
+      await c.field('.modal', 'Role:').type(role); await page.waitForTimeout(1200);
+      const rows = modal().locator('.ui-select-choices-row');
+      const texts = (await rows.allInnerTexts()).map(t => t.trim());
+      if (texts.length !== 1 || texts[0] !== role) throw new Error('role search listed: ' + texts.join(' | '));
+      await rows.first().dispatchEvent('mousedown'); await page.waitForTimeout(600);
+      if ((await modal().locator('.ui-select-match').innerText()).trim() !== role) throw new Error('role not selected');
+    }
     await c.btn('.modal', 'Add').click(); await page.waitForTimeout(800);
   };
   let dirUrl, pageUrl, publicPath, roleUrl;

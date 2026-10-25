@@ -256,20 +256,17 @@ references both versions of each.
 * `[CustomEntityMultiTypeCollection]` (only used by page blocks) isn't ported; it comes with page block editing
 * The page picker (page collection field) is multi-select only, since the single page field is a
   search-as-you-type dropdown, as in the AngularJS admin
-* Upload fields have no "Remove" button (only needed for optional uploads, which no ported form has yet)
-* The role picker in "Add Access Rule" is a plain dropdown of the area's roles, not the AngularJS search-as-you-type
-  filtered dropdown. Fine for now, may be revisited
+* Upload fields have no "Remove" button. The AngularJS field only shows it when the field is optional, and every
+  image and document upload form (in both admins) requires a file
 * **To revisit:** the close icon (top right) on modal dialogs (`ModalDialog`) was reported as doing nothing. It
   couldn't be reproduced since: in headless Chrome the icon is the topmost element and a real click closes the
   image/document pickers, upload dialogs (stacked on a picker), Duplicate and the access rules editor. If it
   happens again, note which dialog and browser
 * Visual editor (stays on the MVC site; links use `?mode=edit`)
-* A server-side error about an item in a nested data model collection shows under the collection field as
-  the domain's "{Collection} validation failed", without the item's own message (the domain only flattens one
-  level of `[ValidateObject]` results). In practice the form validates the same annotations first, so it's rare
 * A role can't be deleted while any user references it, including soft-deleted users (a domain rule, the same
   in the AngularJS admin). Move users to another role before deleting them if the role should go too
 * Unit tests (`test/Cofoundry.Web.Admin.Blazor.Tests`) cover the pure helpers only (routes, string utilities,
-  the server-error field matching, message wording, video id parsing, image size restrictions). Components and
+  the server-error field matching, nested item errors, message wording, video id parsing, image size
+  restrictions). Components and
   pages are covered by
   the browser steps in `.claude/skills/run-blazor-admin`

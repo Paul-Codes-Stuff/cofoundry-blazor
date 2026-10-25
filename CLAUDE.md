@@ -134,6 +134,10 @@ Agreed direction, not yet done:
 - **Server-side validation:** fields join their `AdminForm` (`AdminFormFields`, from `FormFieldBase`), and
   `FormStatus` files each command error under the field showing its property, as the AngularJS
   `validationErrorService` did. Only unmatched errors are listed. Tested by `server-validation-step.js`.
+  The domain flattens only one level of `[ValidateObject]`, so the executor re-validates with
+  `CommandValidationErrors`, which files a nested data model item's own messages under its collection field.
+- **Search-as-you-type** (`FormFieldFilteredDropdown`, also the access rule role picker) must not render the typed
+  text back as the input's value: a late render overwrites keystrokes typed since. It only renders a value to clear.
 - **Extension points:** `IAdminBlazorModuleRegistration` adds module pages from other assemblies (router and
   endpoints pick up their assembly; the nav links to them). The sandbox's Products module
   (`Dev.Sandbox/Cofoundry/Admin/Blazor`) is the example, tested by `extension-module-step.js`. A plugin package
@@ -148,7 +152,7 @@ Agreed direction, not yet done:
   if the Visual Editor moves; it stays on the MVC site for now.
 - **Unit tests:** `test/Cofoundry.Web.Admin.Blazor.Tests` (xunit v3, like the repo's other test projects) covers
   pure helpers only: routes, `StringUtilities`, `AdminFormFields`, `FieldValidationMessage.UseTitle`,
-  `ImageAssetFilter` and the plugins' `ParseVideoId`. Run `dotnet test test/Cofoundry.Web.Admin.Blazor.Tests`. UI is covered by the skill's
+  `ImageAssetFilter`, `CommandValidationErrors` and the plugins' `ParseVideoId`. Run `dotnet test test/Cofoundry.Web.Admin.Blazor.Tests`. UI is covered by the skill's
   browser steps.
 
 ## Git

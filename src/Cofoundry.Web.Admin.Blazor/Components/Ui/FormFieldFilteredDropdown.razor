@@ -37,7 +37,7 @@
                                style="@(!_isOpen && _selectedText != null ? "position:absolute;opacity:0;width:0" : null)"
                                placeholder="@(_selectedText == null ? Placeholder : null)"
                                disabled="@Disabled"
-                               value="@_search"
+                               value="@_clearValue"
                                @oninput="OnSearchInput"
                                @onfocus="OpenAsync"
                                @onblur="Close"
@@ -96,6 +96,7 @@
     private IReadOnlyList<SelectOption<int>> _options = [];
     private CancellationTokenSource? _searchCancellation;
     private string? _search;
+    private string? _clearValue;
     private string? _selectedText;
     private int? _selectedTextFor;
     private int _activeIndex = -1;
@@ -159,6 +160,12 @@
     {
         _isOpen = false;
         _search = null;
+
+        // Clears the search box. Rendering the typed text back as its value would race with typing: a
+        // render for one keystroke can arrive after the next and overwrite it. So the value is only
+        // rendered to clear the box, alternating null and "" because Blazor writes it only when it
+        // changes, and either one empties the box.
+        _clearValue = _clearValue == null ? string.Empty : null;
         _searchCancellation?.Cancel();
     }
 

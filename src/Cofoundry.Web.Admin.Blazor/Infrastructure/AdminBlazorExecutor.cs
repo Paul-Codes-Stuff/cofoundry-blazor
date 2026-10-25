@@ -66,6 +66,17 @@ public class AdminBlazorExecutor : IAdminBlazorExecutor
         var validationService = scope.ServiceProvider.GetRequiredService<IModelValidationService>();
         var errors = validationService.GetErrors(command).ToList();
 
+        // The same annotations again, keeping the messages of nested data model items. If they pass, the
+        // errors came from a replaced validation service, so its own are shown.
+        if (errors.Count > 0)
+        {
+            var detailed = CommandValidationErrors.Get(command);
+            if (detailed.Count > 0)
+            {
+                errors = detailed.ToList();
+            }
+        }
+
         if (errors.Count > 0)
         {
             return new AdminCommandResult(errors);
