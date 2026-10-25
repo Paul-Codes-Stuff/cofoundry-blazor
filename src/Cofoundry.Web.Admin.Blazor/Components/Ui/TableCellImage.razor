@@ -1,0 +1,12 @@
+@inject IImageAssetRouteLibrary ImageRouteLibrary
+
+@* Port of cms-table-cell-image: a thumbnail for list tables. *@
+<img src="@Src" title="@Image?.Title" class="img-polaroid" />
+
+@code {
+    [Parameter] public IImageAssetRenderable? Image { get; set; }
+
+    private string Src => Image == null
+        ? AdminAssetPaths.ImageReplacement
+        : ImageRouteLibrary.ImageAsset(Image, 240, 150);
+}

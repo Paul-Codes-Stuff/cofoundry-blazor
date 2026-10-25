@@ -1,0 +1,139 @@
+@inherits FormFieldBase<IFileSource?>
+
+@* Port of cms-form-field-document-upload. Like FormFieldImageUpload, a transparent file input
+   covers the box so it can be clicked or have a file dropped onto it. *@
+
+<div class="control-group form-field-image-upload">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label" for="@FieldId">@Title:</label>
+        <div class="controls">
+            <div class="image-asset">
+                @if (ShowInput)
+                {
+                    <div class="@DropAreaCssClass" style="position: relative"
+                         @ondragenter="() => _isDragOver = true" @ondragleave="() => _isDragOver = false" @ondrop="() => _isDragOver = false">
+
+                        @if (_fileName != null)
+                        {
+                            <div>
+                                @_fileName
+                                @if (_fileSize > 0)
+                                {
+                                    @(" ")<span>(@StringUtilities.FormatBytes(_fileSize))</span>
+                                }
+                            </div>
+                        }
+                        <div>
+                            <button type="button" class="btn-icon" title="@ButtonText" disabled="@_isReading">
+                                <i class="fa fa-upload"></i>
+                            </button>
+                        </div>
+                        @if (_isReading)
+                        {
+                            <div>Reading file...</div>
+                        }
+
+                        <InputFile id="@FieldId" title="@ButtonText" disabled="@(_isReading || Disabled)" OnChange="OnFileSelectedAsync"
+                                   style="position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer" />
+                    </div>
+                }
+                else if (CurrentAsset != null)
+                {
+                    <div>
+                        <a href="@CurrentAsset.DownloadUrl">@_fileName</a>
+                        @if (_fileSize > 0)
+                        {
+                            @(" ")<span>(@StringUtilities.FormatBytes(_fileSize))</span>
+                        }
+                    </div>
+                }
+            </div>
+            @if (ShowInput)
+            {
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+                @if (_error != null)
+                {
+                    <span class="field-validation-error">@_error</span>
+                }
+            }
+        </div>
+    </div>
+    @if (!string.IsNullOrEmpty(Description))
+    {
+        <p class="help-inline"><small>@Description</small></p>
+    }
+</div>
+
+@code {
+    private IFileSource? _selectedFile;
+    private DocumentAssetSummary? _shownAsset;
+    private bool _isInitialised;
+    private string? _fileName;
+    private long _fileSize;
+    private string? _error;
+    private bool _isReading;
+    private bool _isDragOver;
+
+    /// <summary>
+    /// The document already saved, shown until a new file is chosen. Null when adding a new document.
+    /// </summary>
+    [Parameter] public DocumentAssetSummary? CurrentAsset { get; set; }
+
+    private string ButtonText => Value != null || CurrentAsset != null ? "Change" : "Upload";
+
+    // The AngularJS drop zone had no "dragarea" class, so only the drag-over highlight is added.
+    private string? DropAreaCssClass => _isDragOver ? "dragover-accepted" : null;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        // Show the saved document on first render, and again when the parent clears the chosen file (e.g. edit
+        // cancelled) or reloads the asset after saving.
+        if (!_isInitialised || !ReferenceEquals(Value, _selectedFile) || !ReferenceEquals(CurrentAsset, _shownAsset))
+        {
+            _isInitialised = true;
+            _shownAsset = CurrentAsset;
+            _selectedFile = null;
+            _error = null;
+            _fileName = CurrentAsset != null ? $"{CurrentAsset.FileName}.{CurrentAsset.FileExtension}" : null;
+            _fileSize = CurrentAsset?.FileSizeInBytes ?? 0;
+        }
+    }
+
+    private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        _error = null;
+        _isDragOver = false;
+
+        if (file.Size > BufferedFileSource.MaxFileSize)
+        {
+            _error = $"The file is {StringUtilities.FormatBytes(file.Size)}, which is larger than the {StringUtilities.FormatBytes(BufferedFileSource.MaxFileSize)} limit.";
+            return;
+        }
+
+        _isReading = true;
+
+        try
+        {
+            await using var stream = file.OpenReadStream(BufferedFileSource.MaxFileSize);
+            var source = await BufferedFileSource.ReadAsync(stream, file.Name, file.ContentType);
+
+            _fileName = source.FileName;
+            _fileSize = source.Length;
+            _selectedFile = source;
+
+            await ValueChanged.InvokeAsync(source);
+            NotifyFieldChanged();
+        }
+        catch (IOException ex)
+        {
+            _error = "The file could not be read: " + ex.Message;
+        }
+        finally
+        {
+            _isReading = false;
+        }
+    }
+}

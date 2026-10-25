@@ -1,0 +1,168 @@
+@page "/admin-next/images"
+@inject IAdminBlazorExecutor Executor
+
+<PageTitle>Images | Admin</PageTitle>
+
+<PageHeader Title="Images" />
+
+<PageSubHeader>
+    <PageHeaderButtons>
+
+        <a class="btn-icon" href="" @onclick="ToggleFilter" @onclick:preventDefault>
+            <i class="fa fa-search"></i> Filter
+        </a>
+
+        @if (_isFilterVisible)
+        {
+            <AdminForm Model="_filter" OnValidSubmit="ApplyFilter" CssClass="search-filter">
+                <FormSection Title="Filter this list">
+
+                    <FormFieldText Title="Tags" @bind-Value="_filter.Tags" />
+                    <FormFieldNumber Title="Width" Min="0" @bind-Value="_filter.Width" />
+                    <FormFieldNumber Title="Height" Min="0" @bind-Value="_filter.Height" />
+
+                </FormSection>
+                <div class="form-actions">
+                    <AdminButtonSubmit Text="Apply" />
+                    <AdminButton Text="Clear" OnClick="ClearFilter" />
+                </div>
+            </AdminForm>
+        }
+
+    </PageHeaderButtons>
+</PageSubHeader>
+
+<PageActions>
+    @if (_permissions?.CanCreate == true)
+    {
+        <ButtonLink Class="main-cta" Text="Upload Image" Icon="plus" Href="@AdminBlazorRoutes.ImageNew" />
+    }
+
+    <Pager PageNumber="_result?.PageNumber ?? 1" PageCount="_result?.PageCount ?? 0" OnPageChanged="GoToPage" />
+</PageActions>
+
+<PageBody ContentType="form">
+    <TableContainer IsLoading="_isLoading">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Image</th>
+                    <th>Title</th>
+                    <th>Size</th>
+                    <th>Tags</th>
+                    <th>Modified</th>
+                    <th class="actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_result != null && _result.Items.Count == 0)
+                {
+                    <tr><td colspan="100" class="empty">Sorry, no images could be found.</td></tr>
+                }
+                @foreach (var image in _result?.Items ?? [])
+                {
+                    <tr @key="image.ImageAssetId">
+                        <td>
+                            <TableCellImage Image="image" />
+                        </td>
+                        <td>
+                            <a href="@AdminBlazorRoutes.ImageDetails(image.ImageAssetId)">@image.Title</a>
+                        </td>
+                        <td>
+                            @if (image.FileExtension == ImageAssetConstants.SvgFileExtension)
+                            {
+                                <strong>SVG</strong>
+                            }
+                            else
+                            {
+                                <strong>@image.Width x @image.Height</strong>
+                            }
+                            <div>@StringUtilities.FormatBytes(image.FileSizeInBytes)</div>
+                        </td>
+                        <td>
+                            <TagList Tags="image.Tags" />
+                        </td>
+                        <td class="lowPriority">
+                            <UpdatedAuditDataCell AuditData="image.AuditData" />
+                        </td>
+                        <td class="actions">
+                            @if (_permissions?.CanUpdate == true)
+                            {
+                                <IconLink Icon="pencil-square-o" Title="Edit" Href="@AdminBlazorRoutes.ImageDetails(image.ImageAssetId)" />
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </TableContainer>
+</PageBody>
+
+@code {
+    private const int DefaultPageSize = 40;
+
+    private readonly ImageFilter _filter = new();
+    private SearchImageAssetSummariesQuery _query = new() { PageNumber = 1, PageSize = DefaultPageSize };
+    private PagedQueryResult<ImageAssetSummary>? _result;
+    private AssetPermissions? _permissions;
+    private bool _isFilterVisible;
+    private bool _isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _permissions = await AssetPermissions.LoadImagesAsync(Executor);
+        await LoadGridAsync();
+    }
+
+    private async Task LoadGridAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _result = await Executor.QueryAsync(_query);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ToggleFilter() => _isFilterVisible = !_isFilterVisible;
+
+    private async Task ApplyFilter()
+    {
+        _query = new SearchImageAssetSummariesQuery
+        {
+            PageNumber = 1,
+            PageSize = DefaultPageSize,
+            Tags = _filter.Tags,
+            Width = _filter.Width,
+            Height = _filter.Height
+        };
+
+        _isFilterVisible = false;
+        await LoadGridAsync();
+    }
+
+    private async Task ClearFilter()
+    {
+        _filter.Tags = null;
+        _filter.Width = null;
+        _filter.Height = null;
+
+        await ApplyFilter();
+    }
+
+    private async Task GoToPage(int pageNumber)
+    {
+        _query.PageNumber = pageNumber;
+        await LoadGridAsync();
+    }
+
+    private sealed class ImageFilter
+    {
+        public string? Tags { get; set; }
+        public int? Width { get; set; }
+        public int? Height { get; set; }
+    }
+}

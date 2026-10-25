@@ -45,4 +45,13 @@
     /// "Save &amp; Publish"). Returns true if the model is valid.
     /// </summary>
     public bool Validate() => _editForm?.EditContext?.Validate() ?? true;
+
+    /// <summary>
+    /// Re-validates a field the page changed in code, e.g. a title filled in from a file name, so a
+    /// stale "required" message is cleared.
+    /// </summary>
+    public void NotifyFieldChanged<TField>(System.Linq.Expressions.Expression<Func<TField>> field)
+    {
+        _editForm?.EditContext?.NotifyFieldChanged(FieldIdentifier.Create(field));
+    }
 }

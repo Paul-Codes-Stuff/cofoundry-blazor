@@ -85,6 +85,26 @@ public abstract class FormFieldBase<TValue> : ComponentBase, IDisposable
         }
     }
 
+    /// <summary>
+    /// Tells the form the bound value changed so its validation message is refreshed. Fields built on
+    /// an <c>Input*</c> component get this for free; fields that set the value themselves call it
+    /// after invoking <see cref="ValueChanged"/>.
+    /// </summary>
+    protected void NotifyFieldChanged()
+    {
+        if (_hasFieldIdentifier)
+        {
+            CascadingEditContext?.NotifyFieldChanged(_fieldIdentifier);
+        }
+    }
+
+    /// <summary>
+    /// Override to release a field's own resources when it is removed.
+    /// </summary>
+    protected virtual void OnDisposing()
+    {
+    }
+
     private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e)
     {
         _ = InvokeAsync(StateHasChanged);
@@ -92,6 +112,8 @@ public abstract class FormFieldBase<TValue> : ComponentBase, IDisposable
 
     public void Dispose()
     {
+        OnDisposing();
+
         if (_subscribedEditContext != null)
         {
             _subscribedEditContext.OnValidationStateChanged -= OnValidationStateChanged;

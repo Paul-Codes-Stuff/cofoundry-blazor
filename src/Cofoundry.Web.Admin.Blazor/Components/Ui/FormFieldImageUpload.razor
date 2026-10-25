@@ -1,0 +1,213 @@
+@inherits FormFieldBase<IFileSource?>
+@inject IJSRuntime JS
+@inject IImageAssetRouteLibrary ImageRouteLibrary
+@inject ImageAssetsSettings ImageAssetsSettings
+
+@* Port of cms-form-field-image-upload. A transparent file input covers the drop area, so clicking
+   anywhere on it opens the file picker and files can be dropped onto it. Oversized images are
+   resized in the browser first (wwwroot/js/image-upload.js), as the AngularJS admin did. *@
+
+<div class="control-group form-field-image-upload">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label" for="@FieldId">@Title:</label>
+        <div class="controls">
+            <div class="image-asset">
+                @if (ShowInput)
+                {
+                    <div class="@DropAreaCssClass" style="position: relative"
+                         @ondragenter="OnDragEnter" @ondragleave="OnDragEnd" @ondrop="OnDragEnd">
+
+                        @if (HasFile)
+                        {
+                            <img src="@_previewUrl" class="img-polaroid selectable" alt="@_fileName" />
+                        }
+
+                        <div>
+                            <button type="button" class="@(HasFile ? "btn-icon image-upload-cog" : "btn-icon")" title="@ButtonText" disabled="@_isReading">
+                                <i class="@(HasFile ? "fa fa-cog" : "fa fa-picture-o")"></i>
+                            </button>
+                        </div>
+
+                        @if (_isReading)
+                        {
+                            <div>Reading file...</div>
+                        }
+                        else if (!HasFile)
+                        {
+                            <div class="image-upload-info">Click the icon above or drag and drop a file here</div>
+                        }
+                        <div class="image-upload-drop-info">Drop file here</div>
+                        <div class="image-upload-drop-rejected">This file is not valid</div>
+                        @if (_resizeSize != null)
+                        {
+                            <div>The image is too large and will be resized to @_resizeSize.</div>
+                        }
+
+                        <InputFile @ref="_inputFile" id="@FieldId" accept="@AcceptedTypes" title="@ButtonText"
+                                   disabled="@(_isReading || Disabled)" OnChange="OnFileSelectedAsync"
+                                   style="position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer" />
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <img src="@_previewUrl" class="img-polaroid" alt="@_fileName" />
+                    </div>
+                }
+            </div>
+            @if (ShowInput)
+            {
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+                @if (_error != null)
+                {
+                    <span class="field-validation-error">@_error</span>
+                }
+            }
+        </div>
+    </div>
+    @if (!string.IsNullOrEmpty(Description))
+    {
+        <p class="help-inline"><small>@Description</small></p>
+    }
+</div>
+
+@code {
+    private const string AcceptedTypes = "image/gif,image/jpeg,image/png,image/tiff,image/bmp,.tif,image/webp,image/svg+xml";
+    private const string SvgMimeType = "image/svg+xml";
+    private const int PreviewWidth = 450;
+
+    private InputFile? _inputFile;
+    private IJSObjectReference? _module;
+    private IFileSource? _selectedFile;
+    private IImageAssetRenderable? _shownAsset;
+    private bool _isInitialised;
+    private string? _previewUrl;
+    private string? _fileName;
+    private string? _resizeSize;
+    private string? _error;
+    private bool _isReading;
+    private bool? _isDragAccepted;
+
+    /// <summary>
+    /// The image already saved, shown until a new file is chosen. Null when adding a new image.
+    /// </summary>
+    [Parameter] public IImageAssetRenderable? CurrentAsset { get; set; }
+
+    /// <summary>
+    /// True if <paramref name="file"/> is an SVG, which can't be resized so has no anchor location.
+    /// </summary>
+    public static bool IsSvg(IFileSource file) =>
+        file.MimeType == SvgMimeType || file.FileName.EndsWith(".svg", StringComparison.OrdinalIgnoreCase);
+
+    private bool HasFile => Value != null || CurrentAsset != null;
+
+    private string ButtonText => HasFile ? "Change" : "Upload";
+
+    private string DropAreaCssClass => _isDragAccepted switch
+    {
+        true => "dragarea js-image-upload dragover-accepted",
+        false => "dragarea js-image-upload dragover-rejected",
+        null => "dragarea js-image-upload"
+    };
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        // Show the saved image on first render, and again when the parent clears the chosen file (e.g. edit
+        // cancelled) or reloads the asset after saving.
+        if (!_isInitialised || !ReferenceEquals(Value, _selectedFile) || !ReferenceEquals(CurrentAsset, _shownAsset))
+        {
+            _isInitialised = true;
+            _shownAsset = CurrentAsset;
+            _selectedFile = null;
+            _resizeSize = null;
+            _error = null;
+            _previewUrl = CurrentAsset != null ? ImageRouteLibrary.ImageAsset(CurrentAsset, PreviewWidth) : AdminAssetPaths.ImageReplacement;
+            _fileName = CurrentAsset != null ? $"{CurrentAsset.FileName}.{CurrentAsset.FileExtension}" : null;
+        }
+    }
+
+    private void OnDragEnter(DragEventArgs e)
+    {
+        var types = e.DataTransfer.Items.Select(i => i.Type).ToList();
+        _isDragAccepted = types.Count == 0 || types.Any(t => t.StartsWith("image/", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void OnDragEnd() => _isDragAccepted = null;
+
+    private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        _error = null;
+        _isDragAccepted = null;
+
+        if (file.Size > BufferedFileSource.MaxFileSize)
+        {
+            _error = $"The file is {StringUtilities.FormatBytes(file.Size)}, which is larger than the {StringUtilities.FormatBytes(BufferedFileSource.MaxFileSize)} limit.";
+            return;
+        }
+
+        _isReading = true;
+
+        try
+        {
+            _module ??= await JS.InvokeAsync<IJSObjectReference>("import", AdminAssetPaths.ImageUploadScript);
+            var input = _inputFile!.Element!.Value;
+            var info = await _module.InvokeAsync<ImageInfo?>("readImage", input, ImageAssetsSettings.MaxUploadWidth, ImageAssetsSettings.MaxUploadHeight);
+
+            BufferedFileSource source;
+            if (info?.IsResized == true)
+            {
+                await using var resized = await _module.InvokeAsync<IJSStreamReference>("getResizedImage", input);
+                await using var stream = await resized.OpenReadStreamAsync(BufferedFileSource.MaxFileSize);
+                source = await BufferedFileSource.ReadAsync(stream, Path.GetFileNameWithoutExtension(file.Name) + ".jpg", "image/jpeg");
+                _resizeSize = $"{info.Width}x{info.Height}";
+            }
+            else
+            {
+                await using var stream = file.OpenReadStream(BufferedFileSource.MaxFileSize);
+                source = await BufferedFileSource.ReadAsync(stream, file.Name, file.ContentType);
+                _resizeSize = null;
+            }
+
+            // The browser can't display some formats, e.g. TIFF, but the server may still accept them.
+            _previewUrl = info?.PreviewUrl ?? AdminAssetPaths.PreviewNotSupported;
+            _fileName = source.FileName;
+            _selectedFile = source;
+
+            await ValueChanged.InvokeAsync(source);
+            NotifyFieldChanged();
+        }
+        catch (IOException ex)
+        {
+            _error = "The file could not be read: " + ex.Message;
+        }
+        finally
+        {
+            _isReading = false;
+        }
+    }
+
+    protected override void OnDisposing()
+    {
+        if (_module != null)
+        {
+            _ = DisposeModuleAsync(_module);
+        }
+    }
+
+    private static async Task DisposeModuleAsync(IJSObjectReference module)
+    {
+        try
+        {
+            await module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit has gone, along with the module.
+        }
+    }
+
+    private sealed record ImageInfo(int Width, int Height, bool IsResized, string? PreviewUrl);
+}

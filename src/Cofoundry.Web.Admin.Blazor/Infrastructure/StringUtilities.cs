@@ -42,6 +42,43 @@ public static partial class StringUtilities
         return result;
     }
 
+    /// <summary>
+    /// Formats a file size as e.g. "1.5 mb", matching the AngularJS admin's "bytes" filter.
+    /// </summary>
+    public static string FormatBytes(long bytes)
+    {
+        string[] units = ["bytes", "kb", "mb", "gb", "tb", "pb"];
+
+        if (bytes <= 0)
+        {
+            return "0 " + units[1];
+        }
+
+        var number = Math.Min((int)Math.Floor(Math.Log(bytes) / Math.Log(1024)), units.Length - 1);
+
+        return (bytes / Math.Pow(1024, number)).ToString("0.0", CultureInfo.InvariantCulture) + " " + units[number];
+    }
+
+    /// <summary>
+    /// "my-photo.jpg" becomes "My-photo", used to default an asset title from its file name.
+    /// </summary>
+    public static string TitleFromFileName(string fileName)
+    {
+        var name = Path.GetFileNameWithoutExtension(fileName);
+
+        if (string.IsNullOrEmpty(name))
+        {
+            name = fileName;
+        }
+
+        return name.Length == 0 ? name : char.ToUpper(name[0], CultureInfo.CurrentCulture) + name[1..];
+    }
+
+    /// <summary>
+    /// "TopLeft" becomes "Top Left", for showing enum values as labels.
+    /// </summary>
+    public static string SplitPascalCase(string value) => PascalCaseBoundaryRegex().Replace(value, " ");
+
     private static string RemoveDiacritics(string value)
     {
         var normalized = value.Normalize(NormalizationForm.FormD);
@@ -66,6 +103,9 @@ public static partial class StringUtilities
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex WhitespaceRegex();
+
+    [GeneratedRegex("(?<=[a-z0-9])(?=[A-Z])")]
+    private static partial Regex PascalCaseBoundaryRegex();
 
     [GeneratedRegex("-+")]
     private static partial Regex HyphensRegex();

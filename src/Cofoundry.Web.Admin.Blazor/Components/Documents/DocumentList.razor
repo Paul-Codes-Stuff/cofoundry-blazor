@@ -1,0 +1,165 @@
+@page "/admin-next/documents"
+@inject IAdminBlazorExecutor Executor
+
+<PageTitle>Documents | Admin</PageTitle>
+
+<PageHeader Title="Documents" />
+
+<PageSubHeader>
+    <PageHeaderButtons>
+
+        <a class="btn-icon" href="" @onclick="ToggleFilter" @onclick:preventDefault>
+            <i class="fa fa-search"></i> Filter
+        </a>
+
+        @if (_isFilterVisible)
+        {
+            <AdminForm Model="_filter" OnValidSubmit="ApplyFilter" CssClass="search-filter">
+                <FormSection Title="Filter this list">
+
+                    <FormFieldText Title="Tags" @bind-Value="_filter.Tags" />
+                    <FormFieldDropdown TValue="string" Title="Extension" Options="_fileTypes"
+                                       DefaultItemText="Any" @bind-Value="_filter.FileExtension" />
+
+                </FormSection>
+                <div class="form-actions">
+                    <AdminButtonSubmit Text="Apply" />
+                    <AdminButton Text="Clear" OnClick="ClearFilter" />
+                </div>
+            </AdminForm>
+        }
+
+    </PageHeaderButtons>
+</PageSubHeader>
+
+<PageActions>
+    @if (_permissions?.CanCreate == true)
+    {
+        <ButtonLink Class="main-cta" Text="Upload Document" Icon="plus" Href="@AdminBlazorRoutes.DocumentNew" />
+    }
+
+    <Pager PageNumber="_result?.PageNumber ?? 1" PageCount="_result?.PageCount ?? 0" OnPageChanged="GoToPage" />
+</PageActions>
+
+<PageBody ContentType="form">
+    @if (_result != null && _result.Items.Count == 0)
+    {
+        @* The AngularJS list shows a bare message rather than an empty table. *@
+        <span>No documents could be found.</span>
+    }
+    else
+    {
+        <TableContainer IsLoading="_isLoading">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>File</th>
+                        <th>Tags</th>
+                        <th>Modified</th>
+                        <th class="actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var document in _result?.Items ?? [])
+                    {
+                        <tr @key="document.DocumentAssetId">
+                            <td>
+                                <a href="@AdminBlazorRoutes.DocumentDetails(document.DocumentAssetId)">@document.Title</a><br />
+                            </td>
+                            <td>
+                                <DocumentAssetLink Document="document" /><br />
+                                @StringUtilities.FormatBytes(document.FileSizeInBytes)
+                            </td>
+                            <td>
+                                <TagList Tags="document.Tags" />
+                            </td>
+                            <td class="lowPriority">
+                                <UpdatedAuditDataCell AuditData="document.AuditData" />
+                            </td>
+                            <td class="actions">
+                                @if (_permissions?.CanUpdate == true)
+                                {
+                                    <IconLink Icon="pencil-square-o" Title="Edit" Href="@AdminBlazorRoutes.DocumentDetails(document.DocumentAssetId)" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </TableContainer>
+    }
+</PageBody>
+
+@code {
+    private const int DefaultPageSize = 40;
+
+    private readonly DocumentFilter _filter = new();
+    private SearchDocumentAssetSummariesQuery _query = new() { PageNumber = 1, PageSize = DefaultPageSize };
+    private PagedQueryResult<DocumentAssetSummary>? _result;
+    private AssetPermissions? _permissions;
+    private IReadOnlyList<SelectOption<string>> _fileTypes = [];
+    private bool _isFilterVisible;
+    private bool _isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _permissions = await AssetPermissions.LoadDocumentsAsync(Executor);
+
+        var fileTypes = await Executor.QueryAsync(new GetAllDocumentAssetFileTypesQuery());
+        _fileTypes = fileTypes
+            .Select(t => new SelectOption<string>(t.FileExtension, t.FileExtension))
+            .ToList();
+
+        await LoadGridAsync();
+    }
+
+    private async Task LoadGridAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _result = await Executor.QueryAsync(_query);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ToggleFilter() => _isFilterVisible = !_isFilterVisible;
+
+    private async Task ApplyFilter()
+    {
+        _query = new SearchDocumentAssetSummariesQuery
+        {
+            PageNumber = 1,
+            PageSize = DefaultPageSize,
+            Tags = _filter.Tags,
+            FileExtension = _filter.FileExtension
+        };
+
+        _isFilterVisible = false;
+        await LoadGridAsync();
+    }
+
+    private async Task ClearFilter()
+    {
+        _filter.Tags = null;
+        _filter.FileExtension = null;
+
+        await ApplyFilter();
+    }
+
+    private async Task GoToPage(int pageNumber)
+    {
+        _query.PageNumber = pageNumber;
+        await LoadGridAsync();
+    }
+
+    private sealed class DocumentFilter
+    {
+        public string? Tags { get; set; }
+        public string? FileExtension { get; set; }
+    }
+}

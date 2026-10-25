@@ -1,0 +1,39 @@
+@inherits FormFieldBase<int?>
+
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label" for="@FieldId">@Title:</label>
+        <div class="controls">
+            @if (ShowInput)
+            {
+                <InputNumber id="@FieldId"
+                             TValue="int?"
+                             Value="Value"
+                             ValueChanged="ValueChanged"
+                             ValueExpression="ValueExpression"
+                             disabled="@Disabled"
+                             min="@Min"
+                             max="@Max" />
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+            }
+            else if (Value.HasValue)
+            {
+                <div class="text-block-display-value">@Value</div>
+            }
+            else
+            {
+                <div class="text-block-display-value">None</div>
+            }
+        </div>
+    </div>
+    @if (!string.IsNullOrEmpty(Description))
+    {
+        <p class="help-inline"><small>@Description</small></p>
+    }
+</div>
+
+@code {
+    [Parameter] public int? Min { get; set; }
+
+    [Parameter] public int? Max { get; set; }
+}

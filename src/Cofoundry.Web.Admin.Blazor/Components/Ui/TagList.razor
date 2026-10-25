@@ -1,0 +1,6 @@
+@* Comma separated tags, as the AngularJS cms-tag-list directive renders them. *@
+<span>@string.Join(", ", Tags)</span>
+
+@code {
+    [Parameter] public IReadOnlyCollection<string> Tags { get; set; } = [];
+}

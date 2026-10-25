@@ -1,6 +1,6 @@
 ---
 name: run-blazor-admin
-description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate).
+description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete).
 ---
 
 # Run the Blazor admin
@@ -50,6 +50,7 @@ grep -A6 -E "fail:|Unhandled|ERROR executing" "$TEMP/sandbox.log" | grep -vE "^\
 export NODE_PATH="$TEMP/blazor-admin-pw/node_modules" ADMIN_USER='<admin email>' ADMIN_PASS='<password>'
 node .claude/skills/run-blazor-admin/driver.js smoke                               # Pages module end-to-end
 node .claude/skills/run-blazor-admin/driver.js shot admin-next/pages/new create-form   # one screenshot + page text
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/assets-step.js  # Images + Documents
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
 ```
 
@@ -57,6 +58,9 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   publish/unpublish, duplicate, and list + filter. It exits 1 on any failure, and a failing step saves a
   `fail-<step>.png`. Each run **creates two real pages** with unique `smoke-<stamp>` slugs. They're left
   in the database.
+- **`assets-step.js`** uploads a small PNG, a 4000x2000 PNG (checks it's resized in the browser to 3200x1600)
+  and a .txt document, then edits, replaces the file, filters and deletes them. The test files are drawn on a
+  canvas in the page, so there are no fixtures. It cleans up after itself when it passes.
 - **`run`** loads a module of the form `module.exports = async (page, c) => { ... }`. `page` is a
   Playwright page with `baseURL` already set. `c` provides `settle()`, `shot(name)`, `step(name, fn)`,
   `btn(scope, text)`, `field(scope, label)`, `rows()` and `status()`. See `driver.js`.
@@ -94,6 +98,11 @@ can compare the two side by side.
   dialog's left edge under the nav and clicks time out, that outlet has been lost.
 - **A favicon 404 appears on every page.** The sandbox has no `/favicon.ico`. Ignore it. The AngularJS
   admin also logs a 404 for `ajax-loader.gif`, which is a bug in its own CSS.
+- **Uploading files:** call `setInputFiles({ name, mimeType, buffer })` on `.form-field-image-upload
+  input[type=file]` (both upload fields use that class). The input is a transparent overlay on the drop area.
+  Wait ~1.5s afterwards: the file is streamed to the server before the field updates.
+- **Labels are upper-cased by CSS**, so `innerText` reads `PATH:`, not `Path:`. Match case-insensitively.
+- **Document file names come from the title**, so `smoke-doc.txt` is listed as `Smoke-doc.txt`.
 - **Sign-in/out pages are static SSR, not interactive.** `/admin-next/auth/login` is a real form POST,
   so wait with `waitForNavigation`, not `settle()`. To test them signed out, open a fresh context with
   `page.context().browser().newContext({ baseURL })`, because the driver's own context is already signed in.

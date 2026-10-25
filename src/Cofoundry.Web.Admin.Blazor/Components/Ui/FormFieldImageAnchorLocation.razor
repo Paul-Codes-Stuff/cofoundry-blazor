@@ -1,0 +1,19 @@
+@inherits FormFieldBase<ImageAnchorLocation?>
+
+@* Port of cms-form-field-image-anchor-location-selector. *@
+<FormFieldDropdown TValue="ImageAnchorLocation?"
+                   Title="@(Title ?? "Cropped Anchor Location")"
+                   Description="@(Description ?? "The location of the image to display if it has to be cropped dynamically")"
+                   Options="Options"
+                   Value="Value"
+                   ValueChanged="ValueChanged"
+                   ValueExpression="ValueExpression"
+                   ReadOnly="ReadOnly"
+                   Disabled="Disabled" />
+
+@code {
+    private static readonly IReadOnlyList<SelectOption<ImageAnchorLocation?>> Options = Enum
+        .GetValues<ImageAnchorLocation>()
+        .Select(l => new SelectOption<ImageAnchorLocation?>(l, StringUtilities.SplitPascalCase(l.ToString())))
+        .ToList();
+}

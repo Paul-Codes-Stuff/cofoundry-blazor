@@ -1,0 +1,13 @@
+@* "5 minutes ago by Jane Smith" - the modified audit cell used in list tables. *@
+@if (AuditData != null)
+{
+    <TimeAgo Time="AuditData.UpdateDate" />
+    @if (AuditData.Updater != null)
+    {
+        <div>by @AuditData.Updater.DisplayName</div>
+    }
+}
+
+@code {
+    [Parameter] public UpdateAuditData? AuditData { get; set; }
+}

@@ -63,7 +63,9 @@
     private static readonly Dictionary<string, string> PortedModuleUrls = new(StringComparer.OrdinalIgnoreCase)
     {
         ["COFDSH"] = AdminBlazorRoutes.Dashboard,
-        ["COFPAG"] = AdminBlazorRoutes.Pages
+        ["COFPAG"] = AdminBlazorRoutes.Pages,
+        ["COFIMG"] = AdminBlazorRoutes.Images,
+        ["COFDOC"] = AdminBlazorRoutes.Documents
     };
 
     private IReadOnlyList<AdminModule> _manageSiteModules = [];

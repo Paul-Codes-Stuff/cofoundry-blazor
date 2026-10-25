@@ -30,3 +30,32 @@ public sealed record PagePermissions(
         });
     }
 }
+
+/// <summary>
+/// The create/update/delete permissions for an asset module (images or documents).
+/// </summary>
+public sealed record AssetPermissions(bool CanCreate, bool CanUpdate, bool CanDelete)
+{
+    public static Task<AssetPermissions> LoadImagesAsync(IAdminBlazorExecutor executor) =>
+        LoadAsync<ImageAssetCreatePermission, ImageAssetUpdatePermission, ImageAssetDeletePermission>(executor);
+
+    public static Task<AssetPermissions> LoadDocumentsAsync(IAdminBlazorExecutor executor) =>
+        LoadAsync<DocumentAssetCreatePermission, DocumentAssetUpdatePermission, DocumentAssetDeletePermission>(executor);
+
+    private static async Task<AssetPermissions> LoadAsync<TCreate, TUpdate, TDelete>(IAdminBlazorExecutor executor)
+        where TCreate : IPermissionApplication, new()
+        where TUpdate : IPermissionApplication, new()
+        where TDelete : IPermissionApplication, new()
+    {
+        return await executor.WithServicesAsync(async services =>
+        {
+            var permissions = services.GetRequiredService<IPermissionValidationService>();
+
+            return new AssetPermissions(
+                await permissions.HasPermissionAsync<TCreate>(),
+                await permissions.HasPermissionAsync<TUpdate>(),
+                await permissions.HasPermissionAsync<TDelete>()
+                );
+        });
+    }
+}

@@ -29,6 +29,16 @@ public static class AdminBlazorRoutes
 
     public static string PageDetails(int pageId) => $"{Pages}/{pageId}";
 
+    public const string Images = Root + "/images";
+    public const string ImageNew = Images + "/new";
+
+    public static string ImageDetails(int imageAssetId) => $"{Images}/{imageAssetId}";
+
+    public const string Documents = Root + "/documents";
+    public const string DocumentNew = Documents + "/new";
+
+    public static string DocumentDetails(int documentAssetId) => $"{Documents}/{documentAssetId}";
+
     public const string Login = Root + "/auth/login";
     public const string Logout = Root + "/auth/logout";
 

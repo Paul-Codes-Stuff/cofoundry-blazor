@@ -1,0 +1,84 @@
+@page "/admin-next/documents/new"
+@inject IAdminBlazorExecutor Executor
+@inject NavigationManager Navigation
+
+<PageTitle>Upload Document | Admin</PageTitle>
+
+<PageHeader Title="Upload" ParentTitle="Documents" ParentHref="@AdminBlazorRoutes.Documents" />
+
+<AdminForm @ref="_form" Model="_command" IsLoading="_isSaving" OnValidSubmit="SaveAsync">
+
+    <PageActions>
+        <AdminButtonSubmit Text="Save" IsLoading="_isSaving" Disabled="_isSaving" />
+        <AdminButton Text="Cancel" Disabled="_isSaving" OnClick="Cancel" />
+    </PageActions>
+
+    <PageBody ContentType="form">
+
+        <FormStatus Errors="_errors" />
+
+        <FormSection Title="Document details">
+
+            <FormFieldDocumentUpload Title="File"
+                                     Value="_command.File"
+                                     ValueChanged="OnFileChanged"
+                                     ValueExpression="() => _command.File"
+                                     Disabled="_isSaving" />
+
+            <FormFieldText Title="Title" MaxLength="130"
+                           Description="A short descriptive title e.g. 'Today's Menu' or 'Directions to our office'."
+                           @bind-Value="_command.Title" />
+
+            <FormFieldTextArea Title="Description" @bind-Value="_command.Description" />
+
+            <FormFieldTags Title="CMS Tags" @bind-Value="_command.Tags" />
+
+        </FormSection>
+
+    </PageBody>
+
+</AdminForm>
+
+@code {
+    private AdminForm? _form;
+    private readonly AddDocumentAssetCommand _command = new();
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private bool _isSaving;
+
+    private void OnFileChanged(IFileSource? file)
+    {
+        _command.File = file!;
+
+        // As in the AngularJS admin, choosing a file replaces the title with one made from its name.
+        if (file != null)
+        {
+            _command.Title = StringUtilities.TitleFromFileName(file.FileName);
+            _form?.NotifyFieldChanged(() => _command.Title);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errors = [];
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(_command);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+
+            Navigation.NavigateTo(AdminBlazorRoutes.Documents);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel() => Navigation.NavigateTo(AdminBlazorRoutes.Documents);
+}

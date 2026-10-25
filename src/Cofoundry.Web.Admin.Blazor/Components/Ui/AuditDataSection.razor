@@ -1,5 +1,7 @@
 @if (AuditData != null)
 {
+    var updateAuditData = AuditData as UpdateAuditData;
+
     <FormSection Title="Audit Data">
 
         @if (AuditData.Creator != null)
@@ -11,9 +13,24 @@
             <TimeAgo Time="AuditData.CreateDate" />
         </FormFieldContainer>
 
+        @if (updateAuditData?.Updater != null)
+        {
+            <FormFieldContainer Title="Last Modified By">@updateAuditData.Updater.DisplayName</FormFieldContainer>
+        }
+
+        @if (updateAuditData != null)
+        {
+            <FormFieldContainer Title="Modified Date">
+                <TimeAgo Time="updateAuditData.UpdateDate" />
+            </FormFieldContainer>
+        }
+
     </FormSection>
 }
 
 @code {
+    /// <summary>
+    /// The entity's audit data. Pass an <see cref="UpdateAuditData"/> to also show who last modified it.
+    /// </summary>
     [Parameter] public CreateAuditData? AuditData { get; set; }
 }

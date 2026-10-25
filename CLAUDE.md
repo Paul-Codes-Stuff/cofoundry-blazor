@@ -70,14 +70,18 @@ Agreed direction, not yet done:
   admin scheme lives in the `AdminBlazorAuthorizeAttribute.PolicyName` policy instead.
 - Dialogs render through a `SectionOutlet` outside `.content` (see `AdminLayout`), else the nav covers them.
 - The host needs `<RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>` or `blazor.web.js` 404s.
+- Uploads: buffer into `BufferedFileSource` (the domain reads files more than once). A field that sets its value
+  itself must call `NotifyFieldChanged()`, and a page that changes another field in code (e.g. a title from the
+  file name) calls `AdminForm.NotifyFieldChanged`, or a stale "required" message stays visible.
 
 ## Status and next steps
 
-- **Ported:** shell/nav, shared UI components, Dashboard (`/admin-next` and `/admin-next/dashboard`), Pages
-  module (list, create, details, change URL, duplicate).
-- **Builds and runs.** Smoke-tested in `samples/src/Dev/Dev.Sandbox` (http://localhost:5006/admin-next/pages):
-  list, filter, create, edit, publish/unpublish, change URL and duplicate all work. Delete not yet exercised.
-- **Next:** Images module (unblocks the OpenGraph image picker), then Roles and Users (unblocks page access
+- **Ported:** shell/nav, sign in/out, shared UI components, Dashboard (`/admin-next` and `/admin-next/dashboard`),
+  Pages (list, create, details, change URL, duplicate), Images and Documents (list, filter, upload, details,
+  replace file, delete).
+- **Builds and runs.** Smoke-tested in `samples/src/Dev/Dev.Sandbox` with the `run-blazor-admin` skill (`smoke`
+  for Pages, `assets-step.js` for Images/Documents). Page delete not yet exercised.
+- **Next:** the image picker dialog (OpenGraph image on pages), then Roles and Users (unblocks page access
   rules). The Visual Editor stays on the MVC site.
 - No tests yet.
 
