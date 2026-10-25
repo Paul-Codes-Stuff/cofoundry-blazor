@@ -67,6 +67,9 @@ async function smoke(page, c) {
 
   await c.step('create: validation', async () => {
     await page.click('.page-actions a:has-text("Create")'); await c.settle();
+    // As in the AngularJS admin, "Not Found" is not offered as a page type.
+    const types = await c.field('.page-body', 'Page Type:').locator('option').allInnerTexts();
+    if (types.join('|') !== 'Generic|Custom Entity Details') throw new Error('page types: ' + types.join(' | '));
     await c.btn('.page-actions', 'Save Draft').click(); await page.waitForTimeout(800);
     const msgs = await page.locator('.field-validation-error').allInnerTexts();
     if (!msgs.length) throw new Error('no validation messages');

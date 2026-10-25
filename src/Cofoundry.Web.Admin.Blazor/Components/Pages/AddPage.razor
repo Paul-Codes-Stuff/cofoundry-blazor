@@ -111,11 +111,11 @@ else
 }
 
 @code {
+    // As the AngularJS pageService.getPageTypes(): PageType.NotFound isn't offered when adding a page.
     private static readonly IReadOnlyList<SelectOption<PageType>> _pageTypes =
     [
         new(PageType.Generic, "Generic"),
-        new(PageType.CustomEntityDetails, "Custom Entity Details"),
-        new(PageType.NotFound, "Not Found")
+        new(PageType.CustomEntityDetails, "Custom Entity Details")
     ];
 
     private AdminForm? _form;
