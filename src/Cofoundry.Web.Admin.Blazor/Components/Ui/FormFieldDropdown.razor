@@ -13,7 +13,7 @@
                              ValueChanged="ValueChanged"
                              ValueExpression="ValueExpression"
                              disabled="@Disabled">
-                    @if (!Required || IsDefaultValue)
+                    @if (ShowEmptyOption)
                     {
                         @* The empty option's value is default(TValue) so it parses for int, int? and string alike. *@
                         <option value="@EmptyOptionValue">@DefaultItemText</option>
@@ -52,6 +52,14 @@
     [Parameter] public bool Required { get; set; }
 
     private bool IsDefaultValue => EqualityComparer<TValue?>.Default.Equals(Value, default);
+
+    /// <summary>
+    /// The empty option is offered when the field is optional or nothing is chosen yet, unless the
+    /// default value is itself a real option (e.g. an enum whose first member is 0), which the
+    /// empty option would otherwise duplicate and mislabel.
+    /// </summary>
+    private bool ShowEmptyOption => (!Required || IsDefaultValue)
+        && !Options.Any(o => EqualityComparer<TValue?>.Default.Equals(o.Value, default));
 
     private string EmptyOptionValue => default(TValue)?.ToString() ?? string.Empty;
 

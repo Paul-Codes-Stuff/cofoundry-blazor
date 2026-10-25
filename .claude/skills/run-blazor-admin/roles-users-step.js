@@ -39,7 +39,7 @@ module.exports = async (page, c) => {
   await c.step('create role with permissions', async () => {
     await c.field('.page-body', 'Title:').fill(roleTitle); await c.field('.page-body', 'Title:').blur();
     const area = c.field('.page-body', 'User Area:');
-    if (await area.count()) await area.selectOption({ label: 'Cofoundry Admin' });
+    if (await area.count()) await area.selectOption({ label: 'Cofoundry' });
     if (!(await pagesUpdate().isDisabled())) throw new Error('update enabled before read ticked');
     await pagesRead().check(); await page.waitForTimeout(400);
     if (await pagesUpdate().isDisabled()) throw new Error('update still disabled after read ticked');

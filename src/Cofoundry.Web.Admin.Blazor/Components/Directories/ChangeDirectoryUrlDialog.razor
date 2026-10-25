@@ -1,0 +1,91 @@
+@inject IAdminBlazorExecutor Executor
+
+<ModalDialog Title="@($"Change Url: {Directory.FullUrlPath}")" Size="large" OnClose="Close">
+
+    <AdminForm Model="_command" IsLoading="_isSaving" OnValidSubmit="SaveAsync">
+
+        <PageActions>
+            <AdminButtonSubmit Text="Save" IsLoading="_isSaving" Disabled="_isSaving" />
+            <AdminButton Text="Cancel" Disabled="_isSaving" OnClick="Close" />
+        </PageActions>
+
+        <PageBody>
+
+            <FormStatus Errors="_errors" />
+
+            @if (Directory.NumPages > 0 || Directory.ChildPageDirectories.Count > 0)
+            {
+                <WarningMessage>
+                    WARNING: This directory contains other pages or directories. Changing the url will
+                    break external links to any pages nested under this directory.
+                </WarningMessage>
+            }
+
+            <FormSection Title="Settings">
+
+                <FormFieldText Title="Url Path" MaxLength="200" @bind-Value="_command.UrlPath"
+                               Description="The url path segment for this directory. Lowercase alpha-numeric characters and dashes only. E.g. 'about-the-team' or 'products'." />
+
+                <FormFieldDropdown TValue="int" Title="Parent Directory" Options="ParentOptions" Required="true"
+                                   Description="The directory to locate this directory under."
+                                   @bind-Value="_command.ParentPageDirectoryId" />
+
+            </FormSection>
+
+        </PageBody>
+    </AdminForm>
+
+</ModalDialog>
+
+@code {
+    private UpdatePageDirectoryUrlCommand _command = new();
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private bool _isSaving;
+
+    [Parameter, EditorRequired] public PageDirectoryNode Directory { get; set; } = default!;
+
+    /// <summary>
+    /// The directories it can be moved under: every directory except itself and its descendants.
+    /// </summary>
+    [Parameter, EditorRequired] public IReadOnlyList<SelectOption<int>> ParentOptions { get; set; } = [];
+
+    /// <summary>
+    /// Raised when the dialog closes: true when the url was changed, false when cancelled.
+    /// </summary>
+    [Parameter] public EventCallback<bool> OnClosed { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _command = new UpdatePageDirectoryUrlCommand
+        {
+            PageDirectoryId = Directory.PageDirectoryId,
+            UrlPath = Directory.UrlPath,
+            ParentPageDirectoryId = Directory.ParentPageDirectoryId ?? 0
+        };
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errors = [];
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(_command);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+
+        await OnClosed.InvokeAsync(true);
+    }
+
+    private Task Close() => OnClosed.InvokeAsync(false);
+}

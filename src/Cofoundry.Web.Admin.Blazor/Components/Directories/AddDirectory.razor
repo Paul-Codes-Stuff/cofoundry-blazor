@@ -1,0 +1,81 @@
+@page "/admin-next/directories/new"
+@inject IAdminBlazorExecutor Executor
+@inject AdminLookups Lookups
+@inject NavigationManager Navigation
+
+<PageTitle>Create Directory | Admin</PageTitle>
+
+<PageHeader Title="Create" ParentTitle="Directories" ParentHref="@AdminBlazorRoutes.Directories" />
+
+@if (_directories == null)
+{
+    <PageBody ContentType="form"><TableContainer IsLoading="true" /></PageBody>
+}
+else
+{
+    <AdminForm Model="_command" IsLoading="_isSaving" OnValidSubmit="SaveAsync">
+
+        <PageActions>
+            <AdminButtonSubmit Text="Save" IsLoading="_isSaving" Disabled="_isSaving" />
+            <AdminButton Text="Cancel" Disabled="_isSaving" OnClick="Cancel" />
+        </PageActions>
+
+        <PageBody ContentType="form">
+
+            <FormStatus Errors="_errors" />
+
+            <FormSection Title="Directory url">
+
+                <FormFieldText Title="Url Path" MaxLength="200" @bind-Value="_command.UrlPath"
+                               Description="Lowercase alpha-numeric characters and dashes only. E.g. 'about-the-team' or 'products'." />
+
+                <FormFieldText Title="Name" MaxLength="200" @bind-Value="_command.Name"
+                               Description="An optional descriptive identifier, only used for managing the directory e.g. 'About the team' or 'Our products'" />
+
+                <FormFieldDropdown TValue="int" Title="Parent Directory" Options="_directories" Required="true" DefaultItemText="Please choose"
+                                   Description="The parent under which to create this new directory."
+                                   @bind-Value="_command.ParentPageDirectoryId" />
+
+            </FormSection>
+
+        </PageBody>
+
+    </AdminForm>
+}
+
+@code {
+    private readonly AddPageDirectoryCommand _command = new();
+    private IReadOnlyList<SelectOption<int>>? _directories;
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private bool _isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _directories = await Lookups.GetDirectoryOptionsAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errors = [];
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(_command);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+
+            Navigation.NavigateTo(AdminBlazorRoutes.Directories);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel() => Navigation.NavigateTo(AdminBlazorRoutes.Directories);
+}

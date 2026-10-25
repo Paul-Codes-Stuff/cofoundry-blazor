@@ -1,0 +1,110 @@
+@inject IAdminBlazorExecutor Executor
+
+@* Port of AddEntityAccessRule.html: choose a user area and, optionally, a role within it. *@
+<ModalDialog Title="Add Access Rule" Size="large" OnClose="Cancel">
+
+    @if (_userAreas == null)
+    {
+        <div class="modal-body"><TableContainer IsLoading="true" /></div>
+    }
+    else
+    {
+        <AdminForm Model="_model" OnValidSubmit="Add">
+
+            <PageActions>
+                <AdminButtonSubmit Text="Add" Disabled="_isLoadingRoles" />
+                <AdminButton Text="Cancel" OnClick="Cancel" />
+            </PageActions>
+
+            <PageBody ContentType="form">
+
+                <FormSection Title="Permit Access To">
+
+                    <FormFieldDropdown TValue="string" Title="User Area" Options="_userAreas" Required="true" DefaultItemText="Please choose"
+                                       Description="The user area to restrict access to."
+                                       Value="@_model.UserAreaCode"
+                                       ValueChanged="OnUserAreaChangedAsync"
+                                       ValueExpression="() => _model.UserAreaCode" />
+
+                    <FormFieldDropdown TValue="int?" Title="Role" Options="_roles" DefaultItemText="Any role"
+                                       Description="Optionally you can restrict access to a specific role within the user area."
+                                       Disabled="_isLoadingRoles"
+                                       @bind-Value="_model.RoleId" />
+
+                </FormSection>
+
+            </PageBody>
+        </AdminForm>
+    }
+
+</ModalDialog>
+
+@code {
+    private readonly RuleModel _model = new();
+    private IReadOnlyList<SelectOption<string>>? _userAreas;
+    private IReadOnlyList<SelectOption<int?>> _roles = [];
+    private bool _isLoadingRoles;
+
+    /// <summary>
+    /// Raised with the new rule, or null if the dialog was cancelled.
+    /// </summary>
+    [Parameter] public EventCallback<AccessRuleItem?> OnClosed { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Access rules don't apply to Cofoundry admin users, so that area isn't offered.
+        var userAreas = await UserAreaInfo.LoadAllAsync(Executor);
+
+        _userAreas = userAreas
+            .Where(a => !a.IsCofoundryAdminArea)
+            .OrderBy(a => a.Name)
+            .Select(a => new SelectOption<string>(a.UserAreaCode, a.Name))
+            .ToList();
+
+        if (_userAreas.Count == 1)
+        {
+            await OnUserAreaChangedAsync(_userAreas[0].Value);
+        }
+    }
+
+    private async Task OnUserAreaChangedAsync(string? userAreaCode)
+    {
+        _model.UserAreaCode = userAreaCode;
+        _model.RoleId = null;
+        _roles = [];
+
+        if (string.IsNullOrEmpty(userAreaCode))
+        {
+            return;
+        }
+
+        _isLoadingRoles = true;
+        try
+        {
+            _roles = await Users.UserRoleOptions.LoadAsync(Executor, userAreaCode);
+        }
+        finally
+        {
+            _isLoadingRoles = false;
+        }
+    }
+
+    private Task Add()
+    {
+        var userArea = _userAreas!.First(a => a.Value == _model.UserAreaCode);
+        var role = _roles.FirstOrDefault(r => r.Value == _model.RoleId);
+
+        return OnClosed.InvokeAsync(new AccessRuleItem(null, userArea.Value, userArea.Text, role?.Value, role?.Text));
+    }
+
+    private Task Cancel() => OnClosed.InvokeAsync(null);
+
+    private sealed class RuleModel
+    {
+        [Required]
+        [Display(Name = "User Area")]
+        public string? UserAreaCode { get; set; }
+
+        public int? RoleId { get; set; }
+    }
+}

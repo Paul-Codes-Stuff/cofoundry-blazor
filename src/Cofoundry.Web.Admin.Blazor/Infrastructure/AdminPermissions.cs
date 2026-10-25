@@ -32,6 +32,27 @@ public sealed record PagePermissions(
 }
 
 /// <summary>
+/// The page directory permissions the directories module checks.
+/// </summary>
+public sealed record DirectoryPermissions(bool CanCreate, bool CanUpdate, bool CanDelete, bool CanUpdateUrl)
+{
+    public static async Task<DirectoryPermissions> LoadAsync(IAdminBlazorExecutor executor)
+    {
+        return await executor.WithServicesAsync(async services =>
+        {
+            var permissions = services.GetRequiredService<IPermissionValidationService>();
+
+            return new DirectoryPermissions(
+                await permissions.HasPermissionAsync<PageDirectoryCreatePermission>(),
+                await permissions.HasPermissionAsync<PageDirectoryUpdatePermission>(),
+                await permissions.HasPermissionAsync<PageDirectoryDeletePermission>(),
+                await permissions.HasPermissionAsync<PageDirectoryUpdateUrlPermission>()
+                );
+        });
+    }
+}
+
+/// <summary>
 /// The create/update/delete permissions for a simple entity module (images, documents, roles).
 /// </summary>
 public sealed record CrudPermissions(bool CanCreate, bool CanUpdate, bool CanDelete)

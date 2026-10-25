@@ -50,7 +50,10 @@ else
                 {
                     <AdminButton Text="Change Url" Disabled="_isLoading" OnClick="() => _dialog = Dialog.ChangeUrl" />
                 }
-                @* TODO: Access Control - needs the shared entity access editor and user area lookup (ported with Roles/Users). *@
+                @if (_accessRulesEnabled)
+                {
+                    <AdminButton Text="Access Control" Disabled="_isLoading" OnClick="() => _dialog = Dialog.AccessRules" />
+                }
                 @if (_permissions.CanCreate)
                 {
                     <AdminButton Text="Duplicate" Disabled="_isLoading" OnClick="() => _dialog = Dialog.Duplicate" />
@@ -288,6 +291,10 @@ else
         case Dialog.ChangeUrl:
             <ChangePageUrlDialog Page="_page" OnClosed="OnChangeUrlClosed" />
             break;
+        case Dialog.AccessRules:
+            <EntityAccessEditorDialog Source="@(new PageAccessRuleSource(_page.PageId, _page.PageRoute.FullUrlPath))"
+                                      OnClosed="OnAccessRulesClosed" />
+            break;
         case Dialog.Duplicate:
             <DuplicatePageDialog Page="_page" OnClosed="OnDuplicateClosed" />
             break;
@@ -297,7 +304,7 @@ else
 @code {
     private const int VersionsPageSize = 6;
 
-    private enum Dialog { None, Publish, Unpublish, DiscardDraft, CopyToDraft, Delete, ChangeUrl, Duplicate }
+    private enum Dialog { None, Publish, Unpublish, DiscardDraft, CopyToDraft, Delete, ChangeUrl, Duplicate, AccessRules }
 
     private AdminForm? _form;
     private Dialog _dialog;
@@ -315,12 +322,21 @@ else
     private bool _isPublishing;
     private bool _isVersionsLoading;
     private bool _notFound;
+    private bool _accessRulesEnabled;
 
     [Parameter] public int PageId { get; set; }
 
     protected override async Task OnParametersSetAsync()
     {
-        _permissions ??= await PagePermissions.LoadAsync(Executor);
+        if (_permissions == null)
+        {
+            _permissions = await PagePermissions.LoadAsync(Executor);
+
+            // As in the AngularJS admin, access rules only make sense once a site has a user area
+            // besides the Cofoundry admin area.
+            _accessRulesEnabled = (await UserAreaInfo.LoadAllAsync(Executor)).Count > 1;
+        }
+
         await LoadAsync();
     }
 
@@ -552,6 +568,17 @@ else
         }
 
         return Task.CompletedTask;
+    }
+
+    private async Task OnAccessRulesClosed(bool saved)
+    {
+        _dialog = Dialog.None;
+
+        if (saved)
+        {
+            await LoadAsync();
+            _message = "Access rules updated successfully";
+        }
     }
 
     private async Task OnChangeUrlClosed(bool changed)

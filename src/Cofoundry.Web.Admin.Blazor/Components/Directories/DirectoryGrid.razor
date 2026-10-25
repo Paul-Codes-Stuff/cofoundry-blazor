@@ -1,0 +1,55 @@
+@* Port of cms-directory-grid, used for the full list and for a directory's children. *@
+@if (Directories.Count > 0)
+{
+    <TableContainer>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Path</th>
+                    <th>Num Pages</th>
+                    <th class="lowPriority">Created</th>
+                    <th class="actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var directory in Directories)
+                {
+                    <tr @key="directory.PageDirectoryId" title="@(string.IsNullOrEmpty(directory.UrlPath) ? "Root directory" : directory.FullUrlPath)">
+                        <td>
+                            <a href="@AdminBlazorRoutes.DirectoryDetails(directory.PageDirectoryId)" title="@directory.Name">@directory.FullUrlPath</a>
+                        </td>
+                        <td>
+                            <a href="@AdminBlazorRoutes.PagesInDirectory(directory.PageDirectoryId)">@directory.NumPages</a>
+                        </td>
+                        <td class="lowPriority">
+                            <AuditDataCell AuditData="directory.AuditData" />
+                        </td>
+                        <td class="actions">
+                            @if (CanUpdate)
+                            {
+                                <IconLink Icon="@(IsChildList ? "external-link" : "pencil-square-o")" Title="Edit"
+                                          Href="@AdminBlazorRoutes.DirectoryDetails(directory.PageDirectoryId)" />
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </TableContainer>
+}
+else
+{
+    <span>No directories could be found.</span>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PageDirectoryNode> Directories { get; set; } = [];
+
+    [Parameter] public bool CanUpdate { get; set; }
+
+    /// <summary>
+    /// The child directories on a details page use a "go to" icon rather than an edit icon, as the
+    /// AngularJS grid's cms-redirect option did.
+    /// </summary>
+    [Parameter] public bool IsChildList { get; set; }
+}

@@ -1,0 +1,301 @@
+@inject IAdminBlazorExecutor Executor
+
+@* Port of the shared EntityAccessEditor: the access rules for a page or directory, plus what happens
+   when access is denied. Users without the manage permission see it read-only. *@
+<ModalDialog Title="@($"{Source.EntityDefinitionName} Access: {Source.EntityDescription}")" Size="large" OnClose="Close">
+
+    @if (_model == null)
+    {
+        <div class="modal-body">
+            @if (_notFound)
+            {
+                <p class="message warning perm">Sorry, the access rules could not be found.</p>
+            }
+            else
+            {
+                <TableContainer IsLoading="true" />
+            }
+        </div>
+    }
+    else
+    {
+        <AdminForm Model="_model" EditMode="_canManage" IsLoading="_isSaving" OnValidSubmit="SaveAsync">
+
+            @if (_canManage)
+            {
+                <PageActions>
+                    <AdminButtonSubmit Text="Save" IsLoading="_isSaving" Disabled="_isSaving" />
+                    <AdminButton Text="Cancel" Disabled="_isSaving" OnClick="Close" />
+                </PageActions>
+            }
+            else
+            {
+                <PageActions>
+                    <AdminButton Text="Ok" Class="main-cta" OnClick="Close" />
+                </PageActions>
+            }
+
+            <PageBody>
+
+                <FormStatus Errors="_errors" />
+
+                @if (_model.InheritedRules.Count > 0)
+                {
+                    <FormSection Title="Inherited Rules">
+
+                        <FormFieldContainer>
+                            <p>
+                                These rules are inherited from parent directories. Users will need to meet the rule requirements for each
+                                parent directory in order to gain access.
+                            </p>
+                        </FormFieldContainer>
+
+                        <FormFieldContainer>
+                            <TableContainer>
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Directory</th>
+                                            <th>User Area</th>
+                                            <th>Role</th>
+                                            <th>Redirect to Sign-in</th>
+                                            <th>Default Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var rule in _model.InheritedRules)
+                                        {
+                                            var action = GetViolationAction(rule.ViolationAction);
+
+                                            <tr>
+                                                <td><a href="@AdminBlazorRoutes.DirectoryDetails(rule.PageDirectoryId)" target="_blank">@rule.DirectoryPath</a></td>
+                                                <td>@rule.UserAreaName</td>
+                                                <td>@rule.RoleTitle</td>
+                                                @if (rule.UserAreaNameForSignInRedirect != null)
+                                                {
+                                                    <td title="@($"If the user is not signed in, then they will be redirected to the sign in page associated with the {rule.UserAreaNameForSignInRedirect} user area.")">Yes</td>
+                                                }
+                                                else
+                                                {
+                                                    <td title="No sign in redirection, the default action will trigger instead.">No</td>
+                                                }
+                                                <td title="@action.Description">@action.Name</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </TableContainer>
+                        </FormFieldContainer>
+
+                    </FormSection>
+                }
+
+                <FormSection Title="Access Rules">
+
+                    <FormFieldContainer>
+                        <p>To be granted access to this @Source.EntityDefinitionName.ToLowerInvariant() users will need to meet the requirements of at least one of these rules.</p>
+                    </FormFieldContainer>
+
+                    <FormFieldContainer>
+                        <TableContainer>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>User Area</th>
+                                        <th>Role</th>
+                                        @if (_canManage)
+                                        {
+                                            <th class="actions">Actions</th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (_model.AccessRules.Count == 0)
+                                    {
+                                        <tr><td colspan="100" class="empty">No rules found.</td></tr>
+                                    }
+                                    @foreach (var rule in _model.AccessRules)
+                                    {
+                                        <tr @key="rule">
+                                            <td>@rule.UserAreaName</td>
+                                            <td>@rule.RoleTitle</td>
+                                            @if (_canManage)
+                                            {
+                                                <td class="actions">
+                                                    <ButtonIcon Icon="trash-o" Title="Delete" Disabled="_isSaving" OnClick="() => DeleteRule(rule)" />
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                            @if (_canManage)
+                            {
+                                <div class="collection-actions">
+                                    <a href="" class="btn-icon" title="Add" @onclick="() => _isAddOpen = true" @onclick:preventDefault>
+                                        <i class="fa fa-plus-circle"></i>
+                                    </a>
+                                </div>
+                            }
+                        </TableContainer>
+                    </FormFieldContainer>
+
+                </FormSection>
+
+                @if (UserAreasInRules.Count > 0)
+                {
+                    <FormSection Title="Violation Action">
+
+                        <FormFieldContainer>
+                            <p>These options describe what should happen if the user is denied access.</p>
+                        </FormFieldContainer>
+
+                        <FormFieldCheckbox Title="Redirect to sign-in" @bind-Value="_model.RedirectToSignIn"
+                                           Description="Selecting this option will redirect the user to the sign-in page if they are not logged in. If they are logged in but not authorized to view the page then the default action will be triggered." />
+
+                        @if (_model.RedirectToSignIn && UserAreasInRules.Count > 1)
+                        {
+                            <FormFieldDropdown TValue="string" Title="Redirect to sign-in for area" Options="UserAreasInRules" Required="true"
+                                               Description="If the user is not signed-in in, then they will be redirected to the sign-in page for the selected user area."
+                                               @bind-Value="_model.UserAreaCodeForSignInRedirect" />
+                        }
+
+                        <FormFieldDropdown TValue="AccessRuleViolationAction" Title="Default Action" Options="ViolationActionOptions" Required="true"
+                                           Description="The action to take when the a user is not authorized to view the page. Using an 'Error' action tells the user that the page was found but could not be accessed, whereas a 'Not Found' action will make the page appear not to exist for unauthorized users."
+                                           @bind-Value="_model.ViolationAction" />
+
+                    </FormSection>
+                }
+
+            </PageBody>
+        </AdminForm>
+    }
+
+</ModalDialog>
+
+@if (_isAddOpen)
+{
+    <AddAccessRuleDialog OnClosed="OnRuleAdded" />
+}
+
+@code {
+    private static readonly IReadOnlyList<ViolationActionInfo> ViolationActions =
+    [
+        new(AccessRuleViolationAction.Error, "Error", "Error (403: Forbidden)"),
+        new(AccessRuleViolationAction.NotFound, "Not Found", "Not Found (404: Not Found)")
+    ];
+
+    private static readonly IReadOnlyList<SelectOption<AccessRuleViolationAction>> ViolationActionOptions =
+        ViolationActions.Select(a => new SelectOption<AccessRuleViolationAction>(a.Action, a.Description)).ToList();
+
+    private EntityAccessRuleSetModel? _model;
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private bool _canManage;
+    private bool _isSaving;
+    private bool _isAddOpen;
+    private bool _notFound;
+
+    [Parameter, EditorRequired] public EntityAccessRuleSource Source { get; set; } = default!;
+
+    /// <summary>
+    /// Raised when the dialog closes: true when the rules were saved, false otherwise.
+    /// </summary>
+    [Parameter] public EventCallback<bool> OnClosed { get; set; }
+
+    /// <summary>
+    /// The distinct user areas used by the rules: only these can be chosen for the sign in redirect.
+    /// </summary>
+    private IReadOnlyList<SelectOption<string>> UserAreasInRules => _model!.AccessRules
+        .DistinctBy(r => r.UserAreaCode)
+        .OrderBy(r => r.UserAreaCode, StringComparer.Ordinal)
+        .Select(r => new SelectOption<string>(r.UserAreaCode, r.UserAreaName))
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _canManage = await Source.CanManageAsync(Executor);
+        _model = await Source.LoadAsync(Executor);
+        _notFound = _model == null;
+
+        if (_model != null)
+        {
+            SyncSignInRedirect();
+        }
+    }
+
+    private void DeleteRule(AccessRuleItem rule)
+    {
+        _model!.AccessRules.Remove(rule);
+        SyncSignInRedirect();
+    }
+
+    private void OnRuleAdded(AccessRuleItem? rule)
+    {
+        _isAddOpen = false;
+
+        // As in the AngularJS editor, adding a rule that already exists does nothing.
+        if (rule == null || _model!.AccessRules.Any(r => r.UserAreaCode == rule.UserAreaCode && r.RoleId == rule.RoleId))
+        {
+            return;
+        }
+
+        _model.AccessRules.Add(rule);
+        _model.AccessRules = _model.AccessRules
+            .OrderBy(r => r.UserAreaCode, StringComparer.Ordinal)
+            .ThenBy(r => r.RoleId ?? -1)
+            .ToList();
+
+        SyncSignInRedirect();
+    }
+
+    /// <summary>
+    /// Port of setUserAreasInRules: the redirect area must be one used by the rules, and defaults to
+    /// the first of them so it is set even when the dropdown is hidden (only one area in the rules).
+    /// </summary>
+    private void SyncSignInRedirect()
+    {
+        var model = _model!;
+        var userAreas = UserAreasInRules;
+
+        if (!userAreas.Any(a => a.Value == model.UserAreaCodeForSignInRedirect))
+        {
+            model.RedirectToSignIn = false;
+            model.UserAreaCodeForSignInRedirect = null;
+        }
+
+        if (model.UserAreaCodeForSignInRedirect == null && userAreas.Count > 0)
+        {
+            model.UserAreaCodeForSignInRedirect = userAreas[0].Value;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errors = [];
+
+        try
+        {
+            var result = await Source.SaveAsync(Executor, _model!);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+
+        await OnClosed.InvokeAsync(true);
+    }
+
+    private Task Close() => OnClosed.InvokeAsync(false);
+
+    private static ViolationActionInfo GetViolationAction(AccessRuleViolationAction action) =>
+        ViolationActions.FirstOrDefault(a => a.Action == action) ?? new(action, action.ToString(), action.ToString());
+
+    private sealed record ViolationActionInfo(AccessRuleViolationAction Action, string Name, string Description);
+}

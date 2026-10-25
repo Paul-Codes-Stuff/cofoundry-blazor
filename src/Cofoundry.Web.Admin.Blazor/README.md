@@ -4,8 +4,8 @@ A Blazor (Interactive Server) port of the AngularJS admin in `Cofoundry.Web.Admi
 installed **alongside** the AngularJS admin while modules are migrated one at a time.
 
 > **Status: first slice.** Builds cleanly. The Dashboard, Pages (list, filter, create, details/edit, publish,
-> unpublish, change URL, duplicate), Images, Documents, Site Settings, Roles and Users modules have been smoke-tested
-> in `Dev.Sandbox`.
+> unpublish, change URL, duplicate, access rules), Directories, Images, Documents, Site Settings, Roles and Users
+> modules have been smoke-tested in `Dev.Sandbox`.
 
 ## Installing side-by-side
 
@@ -56,7 +56,9 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
 * Dashboard: at `/admin-next/dashboard` and the `/admin-next` root. It shows the site's
   `/Cofoundry/Admin/Dashboard/Dashboard.html` if one exists, otherwise the application name and a welcome message
 * Pages: list (filter, paging, publish), create, details (edit incl. OpenGraph image, publish/unpublish, versions, discard draft,
-  copy to draft, delete), change URL, duplicate
+  copy to draft, delete), change URL, duplicate, access control. The list takes `?pageDirectoryId=` to pre-filter
+  by directory
+* Directories: list (the whole tree), create, details (edit name, change URL/parent, delete, child directories)
 * Images: list (filter by tags/width/height, paging), upload, details (edit, replace file, delete), and the
   image picker (`FormFieldImageAsset` + "Find an image" dialog, with upload from inside the dialog)
 * Documents: list (filter by tags/extension, paging), upload, details (edit, replace file, delete)
@@ -68,6 +70,11 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
   deactivate, verify, reset password, delete). Which fields show and are required follows the user area's
   settings (`UserAreaInfo`), as in the AngularJS `UsersModuleOptions`. The nav maps every `COFUSR` + area code
   module to its Blazor list
+* Access rules for pages and directories (`Components/AccessRules`): `EntityAccessEditorDialog` edits either,
+  through an `EntityAccessRuleSource` (`PageAccessRuleSource`, `DirectoryAccessRuleSource`). It shows inherited
+  directory rules, adds rules (user area plus optional role), removes them, and sets the sign-in redirect and
+  default action. As in the AngularJS admin, "Access Control" only appears once the site has a user area
+  besides the Cofoundry admin one, and is read-only without the manage access rules permission
 
 ### File uploads
 
@@ -85,7 +92,10 @@ to a JPEG in the browser first (`wwwroot/js/image-upload.js`), and the title def
   ported either
 * Upload fields have no "Remove" button (only needed for optional uploads, which no ported form has yet) and no
   minimum/exact size check (the AngularJS field's `cms-filter`, used by image pickers)
-* Page/directory access rules editor (needs user areas + the shared access editor)
+* The role picker in "Add Access Rule" is a plain dropdown of the area's roles, not the AngularJS search-as-you-type
+  filtered dropdown. Fine for now, may be revisited
+* **To revisit:** the close icon (top right) on modal dialogs (`ModalDialog`) does nothing when clicked. The same
+  happens in the AngularJS admin, so the markup/CSS ported from it is the likely cause. Use Cancel meanwhile
 * Visual editor (stays on the MVC site; links use `?mode=edit`)
 * Forgot password, reset password (emailed links are built by the MVC route library) and forced password
   change are still the MVC pages

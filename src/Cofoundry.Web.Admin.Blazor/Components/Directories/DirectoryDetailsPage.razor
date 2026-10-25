@@ -1,0 +1,283 @@
+@page "/admin-next/directories/{PageDirectoryId:int}"
+@inject IAdminBlazorExecutor Executor
+@inject NavigationManager Navigation
+
+<PageTitle>@(_directory?.FullUrlPath ?? "Directory") | Admin</PageTitle>
+
+<PageHeader Title="@_directory?.FullUrlPath" ParentTitle="Directories" ParentHref="@AdminBlazorRoutes.Directories" />
+
+@if (_directory == null || _command == null || _permissions == null)
+{
+    <PageBody ContentType="form">
+        @if (_notFound)
+        {
+            <p class="message warning perm">Sorry, that directory could not be found.</p>
+        }
+        else
+        {
+            <TableContainer IsLoading="true" />
+        }
+    </PageBody>
+}
+else
+{
+    var isRoot = _directory.Depth == 0;
+
+    <AdminForm Model="_command" EditMode="_editMode" IsLoading="_isLoading" OnValidSubmit="SaveAsync">
+
+        @if (!_editMode)
+        {
+            <PageActions>
+                @if (_permissions.CanUpdate && !isRoot)
+                {
+                    <AdminButton Text="Edit" Class="main-cta" Disabled="_isLoading" OnClick="BeginEdit" />
+                }
+                @if (_permissions.CanUpdateUrl && !isRoot)
+                {
+                    <AdminButton Text="Change Url" Disabled="_isLoading" OnClick="() => _dialog = Dialog.ChangeUrl" />
+                }
+                @if (_accessRulesEnabled)
+                {
+                    <AdminButton Text="Access Control" Disabled="_isLoading" OnClick="() => _dialog = Dialog.AccessRules" />
+                }
+                @if (_permissions.CanDelete && !isRoot)
+                {
+                    <AdminButton Text="Delete" Disabled="_isLoading" OnClick="() => _dialog = Dialog.Delete" />
+                }
+            </PageActions>
+        }
+        else
+        {
+            <PageActions>
+                <AdminButtonSubmit Text="Save" IsLoading="_isLoading" Disabled="_isLoading" />
+                <AdminButton Text="Cancel" Disabled="_isLoading" OnClick="CancelEdit" />
+            </PageActions>
+        }
+
+        <PageBody ContentType="form">
+
+            @if (isRoot)
+            {
+                <WarningMessage>The root directory cannot be modified.</WarningMessage>
+            }
+
+            <FormStatus Errors="_errors" SuccessMessage="@_message" />
+
+            <FormSection Title="Main">
+
+                <FormFieldReadonly Title="Url Path" Value="@_directory.UrlPath"
+                                   Description="The url path segment for this directory e.g. 'example-directory'." />
+
+                <FormFieldText Title="Name" MaxLength="200" @bind-Value="_command.Name"
+                               Description="An optional descriptive identifier, only used for managing the directory." />
+
+                @if (!isRoot)
+                {
+                    <FormFieldReadonly Title="Parent Directory" Value="@_parent?.FullUrlPath"
+                                       Description="The parent under which to create this new directory." />
+                }
+
+                <FormFieldReadonly Title="Full Path" Value="@_directory.FullUrlPath" />
+
+                <FormFieldContainer Title="Pages">
+                    <a href="@AdminBlazorRoutes.PagesInDirectory(_directory.PageDirectoryId)">@_directory.NumPages</a>
+                </FormFieldContainer>
+
+                <FormFieldReadonly Title="Child Directories" Value="@_directory.ChildPageDirectories.Count.ToString(CultureInfo.CurrentCulture)" />
+
+            </FormSection>
+
+            <FormSection Title="Child Directories">
+                <FormFieldContainer>
+                    <DirectoryGrid Directories="_directory.ChildPageDirectories.ToList()" CanUpdate="_permissions.CanUpdate" IsChildList="true" />
+                </FormFieldContainer>
+            </FormSection>
+
+            <AuditDataSection AuditData="_directory.AuditData" />
+
+        </PageBody>
+
+    </AdminForm>
+
+    @switch (_dialog)
+    {
+        case Dialog.ChangeUrl:
+            <ChangeDirectoryUrlDialog Directory="_directory" ParentOptions="_parentOptions" OnClosed="OnChangeUrlClosedAsync" />
+            break;
+        case Dialog.AccessRules:
+            <EntityAccessEditorDialog Source="_accessRuleSource!" OnClosed="OnAccessRulesClosedAsync" />
+            break;
+        case Dialog.Delete:
+            <ConfirmDialog Title="Delete Directory"
+                           Message="Deleting this directory will delete ALL sub-directories and pages linked to this directory. Are you sure you want to continue?"
+                           OkButtonTitle="Yes, delete it"
+                           OnOk="DeleteAsync"
+                           OnClosed="OnDeleteClosed" />
+            break;
+    }
+}
+
+@code {
+    private enum Dialog { None, ChangeUrl, AccessRules, Delete }
+
+    private PageDirectoryNode? _directory;
+    private PageDirectoryNode? _parent;
+    private IReadOnlyList<SelectOption<int>> _parentOptions = [];
+    private DirectoryPermissions? _permissions;
+    private UpdatePageDirectoryCommand? _command;
+    private EntityAccessRuleSource? _accessRuleSource;
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private string? _message;
+    private Dialog _dialog;
+    private bool _accessRulesEnabled;
+    private bool _editMode;
+    private bool _isLoading;
+    private bool _deleted;
+    private bool _notFound;
+
+    [Parameter] public int PageDirectoryId { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_permissions == null)
+        {
+            _permissions = await DirectoryPermissions.LoadAsync(Executor);
+
+            // As in the AngularJS admin, access rules only make sense once a site has a user area
+            // besides the Cofoundry admin area.
+            _accessRulesEnabled = (await UserAreaInfo.LoadAllAsync(Executor)).Count > 1;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _notFound = false;
+
+        // Like the AngularJS module, read the directory from the tree: it carries the child
+        // directories, page count and depth that the details screen shows.
+        var root = await Executor.QueryAsync(new GetPageDirectoryTreeQuery());
+        var all = root.Flatten().ToList();
+        var directory = all.FirstOrDefault(d => d.PageDirectoryId == PageDirectoryId);
+
+        if (directory == null)
+        {
+            _notFound = true;
+            _directory = null;
+            return;
+        }
+
+        var descendants = directory.Flatten().Select(d => d.PageDirectoryId).ToHashSet();
+
+        _directory = directory;
+        _parent = all.FirstOrDefault(d => d.PageDirectoryId == directory.ParentPageDirectoryId);
+        _parentOptions = all
+            .Where(d => !descendants.Contains(d.PageDirectoryId))
+            .OrderBy(d => d.FullUrlPath, StringComparer.OrdinalIgnoreCase)
+            .Select(d => new SelectOption<int>(d.PageDirectoryId, d.FullUrlPath))
+            .ToList();
+        _accessRuleSource = new DirectoryAccessRuleSource(directory.PageDirectoryId, directory.FullUrlPath);
+        _command = MapCommand(directory);
+        _editMode = false;
+    }
+
+    private static UpdatePageDirectoryCommand MapCommand(PageDirectoryNode directory)
+    {
+        return new UpdatePageDirectoryCommand
+        {
+            PageDirectoryId = directory.PageDirectoryId,
+            Name = directory.Name
+        };
+    }
+
+    private void BeginEdit()
+    {
+        _editMode = true;
+        _errors = [];
+        _message = null;
+    }
+
+    private void CancelEdit()
+    {
+        _editMode = false;
+        _command = MapCommand(_directory!);
+        _errors = [];
+    }
+
+    private async Task SaveAsync()
+    {
+        _isLoading = true;
+        _errors = [];
+        _message = null;
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(_command!);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+
+            await LoadAsync();
+            _message = "Changes were saved successfully";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnChangeUrlClosedAsync(bool changed)
+    {
+        _dialog = Dialog.None;
+
+        if (changed)
+        {
+            await LoadAsync();
+            _errors = [];
+            _message = "Url Changed";
+        }
+    }
+
+    private async Task OnAccessRulesClosedAsync(bool saved)
+    {
+        _dialog = Dialog.None;
+
+        if (saved)
+        {
+            await LoadAsync();
+            _errors = [];
+            _message = "Access rules updated successfully";
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        _errors = [];
+        _message = null;
+
+        var result = await Executor.ExecuteAsync(new DeletePageDirectoryCommand(PageDirectoryId));
+
+        if (result.Succeeded)
+        {
+            _deleted = true;
+        }
+        else
+        {
+            _errors = result.Errors;
+        }
+    }
+
+    private void OnDeleteClosed(bool confirmed)
+    {
+        _dialog = Dialog.None;
+
+        if (confirmed && _deleted)
+        {
+            Navigation.NavigateTo(AdminBlazorRoutes.Directories);
+        }
+    }
+}

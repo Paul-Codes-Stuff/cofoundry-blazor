@@ -156,6 +156,11 @@
     private int? _pageToPublish;
     private string? _message;
 
+    /// <summary>
+    /// Pre-filters the list, e.g. from the page count links in the directories module.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "pageDirectoryId")] public int? InitialPageDirectoryId { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         var permissionsTask = PagePermissions.LoadAsync(Executor);
@@ -172,6 +177,12 @@
         _templates = templatesTask.Result
             .Select(t => new SelectOption<int?>(t.PageTemplateId, t.Name))
             .ToList();
+
+        if (InitialPageDirectoryId.HasValue)
+        {
+            _filter.PageDirectoryId = InitialPageDirectoryId;
+            _query.PageDirectoryId = InitialPageDirectoryId;
+        }
 
         await LoadGridAsync();
     }

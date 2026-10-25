@@ -1,6 +1,6 @@
 ---
 name: run-blazor-admin
-description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker; roles and permissions; users create, deactivate, reset password, delete).
+description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker; roles and permissions; users create, deactivate, reset password, delete; directories; page and directory access rules).
 ---
 
 # Run the Blazor admin
@@ -54,6 +54,7 @@ node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-adm
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/settings-step.js  # Site Settings
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/image-picker-step.js  # OpenGraph image picker
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/roles-users-step.js  # Roles + Users
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/access-rules-step.js  # Directories + access rules
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
 ```
 
@@ -73,6 +74,11 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   to another role before it's deleted, because a role still referenced by a (soft-)deleted user can't be
   deleted. Reset-password and welcome emails go to the sandbox's mail drop folder (`App_Data/Emails`, the
   default `LocalDrop` mode), so nothing is sent. Creating a user takes a few seconds (password hashing).
+- **`access-rules-step.js`** creates a directory and a child directory, a Member role and a published page in
+  the child, then edits directory and page access rules. It checks that a signed-out request for the page
+  returns 200 before the rules and 404 after, using a cookie-less request context: the admin cookie would
+  otherwise be sent. It needs the sandbox's `Member` user area (`MemberUserArea.cs`). Without it the admin
+  hides Access Control. It deletes the directory (and with it the child and the page) and the role.
 - **`run`** loads a module of the form `module.exports = async (page, c) => { ... }`. `page` is a
   Playwright page with `baseURL` already set. `c` provides `settle()`, `shot(name)`, `step(name, fn)`,
   `btn(scope, text)`, `field(scope, label)`, `rows()` and `status()`. See `driver.js`.

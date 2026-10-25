@@ -1,0 +1,38 @@
+@page "/admin-next/directories"
+@inject IAdminBlazorExecutor Executor
+
+<PageTitle>Directories | Admin</PageTitle>
+
+<PageHeader Title="Directories" />
+
+<PageActions>
+    @if (_permissions?.CanCreate == true)
+    {
+        <ButtonLink Class="main-cta" Text="Create" Icon="plus" Href="@AdminBlazorRoutes.DirectoryNew" />
+    }
+</PageActions>
+
+<PageBody ContentType="form">
+    @if (_directories == null)
+    {
+        <TableContainer IsLoading="true" />
+    }
+    else
+    {
+        <DirectoryGrid Directories="_directories" CanUpdate="_permissions!.CanUpdate" />
+    }
+</PageBody>
+
+@code {
+    private IReadOnlyList<PageDirectoryNode>? _directories;
+    private DirectoryPermissions? _permissions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _permissions = await DirectoryPermissions.LoadAsync(Executor);
+
+        // The whole tree in depth-first order, root first, as the AngularJS list showed it.
+        var root = await Executor.QueryAsync(new GetPageDirectoryTreeQuery());
+        _directories = root.Flatten().ToList();
+    }
+}

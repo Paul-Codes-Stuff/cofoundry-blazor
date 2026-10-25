@@ -24,6 +24,8 @@ public static class AdminBlazorRoutes
     public const string Dashboard = Root + "/dashboard";
 
     public const string Pages = Root + "/pages";
+
+    public static string PagesInDirectory(int pageDirectoryId) => $"{Pages}?pageDirectoryId={pageDirectoryId}";
     public const string PageNew = Pages + "/new";
     public const string PageDetailsTemplate = Pages + "/{PageId:int}";
 
@@ -45,6 +47,11 @@ public static class AdminBlazorRoutes
     public const string RoleNew = Roles + "/new";
 
     public static string RoleDetails(int roleId) => $"{Roles}/{roleId}";
+
+    public const string Directories = Root + "/directories";
+    public const string DirectoryNew = Directories + "/new";
+
+    public static string DirectoryDetails(int pageDirectoryId) => $"{Directories}/{pageDirectoryId}";
 
     /// <summary>
     /// Users are listed per user area, keyed by its 3 character code, e.g. "/admin-next/users/COF".
