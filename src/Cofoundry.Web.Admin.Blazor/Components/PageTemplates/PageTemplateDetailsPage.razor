@@ -1,0 +1,95 @@
+@page "/admin-next/page-templates/{PageTemplateId:int}"
+@inject IAdminBlazorExecutor Executor
+
+<PageTitle>@(_template?.Name ?? "Page Template") | Admin</PageTitle>
+
+<PageHeader Title="@_template?.Name" ParentTitle="Page Templates" ParentHref="@AdminBlazorRoutes.PageTemplates" />
+
+@* Read-only, as in the AngularJS admin: templates are registered from the view files at startup. *@
+<PageBody ContentType="form" HasActions="false">
+    @if (_template == null)
+    {
+        @if (_notFound)
+        {
+            <p class="message warning perm">Sorry, that page template could not be found.</p>
+        }
+        else
+        {
+            <TableContainer IsLoading="true" />
+        }
+    }
+    else
+    {
+        var hasCustomEntity = _template.CustomEntityDefinition != null;
+
+        <FormSection Title="Main">
+
+            <FormFieldReadonly Title="Name" Value="@_template.Name" />
+            <FormFieldReadonly Title="Description" Value="@_template.Description" />
+            <FormFieldReadonly Title="File path" Value="@_template.FullPath" />
+
+            <FormFieldContainer Title="Page Type">
+                <span>@(_template.PageType == PageType.CustomEntityDetails ? _template.CustomEntityDefinition?.Name + " Details" : _template.PageType.ToString())</span>
+            </FormFieldContainer>
+
+            @if (_template.PageType == PageType.CustomEntityDetails)
+            {
+                <FormFieldReadonly Title="Model Type" Value="@_template.CustomEntityModelType" />
+            }
+
+            <FormFieldContainer Title="Num Pages">
+                <a href="@AdminBlazorRoutes.PagesUsingTemplate(_template.PageTemplateId)">@_template.NumPages</a>
+            </FormFieldContainer>
+
+        </FormSection>
+
+        <FormSection Title="Regions">
+            <div class="control-group">
+                <div class="control-group-area">
+                    <TableContainer>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    @if (hasCustomEntity)
+                                    {
+                                        <th>Entity</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (_template.Regions.Count == 0)
+                                {
+                                    <tr><td colspan="100" class="empty">None.</td></tr>
+                                }
+                                @foreach (var region in _template.Regions)
+                                {
+                                    <tr @key="region.PageTemplateRegionId">
+                                        <td>@region.Name</td>
+                                        @if (hasCustomEntity)
+                                        {
+                                            <td>@(region.IsCustomEntityRegion ? _template.CustomEntityDefinition!.Name : "Page")</td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </TableContainer>
+                </div>
+            </div>
+        </FormSection>
+    }
+</PageBody>
+
+@code {
+    private PageTemplateDetails? _template;
+    private bool _notFound;
+
+    [Parameter] public int PageTemplateId { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _template = await Executor.QueryAsync(new GetPageTemplateDetailsByIdQuery(PageTemplateId));
+        _notFound = _template == null;
+    }
+}

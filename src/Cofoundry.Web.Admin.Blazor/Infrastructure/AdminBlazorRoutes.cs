@@ -26,6 +26,8 @@ public static class AdminBlazorRoutes
     public const string Pages = Root + "/pages";
 
     public static string PagesInDirectory(int pageDirectoryId) => $"{Pages}?pageDirectoryId={pageDirectoryId}";
+
+    public static string PagesUsingTemplate(int pageTemplateId) => $"{Pages}?pageTemplateId={pageTemplateId}";
     public const string PageNew = Pages + "/new";
     public const string PageDetailsTemplate = Pages + "/{PageId:int}";
 
@@ -47,6 +49,10 @@ public static class AdminBlazorRoutes
     public const string RoleNew = Roles + "/new";
 
     public static string RoleDetails(int roleId) => $"{Roles}/{roleId}";
+
+    public const string PageTemplates = Root + "/page-templates";
+
+    public static string PageTemplateDetails(int pageTemplateId) => $"{PageTemplates}/{pageTemplateId}";
 
     public const string Directories = Root + "/directories";
     public const string DirectoryNew = Directories + "/new";

@@ -1,6 +1,6 @@
 ---
 name: run-blazor-admin
-description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker; roles and permissions; users create, deactivate, reset password, delete; directories; page and directory access rules).
+description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker; roles and permissions; users create, deactivate, reset password, delete; directories; page and directory access rules; page templates).
 ---
 
 # Run the Blazor admin
@@ -55,6 +55,7 @@ node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-adm
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/image-picker-step.js  # OpenGraph image picker
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/roles-users-step.js  # Roles + Users
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/access-rules-step.js  # Directories + access rules
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/page-templates-step.js  # Page Templates
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
 ```
 
@@ -79,6 +80,8 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   returns 200 before the rules and 404 after, using a cookie-less request context: the admin cookie would
   otherwise be sent. It needs the sandbox's `Member` user area (`MemberUserArea.cs`). Without it the admin
   hides Access Control. It deletes the directory (and with it the child and the page) and the role.
+- **`page-templates-step.js`** checks the read-only Page Templates list, name filter, details and the page count
+  link to the filtered pages list. It creates nothing.
 - **`run`** loads a module of the form `module.exports = async (page, c) => { ... }`. `page` is a
   Playwright page with `baseURL` already set. `c` provides `settle()`, `shot(name)`, `step(name, fn)`,
   `btn(scope, text)`, `field(scope, label)`, `rows()` and `status()`. See `driver.js`.

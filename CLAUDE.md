@@ -82,15 +82,17 @@ Agreed direction, not yet done:
   Pages (list, create, details, change URL, duplicate), Images and Documents (list, filter, upload, details,
   replace file, delete), Site Settings (edit, clear cache), image picker (OpenGraph image on pages), Roles
   (permissions editor), Users (per user area: list, create, edit, reset password, delete), Directories (list,
-  create, details, change URL, delete) and page/directory access rules (`Components/AccessRules`).
+  create, details, change URL, delete), page/directory access rules (`Components/AccessRules`) and Page
+  Templates (read-only list and details).
 - **Builds and runs.** Smoke-tested in `samples/src/Dev/Dev.Sandbox` with the `run-blazor-admin` skill (`smoke`
   for Pages, `assets-step.js` for Images/Documents, `settings-step.js` for Site Settings, `image-picker-step.js` for the picker, `roles-users-step.js` for Roles
-  and Users, `access-rules-step.js` for Directories and access rules). Page delete not yet exercised.
+  and Users, `access-rules-step.js` for Directories and access rules, `page-templates-step.js` for Page Templates). Page delete not yet exercised.
 - **Dev.Sandbox has a "Member" user area** (`Cofoundry/UserAreas/MemberUserArea.cs`, code `MEM`) so access rules
   and a non-admin users list can be exercised. Access Control is hidden on sites with only the admin area.
 - **To revisit:** the modal dialog close icon (top right, `Components/Dialogs/ModalDialog.razor`) doesn't work.
   It looks like a bug carried over from the AngularJS admin, which has the same problem.
-- **Next:** Page Templates, then Custom Entities (needs the dynamic data-model form). The Visual Editor stays on the MVC site.
+- **Next:** Custom Entities, which needs the dynamic data-model form (also needed by page block editing and
+  image/document collections). The Visual Editor stays on the MVC site.
 - No tests yet.
 
 ## Git

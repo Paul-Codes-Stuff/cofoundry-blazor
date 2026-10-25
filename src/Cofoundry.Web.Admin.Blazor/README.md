@@ -4,7 +4,7 @@ A Blazor (Interactive Server) port of the AngularJS admin in `Cofoundry.Web.Admi
 installed **alongside** the AngularJS admin while modules are migrated one at a time.
 
 > **Status: first slice.** Builds cleanly. The Dashboard, Pages (list, filter, create, details/edit, publish,
-> unpublish, change URL, duplicate, access rules), Directories, Images, Documents, Site Settings, Roles and Users
+> unpublish, change URL, duplicate, access rules), Directories, Page Templates, Images, Documents, Site Settings, Roles and Users
 > modules have been smoke-tested in `Dev.Sandbox`.
 
 ## Installing side-by-side
@@ -56,8 +56,10 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
 * Dashboard: at `/admin-next/dashboard` and the `/admin-next` root. It shows the site's
   `/Cofoundry/Admin/Dashboard/Dashboard.html` if one exists, otherwise the application name and a welcome message
 * Pages: list (filter, paging, publish), create, details (edit incl. OpenGraph image, publish/unpublish, versions, discard draft,
-  copy to draft, delete), change URL, duplicate, access control. The list takes `?pageDirectoryId=` to pre-filter
-  by directory
+  copy to draft, delete), change URL, duplicate, access control. The list takes `?pageDirectoryId=` or
+  `?pageTemplateId=` to pre-filter
+* Page Templates: list (filter by name, paging), details (file path, page type, model type, regions). Read-only,
+  as in the AngularJS admin, since templates are registered from the view files at startup
 * Directories: list (the whole tree), create, details (edit name, change URL/parent, delete, child directories)
 * Images: list (filter by tags/width/height, paging), upload, details (edit, replace file, delete), and the
   image picker (`FormFieldImageAsset` + "Find an image" dialog, with upload from inside the dialog)

@@ -1,0 +1,127 @@
+@page "/admin-next/page-templates"
+@inject IAdminBlazorExecutor Executor
+
+<PageTitle>Page Templates | Admin</PageTitle>
+
+<PageHeader Title="Page Templates" />
+
+<PageSubHeader>
+    <PageHeaderButtons>
+
+        <a class="btn-icon" href="" @onclick="() => _isFilterVisible = !_isFilterVisible" @onclick:preventDefault>
+            <i class="fa fa-search"></i> Filter
+        </a>
+
+        @if (_isFilterVisible)
+        {
+            <AdminForm Model="_filter" OnValidSubmit="ApplyFilter" CssClass="search-filter">
+                <FormSection Title="Filter this list">
+                    <FormFieldText Title="Name" @bind-Value="_filter.Name" />
+                </FormSection>
+                <div class="form-actions">
+                    <AdminButtonSubmit Text="Apply" />
+                    <AdminButton Text="Clear" OnClick="ClearFilter" />
+                </div>
+            </AdminForm>
+        }
+
+    </PageHeaderButtons>
+</PageSubHeader>
+
+@* Templates are defined in code, so there is nothing to create: the toolbar only holds the pager. *@
+@if (HasPages)
+{
+    <PageActions>
+        <Pager PageNumber="_result!.PageNumber" PageCount="_result.PageCount" OnPageChanged="GoToPage" />
+    </PageActions>
+}
+
+<PageBody ContentType="form" HasActions="HasPages">
+    <TableContainer IsLoading="_isLoading">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>File Name</th>
+                    <th>Regions</th>
+                    <th>Pages</th>
+                    <th>Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_result != null && _result.Items.Count == 0)
+                {
+                    <tr><td colspan="100" class="empty">Sorry, no page templates could be found.</td></tr>
+                }
+                @foreach (var template in _result?.Items ?? [])
+                {
+                    <tr @key="template.PageTemplateId">
+                        <td>
+                            <a href="@AdminBlazorRoutes.PageTemplateDetails(template.PageTemplateId)">@template.Name</a>
+                        </td>
+                        <td>@template.FileName</td>
+                        <td>@template.NumRegions</td>
+                        <td>
+                            <a href="@AdminBlazorRoutes.PagesUsingTemplate(template.PageTemplateId)">@template.NumPages</a>
+                        </td>
+                        <td class="lowPriority">
+                            <TimeAgo Time="template.UpdateDate" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </TableContainer>
+</PageBody>
+
+@code {
+    // The AngularJS SearchQuery default.
+    private const int DefaultPageSize = 30;
+
+    private readonly TemplateFilter _filter = new();
+    private SearchPageTemplateSummariesQuery _query = new() { PageNumber = 1, PageSize = DefaultPageSize };
+    private PagedQueryResult<PageTemplateSummary>? _result;
+    private bool _isFilterVisible;
+    private bool _isLoading;
+
+    private bool HasPages => _result?.PageCount > 1;
+
+    protected override Task OnInitializedAsync() => LoadGridAsync();
+
+    private async Task LoadGridAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _result = await Executor.QueryAsync(_query);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ApplyFilter()
+    {
+        _query = new SearchPageTemplateSummariesQuery { PageNumber = 1, PageSize = DefaultPageSize, Name = _filter.Name };
+        _isFilterVisible = false;
+        await LoadGridAsync();
+    }
+
+    private async Task ClearFilter()
+    {
+        _filter.Name = null;
+        await ApplyFilter();
+    }
+
+    private async Task GoToPage(int pageNumber)
+    {
+        _query.PageNumber = pageNumber;
+        await LoadGridAsync();
+    }
+
+    private sealed class TemplateFilter
+    {
+        public string? Name { get; set; }
+    }
+}

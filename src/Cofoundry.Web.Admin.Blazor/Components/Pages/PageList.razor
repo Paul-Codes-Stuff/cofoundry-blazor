@@ -161,6 +161,11 @@
     /// </summary>
     [SupplyParameterFromQuery(Name = "pageDirectoryId")] public int? InitialPageDirectoryId { get; set; }
 
+    /// <summary>
+    /// Pre-filters the list from the page count links in the page templates module.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "pageTemplateId")] public int? InitialPageTemplateId { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         var permissionsTask = PagePermissions.LoadAsync(Executor);
@@ -182,6 +187,12 @@
         {
             _filter.PageDirectoryId = InitialPageDirectoryId;
             _query.PageDirectoryId = InitialPageDirectoryId;
+        }
+
+        if (InitialPageTemplateId.HasValue)
+        {
+            _filter.PageTemplateId = InitialPageTemplateId;
+            _query.PageTemplateId = InitialPageTemplateId;
         }
 
         await LoadGridAsync();
