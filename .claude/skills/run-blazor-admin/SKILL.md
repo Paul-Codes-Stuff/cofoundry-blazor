@@ -1,6 +1,6 @@
 ---
 name: run-blazor-admin
-description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings).
+description: Run, start, smoke-test or screenshot the Blazor admin (/admin-next) in the Dev.Sandbox site, and drive it in headless Chrome. Use to verify a change to Cofoundry.Web.Admin.Blazor actually works in the browser (pages list, create, edit, publish, change URL, duplicate; image/document upload, edit, filter, delete; site settings; image picker).
 ---
 
 # Run the Blazor admin
@@ -52,6 +52,7 @@ node .claude/skills/run-blazor-admin/driver.js smoke                            
 node .claude/skills/run-blazor-admin/driver.js shot admin-next/pages/new create-form   # one screenshot + page text
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/assets-step.js  # Images + Documents
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/settings-step.js  # Site Settings
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/image-picker-step.js  # OpenGraph image picker
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
 ```
 
@@ -64,6 +65,8 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   canvas in the page, so there are no fixtures. It cleans up after itself when it passes.
 - **`settings-step.js`** checks the Help toggle, cancel, required validation, saving (verified through
   `/robots.txt`) and Clear Cache. It appends a marker to robots.txt and then restores the original value.
+- **`image-picker-step.js`** picks, changes, uploads-from-picker and removes the OpenGraph image on the first
+  `smoke-` page in the list, so run `smoke` once first on a fresh database. It deletes the images it uploads.
 - **`run`** loads a module of the form `module.exports = async (page, c) => { ... }`. `page` is a
   Playwright page with `baseURL` already set. `c` provides `settle()`, `shot(name)`, `step(name, fn)`,
   `btn(scope, text)`, `field(scope, label)`, `rows()` and `status()`. See `driver.js`.

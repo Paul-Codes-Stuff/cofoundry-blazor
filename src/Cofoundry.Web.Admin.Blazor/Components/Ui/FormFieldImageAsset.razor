@@ -1,0 +1,129 @@
+@inherits FormFieldBase<int?>
+@inject IAdminBlazorExecutor Executor
+@inject IImageAssetRouteLibrary ImageRouteLibrary
+
+@* Port of cms-form-field-image-asset: an image id chosen with the "Find an image" picker dialog. *@
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label" for="@FieldId">@Title:</label>
+        <div class="controls">
+            <div class="image-asset">
+                @if (_previewAsset != null)
+                {
+                    @if (ShowInput)
+                    {
+                        <img id="@FieldId" src="@PreviewUrl" title="@_previewAsset.Title" class="img-polaroid selectable" @onclick="OpenPicker" />
+                    }
+                    else
+                    {
+                        <img src="@PreviewUrl" title="@_previewAsset.Title" class="img-polaroid" />
+                    }
+                }
+                else if (ShowInput)
+                {
+                    <ButtonIcon Icon="picture-o" Title="@ButtonText" Disabled="Disabled" OnClick="OpenPicker" />
+                }
+                else
+                {
+                    <i class="fa fa-picture-o"></i>
+                }
+            </div>
+
+            @if (ShowInput)
+            {
+                <ValidationMessage For="ValueExpression" class="field-validation-error" />
+                <div class="collection-actions">
+                    <div>
+                        @if (_previewAsset != null)
+                        {
+                            <ButtonIcon Icon="external-link" Title="Edit image" External="true"
+                                        Href="@AdminBlazorRoutes.ImageDetails(_previewAsset.ImageAssetId)" />
+                        }
+                        <ButtonIcon Icon="cog" Title="@ButtonText" Disabled="Disabled" OnClick="OpenPicker" />
+                        @if (_previewAsset != null && !Required)
+                        {
+                            <ButtonIcon Icon="trash-o" Title="Remove" Disabled="Disabled" OnClick="RemoveAsync" />
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+    <FieldHelp Text="@Description" />
+</div>
+
+@if (_isPickerOpen)
+{
+    <ImageAssetPickerDialog CurrentAsset="_previewAsset" OnSelected="OnSelectedAsync" OnCancel="() => _isPickerOpen = false" />
+}
+
+@code {
+    private IImageAssetRenderable? _previewAsset;
+    private bool _isPickerOpen;
+
+    /// <summary>
+    /// The image for the initial <see cref="FormFieldBase{TValue}.Value"/>, if the page already has
+    /// it. Saves a query; without it the image is loaded by id.
+    /// </summary>
+    [Parameter] public IImageAssetRenderable? CurrentAsset { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public int PreviewWidth { get; set; } = 450;
+
+    [Parameter] public int? PreviewHeight { get; set; }
+
+    private string ButtonText => Value.HasValue ? "Change" : "Select";
+
+    private string PreviewUrl => ImageRouteLibrary.ImageAsset(_previewAsset, PreviewWidth, PreviewHeight);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        base.OnParametersSet();
+
+        if (Value == _previewAsset?.ImageAssetId)
+        {
+            return;
+        }
+
+        if (!Value.HasValue)
+        {
+            _previewAsset = null;
+        }
+        else if (CurrentAsset?.ImageAssetId == Value)
+        {
+            _previewAsset = CurrentAsset;
+        }
+        else
+        {
+            _previewAsset = await Executor.QueryAsync(new GetImageAssetRenderDetailsByIdQuery(Value.Value));
+        }
+    }
+
+    private void OpenPicker()
+    {
+        if (!Disabled)
+        {
+            _isPickerOpen = true;
+        }
+    }
+
+    private async Task OnSelectedAsync(IImageAssetRenderable image)
+    {
+        _isPickerOpen = false;
+
+        if (image.ImageAssetId != Value)
+        {
+            await SetAsync(image);
+        }
+    }
+
+    private Task RemoveAsync() => SetAsync(null);
+
+    private async Task SetAsync(IImageAssetRenderable? image)
+    {
+        _previewAsset = image;
+        await ValueChanged.InvokeAsync(image?.ImageAssetId);
+        NotifyFieldChanged();
+    }
+}

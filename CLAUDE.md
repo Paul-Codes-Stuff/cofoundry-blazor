@@ -80,11 +80,10 @@ Agreed direction, not yet done:
 
 - **Ported:** shell/nav, sign in/out, shared UI components, Dashboard (`/admin-next` and `/admin-next/dashboard`),
   Pages (list, create, details, change URL, duplicate), Images and Documents (list, filter, upload, details,
-  replace file, delete), Site Settings (edit, clear cache).
+  replace file, delete), Site Settings (edit, clear cache), image picker (OpenGraph image on pages).
 - **Builds and runs.** Smoke-tested in `samples/src/Dev/Dev.Sandbox` with the `run-blazor-admin` skill (`smoke`
-  for Pages, `assets-step.js` for Images/Documents, `settings-step.js` for Site Settings). Page delete not yet exercised.
-- **Next:** the image picker dialog (OpenGraph image on pages), then Roles and Users (unblocks page access
-  rules). The Visual Editor stays on the MVC site.
+  for Pages, `assets-step.js` for Images/Documents, `settings-step.js` for Site Settings, `image-picker-step.js` for the picker). Page delete not yet exercised.
+- **Next:** Roles and Users (unblocks page access rules). The Visual Editor stays on the MVC site.
 - No tests yet.
 
 ## Git

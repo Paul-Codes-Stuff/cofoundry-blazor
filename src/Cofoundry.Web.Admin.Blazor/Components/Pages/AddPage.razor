@@ -83,7 +83,9 @@ else
                                    Description="Optional. The description that shows up when sharing the page on social media"
                                    @bind-Value="_command.OpenGraphDescription" />
 
-                @* TODO: OpenGraph image picker - depends on the Images module being ported. *@
+                <FormFieldImageAsset Title="OpenGraph Image"
+                                     Description="Optional. An image to show up when sharing the page on social media"
+                                     @bind-Value="_command.OpenGraphImageId" />
 
                 <FormFieldCheckbox Title="Show in sitemap"
                                    Description="Indicates whether this page should be included in the site map file used by search engine robots"

@@ -1,0 +1,86 @@
+@inject IAdminBlazorExecutor Executor
+
+@* Port of UploadImageAssetDialog, opened from the image picker's "Upload" action. *@
+<ModalDialog Title="Upload an image" Size="large" OnClose="() => OnClosed.InvokeAsync(null)">
+
+    <AdminForm @ref="_form" Model="_command" IsLoading="_isSaving" OnValidSubmit="UploadAsync">
+
+        <PageActions>
+            <AdminButtonSubmit Text="Upload" IsLoading="_isSaving" Disabled="_isSaving" />
+            <AdminButton Text="Cancel" Disabled="_isSaving" OnClick="() => OnClosed.InvokeAsync(null)" />
+        </PageActions>
+
+        <PageBody>
+
+            <FormStatus Errors="_errors" />
+
+            <FormSection Title="Image details">
+
+                <FormFieldImageUpload Title="File"
+                                      Value="_command.File"
+                                      ValueChanged="OnFileChanged"
+                                      ValueExpression="() => _command.File"
+                                      Disabled="_isSaving" />
+
+                <FormFieldText Title="Title" MaxLength="130" @bind-Value="_command.Title" />
+
+                <FormFieldTags Title="CMS Tags" @bind-Value="_command.Tags" />
+
+                @if (_command.File != null && !FormFieldImageUpload.IsSvg(_command.File))
+                {
+                    <FormFieldImageAnchorLocation @bind-Value="_command.DefaultAnchorLocation" />
+                }
+
+            </FormSection>
+
+        </PageBody>
+
+    </AdminForm>
+
+</ModalDialog>
+
+@code {
+    private AdminForm? _form;
+    private readonly AddImageAssetCommand _command = new();
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private bool _isSaving;
+
+    /// <summary>
+    /// Called with the new image's id once uploaded, or null if the dialog was cancelled.
+    /// </summary>
+    [Parameter] public EventCallback<int?> OnClosed { get; set; }
+
+    private void OnFileChanged(IFileSource? file)
+    {
+        _command.File = file!;
+
+        if (file != null)
+        {
+            _command.Title = StringUtilities.TitleFromFileName(file.FileName);
+            _form?.NotifyFieldChanged(() => _command.Title);
+        }
+    }
+
+    private async Task UploadAsync()
+    {
+        _isSaving = true;
+        _errors = [];
+
+        try
+        {
+            var result = await Executor.ExecuteAsync(_command);
+
+            if (!result.Succeeded)
+            {
+                _errors = result.Errors;
+                return;
+            }
+
+            await OnClosed.InvokeAsync(_command.OutputImageAssetId);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

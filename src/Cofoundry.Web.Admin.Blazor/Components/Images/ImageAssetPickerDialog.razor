@@ -1,0 +1,218 @@
+@inject IAdminBlazorExecutor Executor
+
+@* Port of ImageAssetPickerDialog (single-select mode). Click a row to select it, double-click to
+   select and close. New images can be uploaded from the table's "+" action and are selected at once. *@
+<ModalDialog Title="Find an image" Size="large" OnClose="CancelAsync">
+
+    <PageActions>
+        <AdminButton Text="Select" Class="main-cta" Disabled="_selected == null" OnClick="SelectAsync" />
+        <AdminButton Text="Cancel" OnClick="CancelAsync" />
+        <AdminButton Text="Filter" OnClick="() => _isFilterVisible = !_isFilterVisible" />
+
+        @if (_isFilterVisible)
+        {
+            <AdminForm Model="_filter" OnValidSubmit="ApplyFilter" CssClass="search-filter">
+                <FormSection Title="Filter this list">
+
+                    <FormFieldText Title="Tags" @bind-Value="_filter.Tags" />
+                    <FormFieldNumber Title="Width" Min="0" @bind-Value="_filter.Width" />
+                    <FormFieldNumber Title="Height" Min="0" @bind-Value="_filter.Height" />
+                    <FormFieldNumber Title="Min Width" Min="0" @bind-Value="_filter.MinWidth" />
+                    <FormFieldNumber Title="Min Height" Min="0" @bind-Value="_filter.MinHeight" />
+
+                </FormSection>
+                <div class="form-actions">
+                    <AdminButtonSubmit Text="Apply" />
+                    <AdminButton Text="Clear" OnClick="ClearFilter" />
+                </div>
+            </AdminForm>
+        }
+
+        <Pager PageNumber="_result?.PageNumber ?? 1" PageCount="_result?.PageCount ?? 0" OnPageChanged="GoToPage" />
+    </PageActions>
+
+    <PageBody>
+        <TableContainer IsLoading="_isLoading">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>Title</th>
+                        <th>Size</th>
+                        <th>Tags</th>
+                        <th>Modified</th>
+                        <th class="actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_result != null && _result.Items.Count == 0)
+                    {
+                        <tr><td colspan="100" class="empty">Sorry, no images could be found.</td></tr>
+                    }
+                    @foreach (var image in _result?.Items ?? [])
+                    {
+                        var isSelected = image.ImageAssetId == _selected?.ImageAssetId;
+
+                        <tr @key="image.ImageAssetId"
+                            class="@(isSelected ? "selected" : "selectable")"
+                            @onclick="() => _selected = image"
+                            @ondblclick="() => SelectAndCloseAsync(image)">
+                            <td>
+                                <TableCellImage Image="image" />
+                            </td>
+                            <td>@image.Title</td>
+                            <td>
+                                <strong>@image.Width x @image.Height</strong>
+                                <div>@StringUtilities.FormatBytes(image.FileSizeInBytes)</div>
+                            </td>
+                            <td>
+                                <TagList Tags="image.Tags" />
+                            </td>
+                            <td class="lowPriority">
+                                <UpdatedAuditDataCell AuditData="image.AuditData" />
+                            </td>
+                            <td class="actions">
+                                <ButtonIcon Icon="@(isSelected ? "check-square-o" : "square-o")" Title="@(isSelected ? "Selected" : "Select")" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (_canCreate)
+            {
+                <div class="collection-actions">
+                    <a href="" class="btn-icon" title="Upload" @onclick="() => _isUploadOpen = true" @onclick:preventDefault>
+                        <i class="fa fa-plus-circle"></i>
+                    </a>
+                </div>
+            }
+        </TableContainer>
+    </PageBody>
+
+</ModalDialog>
+
+@if (_isUploadOpen)
+{
+    <UploadImageAssetDialog OnClosed="OnUploadClosedAsync" />
+}
+
+@code {
+    // The AngularJS SearchQuery default.
+    private const int DefaultPageSize = 30;
+
+    private readonly PickerFilter _filter = new();
+    private SearchImageAssetSummariesQuery _query = new() { PageNumber = 1, PageSize = DefaultPageSize };
+    private PagedQueryResult<ImageAssetSummary>? _result;
+    private IImageAssetRenderable? _selected;
+    private bool _canCreate;
+    private bool _isFilterVisible;
+    private bool _isLoading;
+    private bool _isUploadOpen;
+
+    /// <summary>
+    /// The image currently chosen in the field, highlighted as selected when the dialog opens.
+    /// </summary>
+    [Parameter] public IImageAssetRenderable? CurrentAsset { get; set; }
+
+    /// <summary>
+    /// Called with the chosen image when "Select" is clicked (or a row double-clicked).
+    /// </summary>
+    [Parameter] public EventCallback<IImageAssetRenderable> OnSelected { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _selected = CurrentAsset;
+        _canCreate = (await AssetPermissions.LoadImagesAsync(Executor)).CanCreate;
+        await LoadGridAsync();
+    }
+
+    private async Task LoadGridAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _result = await Executor.QueryAsync(_query);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ApplyFilter()
+    {
+        _query = new SearchImageAssetSummariesQuery
+        {
+            PageNumber = 1,
+            PageSize = DefaultPageSize,
+            Tags = _filter.Tags,
+            Width = _filter.Width,
+            Height = _filter.Height,
+            MinWidth = _filter.MinWidth,
+            MinHeight = _filter.MinHeight
+        };
+
+        _isFilterVisible = false;
+        await LoadGridAsync();
+    }
+
+    private async Task ClearFilter()
+    {
+        _filter.Tags = null;
+        _filter.Width = null;
+        _filter.Height = null;
+        _filter.MinWidth = null;
+        _filter.MinHeight = null;
+
+        await ApplyFilter();
+    }
+
+    private async Task GoToPage(int pageNumber)
+    {
+        _query.PageNumber = pageNumber;
+        await LoadGridAsync();
+    }
+
+    private async Task SelectAsync()
+    {
+        if (_selected != null)
+        {
+            await OnSelected.InvokeAsync(_selected);
+        }
+    }
+
+    private async Task SelectAndCloseAsync(IImageAssetRenderable image)
+    {
+        _selected = image;
+        await SelectAsync();
+    }
+
+    private Task CancelAsync() => OnCancel.InvokeAsync();
+
+    private async Task OnUploadClosedAsync(int? imageAssetId)
+    {
+        _isUploadOpen = false;
+
+        if (!imageAssetId.HasValue)
+        {
+            return;
+        }
+
+        var image = await Executor.QueryAsync(new GetImageAssetRenderDetailsByIdQuery(imageAssetId.Value));
+        if (image != null)
+        {
+            await SelectAndCloseAsync(image);
+        }
+    }
+
+    private sealed class PickerFilter
+    {
+        public string? Tags { get; set; }
+        public int? Width { get; set; }
+        public int? Height { get; set; }
+        public int? MinWidth { get; set; }
+        public int? MinHeight { get; set; }
+    }
+}

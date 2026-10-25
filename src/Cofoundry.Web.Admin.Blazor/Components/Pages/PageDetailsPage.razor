@@ -125,8 +125,10 @@ else
                                    Description="Optional. The description that shows up when sharing the page on social media"
                                    @bind-Value="_updateDraft.OpenGraphDescription" />
 
-                @* TODO: OpenGraph image picker - depends on the Images module being ported.
-                   Until then the existing image id is preserved on save (see MapUpdateDraft). *@
+                <FormFieldImageAsset Title="OpenGraph Image"
+                                     Description="Optional. An image to show up when sharing the page on social media"
+                                     CurrentAsset="_page.LatestVersion.OpenGraph.Image"
+                                     @bind-Value="_updateDraft.OpenGraphImageId" />
 
                 <FormFieldCheckbox Title="Show in sitemap"
                                    Description="Indicates whether this page should be included in the site map file used by search engine robots"
@@ -378,7 +380,6 @@ else
             MetaDescription = version.MetaDescription,
             OpenGraphTitle = version.OpenGraph.Title,
             OpenGraphDescription = version.OpenGraph.Description,
-            // Preserved (not editable yet) so saving does not clear the image.
             OpenGraphImageId = version.OpenGraph.Image?.ImageAssetId,
             ShowInSiteMap = version.ShowInSiteMap
         };

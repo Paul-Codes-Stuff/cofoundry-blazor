@@ -54,9 +54,10 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
   created/updated audit cells), pager, status/warning messages, time-ago, audit data, modal + confirm dialog
 * Dashboard: at `/admin-next/dashboard` and the `/admin-next` root. It shows the site's
   `/Cofoundry/Admin/Dashboard/Dashboard.html` if one exists, otherwise the application name and a welcome message
-* Pages: list (filter, paging, publish), create, details (edit, publish/unpublish, versions, discard draft,
+* Pages: list (filter, paging, publish), create, details (edit incl. OpenGraph image, publish/unpublish, versions, discard draft,
   copy to draft, delete), change URL, duplicate
-* Images: list (filter by tags/width/height, paging), upload, details (edit, replace file, delete)
+* Images: list (filter by tags/width/height, paging), upload, details (edit, replace file, delete), and the
+  image picker (`FormFieldImageAsset` + "Find an image" dialog, with upload from inside the dialog)
 * Documents: list (filter by tags/extension, paging), upload, details (edit, replace file, delete)
 * Site Settings: general + SEO settings (view, edit), clear cache
 
@@ -70,7 +71,10 @@ to a JPEG in the browser first (`wwwroot/js/image-upload.js`), and the title def
 
 ## Known gaps
 
-* OpenGraph image picker on pages (the Images module is ported; the picker dialog isn't yet)
+* The image picker is single-select only. Its multi-select mode backs the image (and document) collection
+  fields, which only appear in dynamic data-model forms (`[ImageCollection]` on custom entity / page block
+  models), so they come with that form. Preset filter restrictions (`cms-width`, `cms-min-width`, ...) aren't
+  ported either
 * Upload fields have no "Remove" button (only needed for optional uploads, which no ported form has yet) and no
   minimum/exact size check (the AngularJS field's `cms-filter`, used by image pickers)
 * Page/directory access rules editor (needs user areas + the shared access editor)
