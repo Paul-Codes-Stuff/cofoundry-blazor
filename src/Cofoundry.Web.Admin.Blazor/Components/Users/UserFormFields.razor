@@ -1,0 +1,76 @@
+@* The editable fields of a user, shared by UserDetailsPage (interactive) and UserEditSelfPage (static SSR,
+   for editing yourself). Place inside an AdminForm, which supplies the edit mode. *@
+
+<FormSection Title="Main">
+
+    @if (UserArea.ShowDisplayName)
+    {
+        <FormFieldText Title="Display Name" MaxLength="150" @bind-Value="Model.DisplayName"
+                       Description="A display-friendly name such as a real name or pseudonym." />
+    }
+    @if (!UserArea.UseEmailAsUsername)
+    {
+        <FormFieldText Title="Username" MaxLength="150" @bind-Value="Model.Username"
+                       Description="The username that the user uses to sign in with." />
+    }
+    <FormFieldText Title="Email Address" InputType="email" MaxLength="150" @bind-Value="Model.Email" />
+
+    @* Changing your own role or deactivating yourself could lock you out. *@
+    <FormFieldDropdown TValue="int?" Title="Role" Options="Roles" Required="true" ReadOnly="IsCurrentUser"
+                       Description="The role dictates which permissions a user has."
+                       @bind-Value="Model.RoleId" />
+
+    @if (UserArea.AllowPasswordSignIn)
+    {
+        <FormFieldCheckbox Title="Require Password Change" @bind-Value="Model.RequirePasswordChange"
+                           Description="If selected, the user will be required to change their password the next time they sign in." />
+    }
+
+    @if (EditMode)
+    {
+        <FormFieldCheckbox Title="Account Verified" @bind-Value="Model.IsAccountVerified"
+                           Description="If selected, the user will be marked as a verified account." />
+    }
+    else
+    {
+        <FormFieldContainer Title="Account Verified" Description="The date that the user account has been verified.">
+            @if (User?.AccountVerifiedDate.HasValue == true)
+            {
+                <span>Yes (<TimeAgo Time="User.AccountVerifiedDate" />)</span>
+            }
+            else
+            {
+                <span>No</span>
+            }
+        </FormFieldContainer>
+    }
+
+    <FormFieldCheckbox Title="Account Active" ReadOnly="IsCurrentUser" @bind-Value="Model.IsActive"
+                       Description="If an account is deactivated, the user will be signed out and prevented from signing in.." />
+
+</FormSection>
+
+@if (!UserArea.IsCofoundryAdminArea)
+{
+    <FormSection Title="Additional Details">
+        <FormFieldText Title="First Name" MaxLength="32" @bind-Value="Model.FirstName" />
+        <FormFieldText Title="Last Name" MaxLength="32" @bind-Value="Model.LastName" />
+    </FormSection>
+}
+
+@code {
+    [CascadingParameter(Name = "EditMode")] private bool EditMode { get; set; }
+
+    [Parameter, EditorRequired] public UserFormModel Model { get; set; } = default!;
+
+    [Parameter, EditorRequired] public UserAreaInfo UserArea { get; set; } = default!;
+
+    [Parameter, EditorRequired] public IReadOnlyList<SelectOption<int?>> Roles { get; set; } = [];
+
+    /// <summary>
+    /// The saved user, for the read-only "Account Verified" date.
+    /// </summary>
+    [Parameter] public UserDetails? User { get; set; }
+
+    [Parameter] public bool IsCurrentUser { get; set; }
+}

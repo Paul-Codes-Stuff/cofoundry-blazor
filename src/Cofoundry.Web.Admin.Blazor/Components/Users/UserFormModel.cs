@@ -7,15 +7,66 @@ namespace Cofoundry.Web.Admin.Blazor.Components.Users;
 /// </summary>
 public sealed class UserFormModel
 {
-    public UserFormModel(UserAreaInfo userArea)
+    // The only constructor, as static SSR form binding (UserEditSelfPage) needs. That page calls
+    // ApplyUserArea on the posted model before it's validated.
+    public UserFormModel()
+    {
+    }
+
+    public static UserFormModel Create(UserAreaInfo userArea)
+    {
+        var model = new UserFormModel();
+        model.ApplyUserArea(userArea);
+
+        return model;
+    }
+
+    // Private setters, so a form post can't set them.
+    public bool IsUsernameRequired { get; private set; }
+
+    public bool IsEmailRequired { get; private set; }
+
+    public void ApplyUserArea(UserAreaInfo userArea)
     {
         IsUsernameRequired = !userArea.UseEmailAsUsername;
         IsEmailRequired = userArea.AllowPasswordSignIn || userArea.UseEmailAsUsername;
     }
 
-    public bool IsUsernameRequired { get; }
+    public static UserFormModel FromUser(UserDetails user, UserAreaInfo userArea)
+    {
+        var model = new UserFormModel()
+        {
+            DisplayName = user.DisplayName,
+            Username = user.Username,
+            Email = user.Email,
+            RoleId = user.Role.RoleId,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            RequirePasswordChange = user.RequirePasswordChange,
+            IsAccountVerified = user.AccountVerifiedDate.HasValue,
+            IsActive = user.AccountStatus == UserAccountStatus.Active
+        };
+        model.ApplyUserArea(userArea);
 
-    public bool IsEmailRequired { get; }
+        return model;
+    }
+
+    public UpdateUserCommand ToUpdateCommand(int userId, UserAreaInfo userArea)
+    {
+        return new UpdateUserCommand
+        {
+            UserId = userId,
+            DisplayName = DisplayName,
+            Username = userArea.UseEmailAsUsername ? null : Username,
+            Email = Email,
+            RoleId = RoleId,
+            FirstName = FirstName,
+            LastName = LastName,
+            RequirePasswordChange = RequirePasswordChange,
+            IsAccountVerified = IsAccountVerified,
+            IsActive = IsActive
+        };
+    }
 
     [StringLength(150)]
     [Display(Name = "Display Name")]

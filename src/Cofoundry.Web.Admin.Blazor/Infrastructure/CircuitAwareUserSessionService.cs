@@ -77,8 +77,8 @@ public class CircuitAwareUserSessionService : IUserSessionService
     /// The domain calls this after a command updates a user's security stamp, to re-issue the cookie of
     /// a user who changed their own. A circuit's response started long ago, so it can't set a cookie and
     /// the web implementation would throw after the change was saved. That's skipped here: pages where
-    /// you change your own stamp (My Account) are static SSR, and the users screens don't let you edit
-    /// those fields on yourself. A static SSR request still re-issues the cookie as normal.
+    /// you change your own stamp (My Account, and UserEditSelfPage for editing yourself in the users
+    /// module) are static SSR, where the request still re-issues the cookie as normal.
     /// </summary>
     public Task RefreshAsync(string userAreaCode, int userId)
     {

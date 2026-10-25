@@ -80,6 +80,11 @@ public static class AdminBlazorRoutes
     public static string UserDetails(string userAreaCode, int userId) => $"{Users(userAreaCode)}/{userId}";
 
     /// <summary>
+    /// The static SSR form for editing yourself, see <c>UserEditSelfPage</c>.
+    /// </summary>
+    public static string UserEditSelf(string userAreaCode, int userId) => UserDetails(userAreaCode, userId) + "/edit";
+
+    /// <summary>
     /// The signed-in user's own details ("My Account").
     /// </summary>
     public const string Account = Root + "/account";

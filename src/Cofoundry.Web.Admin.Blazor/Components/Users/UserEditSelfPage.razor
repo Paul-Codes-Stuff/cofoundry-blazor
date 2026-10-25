@@ -1,0 +1,109 @@
+@page "/admin-next/users/{UserAreaCode}/{UserId:int}/edit"
+@attribute [ExcludeFromInteractiveRouting]
+@inject IAdminBlazorExecutor Executor
+@inject NavigationManager Navigation
+
+@* Editing yourself in the users module, as static SSR. Changing your own email, username, "Require Password
+   Change" or verification updates your security stamp, and the domain then re-issues your auth cookie,
+   which needs a real HTTP request (a circuit can't set cookies). Other users are edited in place on
+   UserDetailsPage, which sends you here for yourself. *@
+
+<PageTitle>@(_user == null ? "User" : UserHeading.Get(_user)) | Admin</PageTitle>
+
+<PageHeader Title="@(_user == null ? null : UserHeading.Get(_user))" ParentTitle="@(_userArea?.Name + " Users")" ParentHref="@AdminBlazorRoutes.Users(UserAreaCode)" />
+
+@if (_user == null || _userArea == null || _roles == null)
+{
+    <PageBody ContentType="form">
+        <p class="message warning perm">Sorry, that user could not be found.</p>
+    </PageBody>
+}
+else
+{
+    <AdminForm Model="Input" FormName="admin-user-edit-self" OnValidSubmit="SaveAsync">
+
+        <PageActions>
+            <AdminButtonSubmit Text="Save" />
+            <ButtonLink Text="Cancel" Href="@AdminBlazorRoutes.UserDetails(UserAreaCode, UserId)" />
+        </PageActions>
+
+        <PageBody ContentType="form">
+
+            <FormStatus Errors="_errors" />
+
+            <UserFormFields Model="Input" UserArea="_userArea" Roles="_roles" User="_user" IsCurrentUser="true" />
+
+        </PageBody>
+
+    </AdminForm>
+}
+
+@code {
+    private UserDetails? _user;
+    private UserAreaInfo? _userArea;
+    private IReadOnlyList<SelectOption<int?>>? _roles;
+    private IReadOnlyCollection<ValidationError> _errors = [];
+
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    [Parameter] public string UserAreaCode { get; set; } = string.Empty;
+
+    [Parameter] public int UserId { get; set; }
+
+    // UserFormFields binds the inputs to its "Model" parameter, so they post as "Model.Email" etc.
+    [SupplyParameterFromForm(FormName = "admin-user-edit-self", Name = "Model")] private UserFormModel? Input { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _userArea = await UserAreaInfo.LoadAsync(Executor, UserAreaCode);
+        var user = _userArea == null ? null : await Executor.QueryAsync(new GetUserDetailsByIdQuery(UserId));
+        if (user == null || user.UserArea.UserAreaCode != _userArea!.UserAreaCode)
+        {
+            return;
+        }
+
+        var currentUser = await CurrentAdminUser.LoadAsync(Executor);
+        var permissions = await UserPermissions.LoadAsync(Executor, _userArea.UserAreaCode);
+
+        // Only for yourself; the details page explains why anyone else can't be edited.
+        if (user.UserId != currentUser.UserId || !permissions.CanUpdate || user.AccountStatus == UserAccountStatus.Deleted)
+        {
+            Navigation.NavigateTo(AdminBlazorRoutes.UserDetails(UserAreaCode, UserId));
+            return;
+        }
+
+        _user = user;
+        _roles = await UserRoleOptions.LoadAsync(Executor, _userArea.UserAreaCode);
+
+        // A POST has already bound Input from the form, without the area's required flags or the
+        // read-only role and active status, which aren't posted. If it bound nothing, don't let the
+        // stored values be saved as if they'd been posted.
+        if (Input == null && HttpMethods.IsPost(HttpContext.Request.Method))
+        {
+            _errors = [new ValidationError { Message = "The form could not be read. Please try again." }];
+        }
+
+        Input ??= UserFormModel.FromUser(user, _userArea);
+        Input.ApplyUserArea(_userArea);
+        Input.RoleId = user.Role.RoleId;
+        Input.IsActive = user.AccountStatus == UserAccountStatus.Active;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_errors.Count > 0)
+        {
+            return;
+        }
+
+        var result = await Executor.ExecuteAsync(Input!.ToUpdateCommand(UserId, _userArea!));
+
+        if (!result.Succeeded)
+        {
+            _errors = result.Errors;
+            return;
+        }
+
+        Navigation.NavigateTo(AdminBlazorRoutes.UserDetails(UserAreaCode, UserId) + "?saved=true");
+    }
+}

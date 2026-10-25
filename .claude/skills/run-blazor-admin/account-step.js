@@ -35,16 +35,25 @@ module.exports = async (page, c) => {
     // The sandbox has only a few admin users, so the user is on the first page.
     await user.goto('/admin-next/users/COF'); await user.waitForTimeout(2500);
     await user.locator(`table.table a:text-is("${email}")`).click(); await user.waitForTimeout(2000);
-    await user.locator('.page-actions button:text-is("Edit")').click(); await user.waitForTimeout(600);
-    // Your own email can't be changed here (it would need the cookie re-issued), only in My Account.
-    if (await field('Email Address:').count()) throw new Error('your own email is editable in Users');
-    if (!/This is your own account/.test(await bodyText())) throw new Error('no own account warning');
-    const display = field('Display Name:');
-    if (await display.count()) { await display.fill(`Account Test ${stamp} self`); await display.blur(); }
-    await user.locator('.page-actions input[type=submit][value="Save"]').click(); await user.waitForTimeout(2500);
+    // Editing yourself is a static SSR page, so the domain can re-issue the cookie for the new email.
+    await Promise.all([user.waitForURL(/\/edit$/), user.click('.page-actions a:text-is("Edit")')]);
+    // The interactive router changes the url, then reloads the page because it's static SSR.
+    await user.waitForTimeout(2500);
+    if (!(await field('Email Address:').count())) throw new Error('your own email is not editable: ' + user.url() + ' ' + (await user.locator('.page-body').innerHTML()).slice(0, 600));
+    if (await field('Role:').count()) throw new Error('your own role is editable');
+    await field('Email Address:').fill('not-an-email');
+    await submit();
+    if (!/Please use a valid email address/.test(await bodyText())) throw new Error((await bodyText()).slice(0, 400));
+    await userShot('account-5-users-self-errors');
+    const before = await authCookie();
+    email = `account-${stamp}-3@example.com`;
+    await field('Email Address:').fill(email);
+    await submit();
+    await user.waitForTimeout(2500);
     const text = await bodyText();
-    await userShot('account-5-users-self');
-    if (/could not be saved|unhandled exception/i.test(text) || !/Edit/i.test(text)) throw new Error(text.slice(0, 400));
+    await userShot('account-6-users-self-saved');
+    if (!/\?saved=true$/.test(user.url()) || !/Changes were saved successfully/.test(text) || !text.includes(email)) throw new Error(user.url() + ' ' + text.slice(0, 400));
+    if (await authCookie() === before) throw new Error('the auth cookie was not re-issued');
     await user.goto('/admin-next/account');
     if (/\/auth\//.test(user.url()) || !(await bodyText()).includes(email)) throw new Error('signed out after editing yourself: ' + user.url());
   };

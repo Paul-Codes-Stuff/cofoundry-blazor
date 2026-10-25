@@ -146,7 +146,8 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
 - **`account-step.js`** creates an admin user the same way and, signed in as it, opens My Account from the nav
   (an interactive link to a static SSR page), edits the email (validation first), changes the password
   (required, mismatch, wrong current password) and checks each save re-issued the auth cookie. Then it edits
-  itself in Users: the email must be read-only there, and saving must not crash the circuit. It deletes the user.
+  itself in Users ("Edit" opens the static SSR `.../edit` page): an invalid email first, then a new email,
+  checking the cookie is re-issued again. It deletes the user.
 - **`error-boundary-step.js`** throws from the sandbox's dev-only `/admin-next/test/error` page
   (`Cofoundry/Admin/Blazor/Shared/ErrorBoundaryTestPage.razor`), on a click and on load, and checks the error
   message, "Try again" and that navigating away recovers. It logs four "Error boundary test" errors in
@@ -166,6 +167,26 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   (override with `OUT_DIR`). Delete `auth-state.json` to force a fresh sign-in.
 - Browser console errors, page errors and HTTP 4xx/5xx responses are printed as they happen.
   **Read the screenshots.** A page can render with missing styling and still pass a DOM check.
+
+## First-run setup (empty database)
+
+`setup-test.js` runs without `driver.js`, which signs in first. It needs a second sandbox on an **empty**
+database, so create one, point the sandbox at it with an environment variable (no config file changes), run
+the test, then drop the database. Setup only runs once per database, so each run needs a fresh one.
+
+```bash
+sqlcmd -S <server> -E -C -Q "CREATE DATABASE CofoundryBlazorSetupTest"
+# run_in_background:
+cd samples/src/Dev/Dev.Sandbox && ASPNETCORE_ENVIRONMENT=Development Cofoundry__Database__ConnectionString="Server=<server>;Database=CofoundryBlazorSetupTest;Integrated Security=True;MultipleActiveResultSets=True;TrustServerCertificate=True;" dotnet run --no-launch-profile --urls http://localhost:5007 > "$TEMP/sandbox-setup.log" 2>&1
+# once "Now listening" is in the log:
+NODE_PATH="$TEMP/blazor-admin-pw/node_modules" node .claude/skills/run-blazor-admin/setup-test.js http://localhost:5007
+# stop Dev.Sandbox, then:
+sqlcmd -S <server> -E -C -Q "DROP DATABASE CofoundryBlazorSetupTest"
+```
+
+Cofoundry installs its tables on startup. The test checks sign in sends you to setup, validation (required
+fields, mismatched and too-short passwords), completing setup, signing in as the new admin (a throwaway
+`setup-<stamp>@example.com`), and that setup then redirects to the dashboard.
 
 ## Unit tests
 

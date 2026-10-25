@@ -26,7 +26,13 @@ else
         @if (!_editMode)
         {
             <PageActions>
-                @if (CanUpdate)
+                @if (CanUpdate && _isCurrentUser)
+                {
+                    @* Editing yourself can change your security stamp, so the auth cookie must be re-issued,
+                       which a circuit can't do: that form is a static SSR page. *@
+                    <ButtonLink Text="Edit" Class="main-cta" Href="@AdminBlazorRoutes.UserEditSelf(UserAreaCode, UserId)" />
+                }
+                else if (CanUpdate)
                 {
                     <AdminButton Text="Edit" Class="main-cta" Disabled="_isLoading" OnClick="BeginEdit" />
                 }
@@ -56,72 +62,8 @@ else
             {
                 <div class="form-message error perm">@_editLockReason</div>
             }
-            else if (_editMode && _isCurrentUser)
-            {
-                @* These changes update your security stamp, so the auth cookie must be re-issued, which a
-                   circuit can't do. My Account is a static SSR page that can. *@
-                <WarningMessage>
-                    This is your own account. Change your email in <a href="@AdminBlazorRoutes.Account">My Account</a>.
-                </WarningMessage>
-            }
 
-            <FormSection Title="Main">
-
-                @if (_userArea.ShowDisplayName)
-                {
-                    <FormFieldText Title="Display Name" MaxLength="150" @bind-Value="_model.DisplayName"
-                                   Description="A display-friendly name such as a real name or pseudonym." />
-                }
-                @if (!_userArea.UseEmailAsUsername)
-                {
-                    <FormFieldText Title="Username" MaxLength="150" ReadOnly="_isCurrentUser" @bind-Value="_model.Username"
-                                   Description="The username that the user uses to sign in with." />
-                }
-                <FormFieldText Title="Email Address" InputType="email" MaxLength="150" ReadOnly="_isCurrentUser" @bind-Value="_model.Email" />
-
-                @* Changing your own role or deactivating yourself could lock you out. Your email, username,
-                   "Require Password Change" and "Account Verified" are read-only too (see the warning above). *@
-                <FormFieldDropdown TValue="int?" Title="Role" Options="_roles" Required="true" ReadOnly="_isCurrentUser"
-                                   Description="The role dictates which permissions a user has."
-                                   @bind-Value="_model.RoleId" />
-
-                @if (_userArea.AllowPasswordSignIn)
-                {
-                    <FormFieldCheckbox Title="Require Password Change" ReadOnly="_isCurrentUser" @bind-Value="_model.RequirePasswordChange"
-                                       Description="If selected, the user will be required to change their password the next time they sign in." />
-                }
-
-                @if (_editMode && !_isCurrentUser)
-                {
-                    <FormFieldCheckbox Title="Account Verified" @bind-Value="_model.IsAccountVerified"
-                                       Description="If selected, the user will be marked as a verified account." />
-                }
-                else
-                {
-                    <FormFieldContainer Title="Account Verified" Description="The date that the user account has been verified.">
-                        @if (_user.AccountVerifiedDate.HasValue)
-                        {
-                            <span>Yes (<TimeAgo Time="_user.AccountVerifiedDate" />)</span>
-                        }
-                        else
-                        {
-                            <span>No</span>
-                        }
-                    </FormFieldContainer>
-                }
-
-                <FormFieldCheckbox Title="Account Active" ReadOnly="_isCurrentUser" @bind-Value="_model.IsActive"
-                                   Description="If an account is deactivated, the user will be signed out and prevented from signing in.." />
-
-            </FormSection>
-
-            @if (!_userArea.IsCofoundryAdminArea)
-            {
-                <FormSection Title="Additional Details">
-                    <FormFieldText Title="First Name" MaxLength="32" @bind-Value="_model.FirstName" />
-                    <FormFieldText Title="Last Name" MaxLength="32" @bind-Value="_model.LastName" />
-                </FormSection>
-            }
+            <UserFormFields Model="_model" UserArea="_userArea" Roles="_roles" User="_user" IsCurrentUser="_isCurrentUser" />
 
             <FormSection Title="Logs">
 
@@ -204,6 +146,11 @@ else
 
     [Parameter] public int UserId { get; set; }
 
+    /// <summary>
+    /// Set by UserEditSelfPage after it saves.
+    /// </summary>
+    [SupplyParameterFromQuery] private bool Saved { get; set; }
+
     private bool IsEditable => _editLockReason == null;
 
     private bool CanUpdate => IsEditable && _permissions!.CanUpdate;
@@ -218,18 +165,7 @@ else
 
     private bool CanDelete => IsEditable && _permissions!.CanDelete && !_isCurrentUser;
 
-    /// <summary>
-    /// The AngularJS header showed the first and last name. Admin users have neither, so fall back
-    /// to the display name or username.
-    /// </summary>
-    private string Heading
-    {
-        get
-        {
-            var name = $"{_user!.FirstName} {_user.LastName}".Trim();
-            return !string.IsNullOrEmpty(name) ? name : _user.DisplayName ?? _user.Username;
-        }
-    }
+    private string Heading => UserHeading.Get(_user!);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -249,6 +185,11 @@ else
         }
 
         await LoadAsync();
+
+        if (Saved)
+        {
+            _message = "Changes were saved successfully";
+        }
     }
 
     private async Task LoadAsync()
@@ -266,7 +207,7 @@ else
         _user = user;
         _isCurrentUser = user.UserId == _currentUser!.UserId;
         _editLockReason = GetEditLockReason(user);
-        _model = MapModel(user);
+        _model = UserFormModel.FromUser(user, _userArea!);
         _editMode = false;
     }
 
@@ -285,22 +226,6 @@ else
         return null;
     }
 
-    private UserFormModel MapModel(UserDetails user)
-    {
-        return new UserFormModel(_userArea!)
-        {
-            DisplayName = user.DisplayName,
-            Username = user.Username,
-            Email = user.Email,
-            RoleId = user.Role.RoleId,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            RequirePasswordChange = user.RequirePasswordChange,
-            IsAccountVerified = user.AccountVerifiedDate.HasValue,
-            IsActive = user.AccountStatus == UserAccountStatus.Active
-        };
-    }
-
     private void BeginEdit()
     {
         _editMode = true;
@@ -311,7 +236,7 @@ else
     private void CancelEdit()
     {
         _editMode = false;
-        _model = MapModel(_user!);
+        _model = UserFormModel.FromUser(_user!, _userArea!);
         _errors = [];
     }
 
@@ -321,20 +246,7 @@ else
         _errors = [];
         _message = null;
 
-        var model = _model!;
-        var command = new UpdateUserCommand
-        {
-            UserId = UserId,
-            DisplayName = model.DisplayName,
-            Username = _userArea!.UseEmailAsUsername ? null : model.Username,
-            Email = model.Email,
-            RoleId = model.RoleId,
-            FirstName = model.FirstName,
-            LastName = model.LastName,
-            RequirePasswordChange = model.RequirePasswordChange,
-            IsAccountVerified = model.IsAccountVerified,
-            IsActive = model.IsActive
-        };
+        var command = _model!.ToUpdateCommand(UserId, _userArea!);
 
         try
         {

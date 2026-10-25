@@ -48,7 +48,7 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
 | Client-side messages per validation attribute ("This field is required") | The command's DataAnnotations messages, with the field's label in place of the property name (`FieldValidationMessage`): "The Application Name field is required." |
 | A server error opens an error dialog | `AdminLayout` wraps each page in an `ErrorBoundary`: the page shows the error (with the exception where the developer exception page is allowed) and the nav keeps working. Errors outside a page show Blazor's `#blazor-error-ui` bar (`App.razor`) |
 | A 401 from the api sends you to sign in | A circuit keeps its user, so `js/session-check.js` asks `/admin-next/auth/session` whenever the tab is shown again and reloads the page if you've been signed out (in another tab, expired, or your password changed elsewhere), which sends you to sign in |
-| Every request can re-issue the auth cookie | A circuit can't set cookies. Pages where you change your own email or password (My Account) are static SSR, so the domain can re-issue the cookie with the new security stamp; the Users screens make those fields read-only on yourself, and `CircuitAwareUserSessionService` skips the refresh inside a circuit instead of throwing |
+| Every request can re-issue the auth cookie | A circuit can't set cookies. Pages where you change your own email or password (My Account, and editing yourself in Users) are static SSR, so the domain can re-issue the cookie with the new security stamp. `CircuitAwareUserSessionService` skips the refresh inside a circuit instead of throwing |
 
 `wwwroot/css` is a copy of the compiled AngularJS admin CSS and assets. Eventually the SCSS should move here.
 
@@ -90,8 +90,9 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
   create (with an emailed temporary password when the area allows password sign in), details (edit,
   deactivate, verify, reset password, delete). Which fields show and are required follows the user area's
   settings (`UserAreaInfo`), as in the AngularJS `UsersModuleOptions`. The nav maps every `COFUSR` + area code
-  module to its Blazor list. On your own user, the role, active status, email, username, "Require Password
-  Change" and "Account Verified" are read-only (see My Account)
+  module to its Blazor list. Your own role and active status are read-only. "Edit" on your own user opens
+  `UserEditSelfPage` (`.../edit`), a static SSR form with the same fields (`UserFormFields`), so changing
+  your email, username, "Require Password Change" or verification can re-issue your auth cookie
 * Access rules for pages and directories (`Components/AccessRules`): `EntityAccessEditorDialog` edits either,
   through an `EntityAccessRuleSource` (`PageAccessRuleSource`, `DirectoryAccessRuleSource`). It shows inherited
   directory rules, adds rules (user area plus optional role), removes them, and sets the sign-in redirect and
@@ -256,11 +257,6 @@ references both versions of each.
 * The page picker (page collection field) is multi-select only, since the single page field is a
   search-as-you-type dropdown, as in the AngularJS admin
 * Upload fields have no "Remove" button (only needed for optional uploads, which no ported form has yet)
-* The setup form itself hasn't been run in a browser: the sandbox's database is already set up, so the browser
-  steps only check that `/admin-next/setup` then redirects. Try it against an empty database before relying on it
-* Editing yourself on the Users screens can't change your email (or username, "Require Password Change" and
-  "Account Verified"), which the AngularJS admin allowed: use My Account for the email. The others would sign
-  you out
 * The role picker in "Add Access Rule" is a plain dropdown of the area's roles, not the AngularJS search-as-you-type
   filtered dropdown. Fine for now, may be revisited
 * **To revisit:** the close icon (top right) on modal dialogs (`ModalDialog`) was reported as doing nothing. It

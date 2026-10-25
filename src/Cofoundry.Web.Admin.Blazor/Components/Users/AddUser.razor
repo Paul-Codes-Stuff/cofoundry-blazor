@@ -86,7 +86,7 @@ else
             return;
         }
 
-        _model = new UserFormModel(_userArea);
+        _model = UserFormModel.Create(_userArea);
         _roles = await UserRoleOptions.LoadAsync(Executor, _userArea.UserAreaCode);
 
         if (_roles.Count == 1)

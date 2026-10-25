@@ -20,7 +20,7 @@ Read `src/Cofoundry.Web.Admin.Blazor/README.md` first: it has the status, what i
 - **A circuit can't set cookies.** `CircuitAwareUserSessionService.RefreshAsync` skips the refresh inside a
   circuit (it used to throw "Headers are read-only" after saving). So anything that changes the signed-in
   user's security stamp (email, username, password, "Require Password Change", verification) must be on a
-  static SSR page; the Users screens make those fields read-only on yourself. A circuit also keeps its user, so
+  static SSR page: "Edit" on your own user opens `UserEditSelfPage`, an SSR form sharing `UserFormFields`. A circuit also keeps its user, so
   `js/session-check.js` checks `/admin-next/auth/session` when the tab is shown and reloads if signed out.
 - **Data access:** components call the domain layer in-process through `IAdminBlazorExecutor`
   (`Infrastructure/AdminBlazorExecutor.cs`), not the `/admin/api` controllers. Each call runs in its own DI
@@ -91,7 +91,10 @@ Agreed direction, not yet done:
   button appears and toggles `show-helpers`. Don't hand-write `<p class="help-inline">`: it would stay hidden.
 - **Static SSR pages** (`[ExcludeFromInteractiveRouting]`) get no circuit: buttons with `@onclick` do nothing.
   Use links (e.g. "Edit" is `?edit=true`) and a form post. Give `AdminForm` a `FormName` and bind its model to
-  a `[SupplyParameterFromForm]` property, which a GET leaves null.
+  a `[SupplyParameterFromForm]` property, which a GET leaves null. Inputs post under the name of the
+  expression they're bound to: fields bound to a child component's `Model` parameter post as `Model.X`, so set
+  the attribute's `Name = "Model"`, or the post binds nothing (and `??=` would quietly save the stored values).
+  The model needs a single parameterless constructor.
 - Uploads: buffer into `BufferedFileSource` (the domain reads files more than once). A field that sets its value
   itself must call `NotifyFieldChanged()`, and a page that changes another field in code (e.g. a title from the
   file name) calls `AdminForm.NotifyFieldChanged`, or a stale "required" message stays visible.
@@ -118,7 +121,8 @@ Agreed direction, not yet done:
   for Pages, `assets-step.js` for Images/Documents, `settings-step.js` for Site Settings, `image-picker-step.js` for the picker, `roles-users-step.js` for Roles
   and Users, `access-rules-step.js` for Directories and access rules, `page-templates-step.js` for Page Templates, `custom-entities-step.js`, `custom-entity-pickers-step.js`, `nested-data-models-step.js` and `field-types-step.js` (run with `BROWSER_TZ`, uses the dev-only Field Tests entity `SIMFLD`) for Custom Entities, `plugins-step.js`
   for the Error Logging, YouTube and Vimeo plugins; its Vimeo steps need internet access; `auth-step.js` for
-  forgot/reset/change password and the setup redirect; `account-step.js` for My Account and editing yourself
+  forgot/reset/change password and the setup redirect; `setup-test.js` (standalone, needs a sandbox on an
+  empty database, see SKILL.md) for first-run setup; `account-step.js` for My Account and editing yourself
   in Users; `error-boundary-step.js` (uses the sandbox's dev-only `/admin-next/test/error` page) for the error
   boundary; `session-step.js` for the session check; `image-upload-size-step.js` for picker upload size rules;
   `smoke` also deletes the page it duplicates).
