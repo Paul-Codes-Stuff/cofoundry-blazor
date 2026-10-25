@@ -1,7 +1,10 @@
+@implements IDisposable
+
 @* Mirrors the modal markup and class behaviour of the AngularJS cmsModalDialogContainer directive.
-   Rendered into the layout's outlet; if two dialogs are open at once only the newest is shown. *@
-<SectionContent SectionName="@SectionName">
-<div class="modal @SizeCssClass is-root-modal @ShowCssClass">
+   Rendered into the layout's outlet for this dialog's level in the ModalDialogStack, so a dialog
+   opened from inside another stacks on top of it. *@
+<SectionContent SectionName="@ModalDialogStack.GetSectionName(_level)">
+<div class="modal @SizeCssClass @StackCssClass @ShowCssClass">
     <div class="modal-dialog">
         <div class="modal-content">
 
@@ -26,14 +29,15 @@
 </SectionContent>
 
 @code {
-    public const string SectionName = "admin-modals";
-
     private static int _instanceCount;
 
     // Unique per dialog, so field ids don't clash with the form behind the dialog or another dialog.
     private readonly string _fieldIdPrefix = $"modal{Interlocked.Increment(ref _instanceCount)}-";
 
     private bool _show;
+    private int _level;
+
+    [CascadingParameter] public ModalDialogStack? Stack { get; set; }
 
     /// <summary>
     /// Header text. When empty the header (and its close button) is not rendered.
@@ -51,6 +55,13 @@
 
     private string SizeCssClass => Size == "large" ? "modal-lg" : string.Empty;
 
+    private string StackCssClass => _level == 0 ? "is-root-modal" : "is-child-modal";
+
+    protected override void OnInitialized()
+    {
+        _level = Stack?.Acquire() ?? 0;
+    }
+
     // The css keeps the modal transparent until 'modal--show' is added, which is what drives the
     // fade/slide-in. The AngularJS directive adds it a tick after render; we do it after first render.
     private string ShowCssClass => _show ? "modal--show" : string.Empty;
@@ -63,5 +74,10 @@
             _show = true;
             StateHasChanged();
         }
+    }
+
+    public void Dispose()
+    {
+        Stack?.Release(_level);
     }
 }

@@ -1,0 +1,143 @@
+@inherits NestedDataModelCollectionFieldBase<object>
+
+@* [NestedDataModelCollection] properties: cms-form-field-nested-data-model-collection. A table of the
+   items with their preview fields, edited one at a time in EditNestedDataModelDialog. *@
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label">@Field.Title:</label>
+        <div class="controls">
+            @if (_schema == null)
+            {
+                <div class="text-block-display-value">@(_notFound ? $"Unknown nested data model '{ModelTypeName}'." : "Loading...")</div>
+            }
+            else
+            {
+                <TableContainer>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                @if (_preview.ImageProperty != null)
+                                {
+                                    <th></th>
+                                }
+                                @if (_preview.ShowTitle)
+                                {
+                                    <th>@_preview.TitleTerm</th>
+                                }
+                                @if (_preview.DescriptionProperty != null)
+                                {
+                                    <th>@_preview.DescriptionProperty.DisplayName</th>
+                                }
+                                @if (ShowInput)
+                                {
+                                    <th class="actions">Actions</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Items.Count == 0)
+                            {
+                                <tr><td colspan="100" class="empty">None</td></tr>
+                            }
+                            @for (var i = 0; i < Items.Count; i++)
+                            {
+                                var item = Items[i];
+                                var index = i;
+
+                                <tr @key="item"
+                                    draggable="@(CanReorder ? "true" : null)"
+                                    @ondragstart="() => DragStart(index)"
+                                    @ondragover="() => { }"
+                                    @ondragover:preventDefault="CanReorder"
+                                    @ondrop="() => DropAsync(index)">
+                                    @if (_preview.ImageProperty != null)
+                                    {
+                                        <td><TableCellImage Image="GetImage(item)" /></td>
+                                    }
+                                    @if (_preview.ShowTitle)
+                                    {
+                                        <td><strong>@_preview.GetTitle(item, index)</strong></td>
+                                    }
+                                    @if (_preview.DescriptionProperty != null)
+                                    {
+                                        <td>@_preview.GetDescription(item)</td>
+                                    }
+                                    @if (ShowInput)
+                                    {
+                                        <td class="actions">
+                                            <ButtonIcon Icon="pencil" Title="Edit" OnClick="() => _editing = new(item)" />
+                                            <ButtonIcon Icon="trash-o" Title="Remove" OnClick="() => RemoveAsync(item)" />
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @if (CanAdd)
+                    {
+                        <div class="collection-actions">
+                            <a href="" class="btn-icon" title="Add" @onclick="() => _editing = new(null)" @onclick:preventDefault>
+                                <i class="fa fa-plus-circle"></i>
+                            </a>
+                        </div>
+                    }
+                </TableContainer>
+                <ValidationMessage For="() => Binding.Value" class="field-validation-error" />
+            }
+        </div>
+    </div>
+    <FieldHelp Text="@Field.Description" />
+</div>
+
+@if (_editing != null && _schema != null)
+{
+    <EditNestedDataModelDialog Schema="_schema" Model="_editing.Item" Context="Field.Context"
+                               OnSave="SaveAsync" OnCancel="() => _editing = null" />
+}
+
+@code {
+    private NestedDataModelSchema? _schema;
+    private NestedDataModelPreview _preview = default!;
+    private EditRequest? _editing;
+    private bool _notFound;
+
+    private string ModelTypeName => Field.GetAttribute<string>(NestedDataModelAttributes.ModelType) ?? string.Empty;
+
+    protected override async Task LoadSchemaAsync()
+    {
+        if (_schema != null || _notFound)
+        {
+            return;
+        }
+
+        _schema = await Executor.QueryAsync(new GetNestedDataModelSchemaByNameQuery(ModelTypeName));
+        _notFound = _schema == null;
+
+        if (_schema != null)
+        {
+            _preview = new NestedDataModelPreview(_schema);
+        }
+    }
+
+    protected override int? GetImageId(object item) => _schema == null ? null : _preview.GetImageId(item);
+
+    private async Task SaveAsync(object model)
+    {
+        var item = _editing?.Item;
+        _editing = null;
+
+        if (item == null)
+        {
+            await AddAsync(model);
+        }
+        else
+        {
+            await ReplaceAsync(item, model);
+        }
+    }
+
+    /// <summary>
+    /// The item being edited, or a null item when adding.
+    /// </summary>
+    private sealed record EditRequest(object? Item);
+}

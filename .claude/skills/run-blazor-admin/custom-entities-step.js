@@ -1,12 +1,12 @@
 // Custom entities (phase 1: simple fields, image fields, unsupported placeholder) on the sandbox's
-// Authors (SIMAUT), Categories (SIMCAT), Blog Posts (SIMBLP) and Examples (SIMEXA, never saved: its nested
-// collection can't be edited yet). Pickers, drafts, versions and publishing are in custom-entity-pickers-step.js.
+// Authors (SIMAUT), Categories (SIMCAT), Blog Posts (SIMBLP) and Examples (SIMEXA, only opened: its nested
+// collections are covered by nested-data-models-step.js). Pickers, drafts, versions and publishing are in
+// custom-entity-pickers-step.js.
 // Uploads an image, creates authors and a category, and deletes them all again.
 module.exports = async (page, c) => {
   const stamp = Date.now().toString(36);
   const authorName = `CE Author ${stamp}`;
   const categoryName = `CE Category ${stamp}`;
-  const exampleTitle = `CE Example ${stamp}`;
   const imageTitle = `Ce-thumb-${stamp}`;
   const body = async () => (await page.locator('.page-body').innerText()).replace(/\s+/g, ' ').trim();
   // Display names come from MVC metadata, so casing varies ("Short description", "Thumbnail Image").
@@ -153,15 +153,13 @@ module.exports = async (page, c) => {
     if (rows.length !== 1 || !rows[0].includes(categoryName)) throw new Error(rows.join(' | '));
   });
 
-  await c.step('unsupported fields show their validation messages', async () => {
-    // Example.Blocks is a nested collection with MinItems = 2, which can't be edited here yet.
+  await c.step('unsupported fields show a placeholder', async () => {
+    // Example's TestApiOptionSelectList is a Dropdown, which isn't ported yet (phase 4). The placeholder
+    // also shows the field's validation messages; nested-data-models-step.js covers Example's collections.
     await page.goto('/admin-next/custom-entities/SIMEXA/new'); await c.settle();
-    await c.field('.page-body', 'Title:').fill(exampleTitle); await c.field('.page-body', 'Title:').blur();
-    await c.btn('.page-actions', 'Save').click(); await c.settle(1500);
-    if (!/\/SIMEXA\/new$/.test(page.url())) throw new Error('saved despite an invalid nested collection');
-    const msg = await control('Blocks:').locator('.field-validation-error, .validation-message').allInnerTexts();
-    if (!msg.join(' ').trim()) throw new Error('no message on the unsupported Blocks field');
-    await c.shot('ce-6-unsupported-validation');
+    const text = await control('Test api option select list:').innerText();
+    if (!/This field type \(Dropdown\) can't be edited in this admin yet/.test(text)) throw new Error(text);
+    await c.shot('ce-6-unsupported');
   });
 
   await c.step('cleanup: delete entities and image', async () => {

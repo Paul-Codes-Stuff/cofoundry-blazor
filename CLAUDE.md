@@ -69,6 +69,8 @@ Agreed direction, not yet done:
 - **Never use `[Authorize(AuthenticationSchemes = ...)]` on components**: `AuthorizeRouteView` throws. The
   admin scheme lives in the `AdminBlazorAuthorizeAttribute.PolicyName` policy instead.
 - Dialogs render through a `SectionOutlet` outside `.content` (see `AdminLayout`), else the nav covers them.
+  There's one outlet per `ModalDialogStack` level, so a dialog opened from inside another dialog's content
+  stacks on top. With one outlet only the newest dialog renders and the older dialog's content is disposed.
 - The host needs `<RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>` or `blazor.web.js` 404s.
 - Field help text goes through `FieldHelp`, which registers with the enclosing `FormSection` so its "Help"
   button appears and toggles `show-helpers`. Don't hand-write `<p class="help-inline">`: it would stay hidden.
@@ -83,22 +85,21 @@ Agreed direction, not yet done:
   replace file, delete), Site Settings (edit, clear cache), image picker (OpenGraph image on pages), Roles
   (permissions editor), Users (per user area: list, create, edit, reset password, delete), Directories (list,
   create, details, change URL, delete), page/directory access rules (`Components/AccessRules`) and Page
-  Templates (read-only list and details), Custom Entities phases 1 and 2 (list, create, details, versions,
+  Templates (read-only list and details), Custom Entities phases 1 to 3 (list, create, details, versions,
   Change Ordering, with the dynamic data-model form in `Components/DataModels`: text, text area, checkbox,
-  number, image, custom entity selector and custom entity collection fields, an unsupported-field placeholder,
-  and the `IDataModelFieldComponentRegistration` extension point).
+  number, image, custom entity selector and collection, and nested data model (single and multi-type)
+  collection fields, an unsupported-field placeholder, and the `IDataModelFieldComponentRegistration`
+  extension point).
 - **Builds and runs.** Smoke-tested in `samples/src/Dev/Dev.Sandbox` with the `run-blazor-admin` skill (`smoke`
   for Pages, `assets-step.js` for Images/Documents, `settings-step.js` for Site Settings, `image-picker-step.js` for the picker, `roles-users-step.js` for Roles
-  and Users, `access-rules-step.js` for Directories and access rules, `page-templates-step.js` for Page Templates, `custom-entities-step.js` and `custom-entity-pickers-step.js` for Custom Entities). Page delete not yet exercised.
+  and Users, `access-rules-step.js` for Directories and access rules, `page-templates-step.js` for Page Templates, `custom-entities-step.js`, `custom-entity-pickers-step.js` and `nested-data-models-step.js` for Custom Entities). Page delete not yet exercised.
 - **Dev.Sandbox has a "Member" user area** (`Cofoundry/UserAreas/MemberUserArea.cs`, code `MEM`) so access rules
   and a non-admin users list can be exercised. Access Control is hidden on sites with only the admin area.
 - **To revisit:** the modal dialog close icon (top right, `Components/Dialogs/ModalDialog.razor`) doesn't work.
   It looks like a bug carried over from the AngularJS admin, which has the same problem.
-- **Next:** Custom Entities phase 3, nested data models (single and multi-type collections, needed by the
-  sandbox's Example, which is also the only orderable type, so Change Ordering's reorder can then be tested),
-  then phase 4 the remaining field types (HTML, document, page, directory, date/time, color, option lists).
-  The dynamic form is also needed by page block editing and image/document collections. The Visual Editor
-  stays on the MVC site.
+- **Next:** Custom Entities phase 4, the remaining field types (HTML, document, page, directory, date/time,
+  color, option lists). The dynamic form is also needed by page block editing and image/document
+  collections. The Visual Editor stays on the MVC site.
 - No tests yet.
 
 ## Git

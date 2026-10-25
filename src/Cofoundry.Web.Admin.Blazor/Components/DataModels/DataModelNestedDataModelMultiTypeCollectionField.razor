@@ -1,0 +1,198 @@
+@inherits NestedDataModelCollectionFieldBase<NestedDataModelMultiTypeItem>
+
+@* [NestedDataModelMultiTypeCollection] properties: cms-form-field-nested-data-model-multi-type-collection.
+   Each item is a NestedDataModelMultiTypeItem holding one of several nested model types, added from a
+   menu of the types and edited in EditNestedDataModelDialog. *@
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label">@Field.Title:</label>
+        <div class="controls">
+            @if (_schemas == null)
+            {
+                <div class="text-block-display-value">Loading...</div>
+            }
+            else
+            {
+                <TableContainer>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                @if (_showImage)
+                                {
+                                    <th>@Header(NestedDataModelAttributes.ImageColumnHeader, string.Empty)</th>
+                                }
+                                @if (_showTitle)
+                                {
+                                    <th>@Header(NestedDataModelAttributes.TitleColumnHeader, "Title")</th>
+                                }
+                                @if (_showDescription)
+                                {
+                                    <th>@Header(NestedDataModelAttributes.DescriptionColumnHeader, "Description")</th>
+                                }
+                                <th>@Header(NestedDataModelAttributes.TypeColumnHeader, "Type")</th>
+                                @if (ShowInput)
+                                {
+                                    <th class="actions">Actions</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Items.Count == 0)
+                            {
+                                <tr><td colspan="100" class="empty">None</td></tr>
+                            }
+                            @for (var i = 0; i < Items.Count; i++)
+                            {
+                                var item = Items[i];
+                                var index = i;
+                                var type = FindType(item);
+
+                                <tr @key="item"
+                                    draggable="@(CanReorder ? "true" : null)"
+                                    @ondragstart="() => DragStart(index)"
+                                    @ondragover="() => { }"
+                                    @ondragover:preventDefault="CanReorder"
+                                    @ondrop="() => DropAsync(index)">
+                                    @if (_showImage)
+                                    {
+                                        <td><TableCellImage Image="GetImage(item)" /></td>
+                                    }
+                                    @if (_showTitle)
+                                    {
+                                        <td><strong>@(type == null || item.Model == null ? $"Item {index + 1}" : type.Preview.GetTitle(item.Model, index))</strong></td>
+                                    }
+                                    @if (_showDescription)
+                                    {
+                                        <td>@(item.Model == null ? null : type?.Preview.GetDescription(item.Model))</td>
+                                    }
+                                    <td>@(type?.Schema.DisplayName ?? $"Unknown type '{item.TypeName}'")</td>
+                                    @if (ShowInput)
+                                    {
+                                        <td class="actions">
+                                            @if (type != null)
+                                            {
+                                                <ButtonIcon Icon="pencil" Title="Edit" OnClick="() => _editing = new(type, item)" />
+                                            }
+                                            <ButtonIcon Icon="trash-o" Title="Remove" OnClick="() => RemoveAsync(item)" />
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @if (CanAdd)
+                    {
+                        <div class="collection-actions">
+                            <Menu Icon="plus-circle">
+                                @foreach (var type in _types)
+                                {
+                                    <AdminButton Text="@($"Add {type.Schema.DisplayName}")" OnClick="() => _editing = new(type, null)" />
+                                }
+                            </Menu>
+                        </div>
+                    }
+                </TableContainer>
+                <ValidationMessage For="() => Binding.Value" class="field-validation-error" />
+            }
+        </div>
+    </div>
+    <FieldHelp Text="@Field.Description" />
+</div>
+
+@if (_editing != null)
+{
+    <EditNestedDataModelDialog Schema="_editing.Type.Schema" Model="_editing.Item?.Model" Context="Field.Context"
+                               OnSave="SaveAsync" OnCancel="() => _editing = null" />
+}
+
+@code {
+    private IReadOnlyDictionary<string, NestedType>? _schemas;
+    private IReadOnlyList<NestedType> _types = [];
+    private EditRequest? _editing;
+    private bool _showTitle;
+    private bool _showDescription;
+    private bool _showImage;
+
+    protected override async Task LoadSchemaAsync()
+    {
+        if (_schemas != null)
+        {
+            return;
+        }
+
+        var schemas = await Executor.QueryAsync(new GetNestedDataModelSchemaByNameRangeQuery(GetModelTypeNames()));
+
+        _types = schemas.Values
+            .Select(s => new NestedType(s, new NestedDataModelPreview(s)))
+            .OrderBy(t => t.Schema.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        // Items store the type's class name (NestedDataModelSchema.TypeName). Cofoundry resolves it with or
+        // without the "DataModel" suffix, so the lookup does too.
+        _schemas = _types.ToDictionary(t => NormalizeTypeName(t.Schema.TypeName), StringComparer.OrdinalIgnoreCase);
+
+        // As in the AngularJS field: description and image columns show when any type has them, and the
+        // title column when any type has a [PreviewTitle] or no type has another preview field.
+        _showDescription = _types.Any(t => t.Preview.DescriptionProperty != null);
+        _showImage = _types.Any(t => t.Preview.ImageProperty != null);
+        _showTitle = _types.Any(t => t.Preview.TitleProperty != null) || (!_showDescription && !_showImage);
+    }
+
+    protected override int? GetImageId(NestedDataModelMultiTypeItem item)
+    {
+        return item.Model == null ? null : FindType(item)?.Preview.GetImageId(item.Model);
+    }
+
+    /// <summary>
+    /// "ModelTypes" is a string array from the attribute, but accept a comma separated list too.
+    /// </summary>
+    private IReadOnlyCollection<string> GetModelTypeNames()
+    {
+        return Field.GetAttribute<object>(NestedDataModelAttributes.ModelTypes) switch
+        {
+            string names => names.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            IEnumerable<string> names => names.ToList(),
+            _ => []
+        };
+    }
+
+    private string Header(string attribute, string defaultText) => Field.GetAttribute<string>(attribute) ?? defaultText;
+
+    private NestedType? FindType(NestedDataModelMultiTypeItem item)
+    {
+        return _schemas?.GetValueOrDefault(NormalizeTypeName(item.TypeName));
+    }
+
+    private static string NormalizeTypeName(string typeName)
+    {
+        return StringHelper.RemoveSuffix(typeName, "DataModel", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task SaveAsync(object model)
+    {
+        var request = _editing!;
+        _editing = null;
+
+        var newItem = new NestedDataModelMultiTypeItem
+        {
+            TypeName = request.Type.Schema.TypeName,
+            Model = (INestedDataModel)model
+        };
+
+        if (request.Item == null)
+        {
+            await AddAsync(newItem);
+        }
+        else
+        {
+            await ReplaceAsync(request.Item, newItem);
+        }
+    }
+
+    private sealed record NestedType(NestedDataModelSchema Schema, NestedDataModelPreview Preview);
+
+    /// <summary>
+    /// The type being added or edited, and the item when editing.
+    /// </summary>
+    private sealed record EditRequest(NestedType Type, NestedDataModelMultiTypeItem? Item);
+}

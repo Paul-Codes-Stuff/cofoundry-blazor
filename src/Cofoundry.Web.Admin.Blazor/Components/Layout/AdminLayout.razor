@@ -10,18 +10,30 @@
             @* Stands in for the AngularJS ng-view element: .page-body's top margin collapses through
                this wrapper, which is what pushes the fixed .page-actions column below the header. *@
             <div>
-                @Body
+                <CascadingValue Value="_modalDialogStack" IsFixed="true">
+                    @Body
+                </CascadingValue>
             </div>
         </div>
 
     </main>
 
     @* Dialogs render here, outside .content, whose z-index would otherwise trap them under the nav.
-       The AngularJS admin appends them to <body> for the same reason. *@
-    <SectionOutlet SectionName="@ModalDialog.SectionName" />
+       The AngularJS admin appends them to <body> for the same reason. One outlet per stack level,
+       later ones on top. *@
+    <CascadingValue Value="_modalDialogStack" IsFixed="true">
+        @for (var level = 0; level < ModalDialogStack.MaxDepth; level++)
+        {
+            <SectionOutlet SectionName="@ModalDialogStack.GetSectionName(level)" />
+        }
+    </CascadingValue>
 
     <footer>
         <p class="copyright">&copy; @DateTime.Now.Year Cofoundry. All Rights Reserved.</p>
     </footer>
 
 </div>
+
+@code {
+    private readonly ModalDialogStack _modalDialogStack = new();
+}

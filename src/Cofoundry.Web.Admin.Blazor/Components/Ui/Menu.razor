@@ -1,0 +1,16 @@
+@* Port of cms-menu: an icon that shows its options on hover (pure css). Put AdminButtons inside. *@
+<div class="menu">
+    <i class="fa fa-@(string.IsNullOrEmpty(Icon) ? "cog" : Icon)"></i>
+    <div class="menu-options">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Font Awesome icon name without the "fa-" prefix. Defaults to "cog".
+    /// </summary>
+    [Parameter] public string? Icon { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

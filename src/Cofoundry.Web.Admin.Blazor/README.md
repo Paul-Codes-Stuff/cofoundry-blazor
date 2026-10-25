@@ -5,7 +5,7 @@ installed **alongside** the AngularJS admin while modules are migrated one at a 
 
 > **Status: first slice.** Builds cleanly. The Dashboard, Pages (list, filter, create, details/edit, publish,
 > unpublish, change URL, duplicate, access rules), Directories, Page Templates, Images, Documents, Site Settings, Roles, Users
-> and Custom Entities (phases 1 and 2) modules have been smoke-tested in `Dev.Sandbox`.
+> and Custom Entities (phases 1 to 3) modules have been smoke-tested in `Dev.Sandbox`.
 
 ## Installing side-by-side
 
@@ -103,8 +103,16 @@ chosen by the schema's data template name:
   integers, which the AngularJS admin didn't render), ImageAsset, CustomEntitySelector (a search-as-you-type
   `FormFieldFilteredDropdown` with an "Add" button that creates one in a dialog) and CustomEntityCollection (a
   table filled from `CustomEntityPickerDialog`, which filters, pages and can also create; orderable
-  collections reorder by dragging rows). Anything else shows a "can't be edited in this
-  admin yet" placeholder that keeps the value and still shows its validation messages.
+  collections reorder by dragging rows), NestedDataModelCollection and NestedDataModelMultiTypeCollection.
+  Anything else shows a "can't be edited in this admin yet" placeholder that keeps the value and still shows
+  its validation messages.
+* Nested data models: the collection fields show a table of the items' [PreviewTitle], [PreviewDescription]
+  and [PreviewImage] values (`NestedDataModelPreview`), and add or edit one item at a time in
+  `EditNestedDataModelDialog`, which is a `DataModelFieldSet` of the nested schema. The dialog edits a shallow
+  copy, so Cancel discards the changes (the AngularJS dialog edited the item in place, so they survived a
+  cancel). That's safe because the collection fields never change a list in place, they always set a new one.
+  The multi-type field adds from a hover menu of its types (`Ui/Menu`, the `cms-menu` port), and new items start
+  from the schema's `DefaultValue`, so no CLR type lookup is needed.
 * **Extension point:** implement `IDataModelFieldComponentRegistration` (discovered automatically) to map
   template names to components deriving from `DataModelFieldComponentBase`. Registrations are applied after the
   built-in `DefaultDataModelFieldComponentRegistration`, so they can replace a built-in field. This is the
@@ -112,6 +120,14 @@ chosen by the schema's data template name:
 * Field ids: `FormFieldBase` builds the input id from an optional `Id` parameter (the data model fields pass the
   property name, since they all bind to a binding's `Value`) and a cascaded `FieldIdPrefix`. `ModalDialog`
   cascades a unique prefix, so a dialog's `Title` field doesn't clash with the page's.
+
+### Dialogs
+
+`ModalDialog` renders through a `SectionOutlet` in `AdminLayout`, outside `.content`. Each open dialog takes its
+own level from the `ModalDialogStack` that the layout cascades, and the layout has one outlet per level, so a
+dialog opened from inside another (the image picker in a nested item dialog) stacks on top of it
+(`is-child-modal`), as the AngularJS modal service did. With a single outlet only the newest dialog would
+render, and the older dialog's content, including the field that opened the new dialog, would be disposed.
 
 ### File uploads
 
@@ -123,11 +139,9 @@ to a JPEG in the browser first (`wwwroot/js/image-upload.js`), and the title def
 
 ## Known gaps
 
-* Custom entities, still to come: nested data models (single and multi-type collections, phase 3), and the
-  remaining field types (HTML, document, page, directory, date/time, color, option lists, phase 4).
-  `[CustomEntityMultiTypeCollection]` (only used by page blocks) isn't ported. The image field ignores `[Image]`
-  size restrictions (the picker has no filters yet). Reordering in Change Ordering hasn't been exercised end to
-  end: the sandbox's only orderable type (Example) needs nested blocks, which arrive in phase 3
+* Custom entities, still to come: the remaining field types (HTML, document, page, directory, date/time,
+  color, option lists, phase 4). `[CustomEntityMultiTypeCollection]` (only used by page blocks) isn't ported.
+  The image field ignores `[Image]` size restrictions (the picker has no filters yet)
 * The image picker is single-select only. Its multi-select mode backs the image (and document) collection
   fields, which only appear in dynamic data-model forms (`[ImageCollection]` on custom entity / page block
   models), so they come with that form. Preset filter restrictions (`cms-width`, `cms-min-width`, ...) aren't

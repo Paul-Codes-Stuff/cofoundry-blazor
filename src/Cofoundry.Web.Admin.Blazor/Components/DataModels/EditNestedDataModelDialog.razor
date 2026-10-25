@@ -1,0 +1,55 @@
+@using System.Reflection
+
+@* Port of EditNestedDataModelDialog: adds or edits one item of a nested data model collection with a
+   DataModelFieldSet. It edits a copy, so Cancel leaves the item as it was (the AngularJS dialog edited
+   the item in place, so changes survived a cancel). The copy is shallow: the collection fields always
+   replace a list rather than change it, so the original's lists are never touched. *@
+<ModalDialog Title="@(Model == null ? "Add Item" : "Edit Item")" Size="large" OnClose="Cancel">
+    <AdminForm Model="_form" OnValidSubmit="SaveAsync">
+        <PageActions>
+            <AdminButtonSubmit Text="OK" />
+            <AdminButton Text="Cancel" OnClick="Cancel" />
+        </PageActions>
+        <PageBody>
+            <FormSection Title="Settings">
+                <DataModelFieldSet Model="_working" Schema="Schema" Context="Context" />
+            </FormSection>
+        </PageBody>
+    </AdminForm>
+</ModalDialog>
+
+@code {
+    private static readonly MethodInfo MemberwiseCloneMethod =
+        typeof(object).GetMethod("MemberwiseClone", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+    // The nested model is validated by the DataModelFieldSet, so the form itself has nothing to check.
+    private readonly object _form = new();
+    private object _working = default!;
+
+    [Parameter, EditorRequired] public NestedDataModelSchema Schema { get; set; } = default!;
+
+    /// <summary>
+    /// The item to edit, or null to add a new one, which starts from the schema's default value.
+    /// </summary>
+    [Parameter] public object? Model { get; set; }
+
+    [Parameter] public DataModelFieldContext Context { get; set; } = new(null);
+
+    /// <summary>
+    /// Raised with the edited copy (or the new item) when OK is clicked and it's valid.
+    /// </summary>
+    [Parameter] public EventCallback<object> OnSave { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _working = Copy(Model ?? Schema.DefaultValue.Value);
+    }
+
+    private Task SaveAsync() => OnSave.InvokeAsync(_working);
+
+    private Task Cancel() => OnCancel.InvokeAsync();
+
+    private static object Copy(object model) => MemberwiseCloneMethod.Invoke(model, null)!;
+}
