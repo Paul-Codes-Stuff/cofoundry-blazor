@@ -5,7 +5,8 @@
 
 @* Port of cms-form-field-image-upload. A transparent file input covers the drop area, so clicking
    anywhere on it opens the file picker and files can be dropped onto it. Oversized images are
-   resized in the browser first (wwwroot/js/image-upload.js), as the AngularJS admin did. *@
+   resized in the browser first (wwwroot/js/image-upload.js), as the AngularJS admin did. An optional field
+   (Required false) has a "Remove" button that clears the chosen file. *@
 
 <div class="control-group form-field-image-upload">
     <div class="control-group-area @AreaCssClass">
@@ -26,6 +27,14 @@
                             <button type="button" class="@(HasFile ? "btn-icon image-upload-cog" : "btn-icon")" title="@ButtonText" disabled="@_isReading">
                                 <i class="@(HasFile ? "fa fa-cog" : "fa fa-picture-o")"></i>
                             </button>
+                            @if (IsRemovable)
+                            {
+                                @* Above the transparent file input, which covers the drop area. *@
+                                <button type="button" style="position: relative; z-index: 1" disabled="@(_isReading || Disabled)"
+                                        @onclick="RemoveAsync">
+                                    Remove
+                                </button>
+                            }
                         </div>
 
                         @if (_isReading)
@@ -96,6 +105,11 @@
     [Parameter] public ImageAssetFilter? Filter { get; set; }
 
     /// <summary>
+    /// False shows a "Remove" button once a file is chosen, as the AngularJS field did for optional fields.
+    /// </summary>
+    [Parameter] public bool Required { get; set; }
+
+    /// <summary>
     /// True if <paramref name="file"/> is an SVG, which can't be resized so has no anchor location.
     /// </summary>
     public static bool IsSvg(IFileSource file) =>
@@ -104,6 +118,9 @@
     private bool HasFile => Value != null || CurrentAsset != null;
 
     private string ButtonText => HasFile ? "Change" : "Upload";
+
+    // The saved image can't be removed: an asset always has a file, and a null Value means "keep it".
+    private bool IsRemovable => !Required && Value != null;
 
     private string DropAreaCssClass => _isDragAccepted switch
     {
@@ -121,13 +138,28 @@
         if (!_isInitialised || !ReferenceEquals(Value, _selectedFile) || !ReferenceEquals(CurrentAsset, _shownAsset))
         {
             _isInitialised = true;
-            _shownAsset = CurrentAsset;
-            _selectedFile = null;
-            _resizeSize = null;
-            _error = null;
-            _previewUrl = CurrentAsset != null ? ImageRouteLibrary.ImageAsset(CurrentAsset, PreviewWidth) : AdminAssetPaths.ImageReplacement;
-            _fileName = CurrentAsset != null ? $"{CurrentAsset.FileName}.{CurrentAsset.FileExtension}" : null;
+            ShowCurrentAsset();
         }
+    }
+
+    private void ShowCurrentAsset()
+    {
+        _shownAsset = CurrentAsset;
+        _selectedFile = null;
+        _resizeSize = null;
+        _error = null;
+        _previewUrl = CurrentAsset != null ? ImageRouteLibrary.ImageAsset(CurrentAsset, PreviewWidth) : AdminAssetPaths.ImageReplacement;
+        _fileName = CurrentAsset != null ? $"{CurrentAsset.FileName}.{CurrentAsset.FileExtension}" : null;
+    }
+
+    /// <summary>
+    /// Clears the chosen file, going back to the saved image if there is one.
+    /// </summary>
+    private async Task RemoveAsync()
+    {
+        ShowCurrentAsset();
+        await ValueChanged.InvokeAsync(null);
+        NotifyFieldChanged();
     }
 
     private void OnDragEnter(DragEventArgs e)

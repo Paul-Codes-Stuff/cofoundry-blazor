@@ -154,6 +154,7 @@ Agreed direction:
   with `Cofoundry__AdminBlazor__DirectoryName=cms`, see SKILL.md) for a non-default prefix; `account-step.js` for My Account and editing yourself
   in Users; `error-boundary-step.js` (uses the sandbox's dev-only `/admin-next/test/error` page) for the error
   boundary; `session-step.js` for the session check; `image-upload-size-step.js` for picker upload size rules;
+  `upload-remove-step.js` (uses the dev-only `/admin-next/test/upload-fields` page) for optional upload fields;
   `admin-api-step.js` for `Cofoundry.Web.Admin.Api` (compares its GETs with the original's, writes through it);
   `smoke` also deletes the page it duplicates). The steps that open a page's details need at least one page.
 - **Dev.Sandbox has a "Member" user area** (`Cofoundry/UserAreas/MemberUserArea.cs`, code `MEM`) so access rules

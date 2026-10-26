@@ -1,7 +1,8 @@
 @inherits FormFieldBase<IFileSource?>
 
 @* Port of cms-form-field-document-upload. Like FormFieldImageUpload, a transparent file input
-   covers the box so it can be clicked or have a file dropped onto it. *@
+   covers the box so it can be clicked or have a file dropped onto it. An optional field (Required false)
+   has a "Remove" button that clears the chosen file. *@
 
 <div class="control-group form-field-image-upload">
     <div class="control-group-area @AreaCssClass">
@@ -27,6 +28,14 @@
                             <button type="button" class="btn-icon" title="@ButtonText" disabled="@_isReading">
                                 <i class="fa fa-upload"></i>
                             </button>
+                            @if (IsRemovable)
+                            {
+                                @* Above the transparent file input, which covers the box. *@
+                                <button type="button" style="position: relative; z-index: 1" disabled="@(_isReading || Disabled)"
+                                        @onclick="RemoveAsync">
+                                    Remove
+                                </button>
+                            }
                         </div>
                         @if (_isReading)
                         {
@@ -76,7 +85,15 @@
     /// </summary>
     [Parameter] public DocumentAssetSummary? CurrentAsset { get; set; }
 
+    /// <summary>
+    /// False shows a "Remove" button once a file is chosen, as the AngularJS field did for optional fields.
+    /// </summary>
+    [Parameter] public bool Required { get; set; }
+
     private string ButtonText => Value != null || CurrentAsset != null ? "Change" : "Upload";
+
+    // The saved document can't be removed: an asset always has a file, and a null Value means "keep it".
+    private bool IsRemovable => !Required && Value != null;
 
     // The AngularJS drop zone had no "dragarea" class, so only the drag-over highlight is added.
     private string? DropAreaCssClass => _isDragOver ? "dragover-accepted" : null;
@@ -90,12 +107,27 @@
         if (!_isInitialised || !ReferenceEquals(Value, _selectedFile) || !ReferenceEquals(CurrentAsset, _shownAsset))
         {
             _isInitialised = true;
-            _shownAsset = CurrentAsset;
-            _selectedFile = null;
-            _error = null;
-            _fileName = CurrentAsset != null ? $"{CurrentAsset.FileName}.{CurrentAsset.FileExtension}" : null;
-            _fileSize = CurrentAsset?.FileSizeInBytes ?? 0;
+            ShowCurrentAsset();
         }
+    }
+
+    private void ShowCurrentAsset()
+    {
+        _shownAsset = CurrentAsset;
+        _selectedFile = null;
+        _error = null;
+        _fileName = CurrentAsset != null ? $"{CurrentAsset.FileName}.{CurrentAsset.FileExtension}" : null;
+        _fileSize = CurrentAsset?.FileSizeInBytes ?? 0;
+    }
+
+    /// <summary>
+    /// Clears the chosen file, going back to the saved document if there is one.
+    /// </summary>
+    private async Task RemoveAsync()
+    {
+        ShowCurrentAsset();
+        await ValueChanged.InvokeAsync(null);
+        NotifyFieldChanged();
     }
 
     private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)

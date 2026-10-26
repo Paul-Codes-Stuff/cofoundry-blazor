@@ -68,6 +68,7 @@ node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-adm
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/error-boundary-step.js  # unexpected errors
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/session-step.js  # signed out in another tab
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/image-upload-size-step.js  # picker upload size rules
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/upload-remove-step.js  # optional upload fields' Remove
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/admin-api-step.js  # Cofoundry.Web.Admin.Api
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/visual-editor-step.js  # visual editor on the site
 STYLES_BASELINE=1 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/styles-step.js  # before a style change
@@ -161,6 +162,10 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   checks the first goes to sign in when focused. The check is throttled, so it waits 15 seconds.
 - **`image-upload-size-step.js`** opens the blog post thumbnail's picker (min 460x460), uploads a 100x100 image
   (rejected) and a 500x500 one (accepted), and saves nothing.
+- **`upload-remove-step.js`** checks a required upload field (Upload Image) has no "Remove", then uses the
+  sandbox's dev-only `/admin-next/test/upload-fields` page, whose optional fields are the only ones with it: Remove
+  clears a chosen image (back to the saved one, the first image in the library, so it needs one) and a chosen
+  document. It clicks Remove for real, since the button has to sit above the transparent file input. Saves nothing.
 - **`styles-step.js`** is for stylesheet changes. With `STYLES_BASELINE=1` it screenshots 18 screens (lists,
   forms, the field types form, a dialog, an open search dropdown, the signed-out login) into
   `styles-baseline`; without, it takes them again and fails any screen with more than 0.2% of pixels changed,

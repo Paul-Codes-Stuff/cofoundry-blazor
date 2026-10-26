@@ -1,0 +1,42 @@
+@page "/test/upload-fields"
+@namespace Dev.Sandbox
+@inject IAdminBlazorExecutor Executor
+
+@* Dev-only page with optional upload fields, which no built-in form has, so their "Remove" button can be
+   tested. The image field shows the first image in the library as its saved file. Nothing is saved. *@
+<PageTitle>Upload Fields Test | Admin</PageTitle>
+
+<PageHeader Title="Upload Fields Test" />
+
+<AdminForm Model="_model">
+    <PageBody ContentType="form">
+        <FormSection Title="Optional uploads">
+            @if (_isLoaded)
+            {
+                <FormFieldImageUpload Title="Image" CurrentAsset="_currentImage" @bind-Value="_model.Image" />
+                <FormFieldDocumentUpload Title="Document" @bind-Value="_model.Document" />
+            }
+            <p id="upload-fields-values">Image: @(_model.Image?.FileName ?? "none"), Document: @(_model.Document?.FileName ?? "none")</p>
+        </FormSection>
+    </PageBody>
+</AdminForm>
+
+@code {
+    private readonly UploadFieldsModel _model = new();
+    private ImageAssetSummary? _currentImage;
+    private bool _isLoaded;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var images = await Executor.QueryAsync(new SearchImageAssetSummariesQuery { PageNumber = 1, PageSize = 1 });
+        _currentImage = images.Items.FirstOrDefault();
+        _isLoaded = true;
+    }
+
+    private sealed class UploadFieldsModel
+    {
+        public IFileSource? Image { get; set; }
+
+        public IFileSource? Document { get; set; }
+    }
+}
