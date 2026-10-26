@@ -1,7 +1,7 @@
 // The Blazor visual editor on the site's pages (Cofoundry:AdminBlazor:UseVisualEditor, on in Dev.Sandbox).
 // Creates a General page, then in edit mode: toolbar, add/edit/move/delete blocks through the iframe's dialogs,
 // publish/unpublish and copy a version to draft. Then a blog post (a custom entity region): add, edit and delete
-// a block and publish the post. Deletes what it creates at the end.
+// a block and publish the post, and the same in its "Edit template" mode. Deletes what it creates at the end.
 module.exports = async (page, c) => {
   const stamp = Date.now().toString(36);
   const title = `VisEd ${stamp}`;
@@ -36,7 +36,13 @@ module.exports = async (page, c) => {
   // c.shot takes full page screenshots, which resize the window: the editor redraws its overlays 500ms later.
   const hoverBlock = async index => {
     await page.mouse.move(0, 0); await page.waitForTimeout(700);
-    await blocks().nth(index).hover(); await page.waitForTimeout(300);
+    // Clear of the site's fixed navbar, where Playwright's own scrolling can leave it, and at the bottom left:
+    // the block's name label covers its top left, and its "+" (add below) the middle of a short block. A plain
+    // mouse move, as the popover it opens covers a short block, which a hover() would keep retrying on.
+    const block = blocks().nth(index);
+    await block.evaluate(el => window.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + window.scrollY - 200)));
+    const box = await block.boundingBox();
+    await page.mouse.move(box.x + 3, box.y + Math.max(1, box.height - 3), { steps: 5 }); await page.waitForTimeout(300);
   };
 
   // Move, add above/below and delete are in the "..." menu, which opens on hover.
@@ -363,6 +369,68 @@ module.exports = async (page, c) => {
       await waitForDialog('Delete Block');
       await waitForReload(() => modal().locator('.main-cta').click());
       if (await blocks().count()) throw new Error('block not deleted');
+    });
+
+    // "Edit template" on a custom entity page (edittype=page): edits the details page's own regions, here the
+    // template's "Page Templates" sidebar region, with the page's commands rather than the post's.
+    await c.step('edit template: switch from the post', async () => {
+      if (!postSiteUrl) throw new Error('no blog post');
+      await openSite('?mode=edit', postSiteUrl);
+      const switches = page.locator('.cofoundry-sv__mode__button__group a');
+      if ((await switches.count()) !== 2) throw new Error('no edit type switch');
+      if (!/Edit\s*Blog Post/i.test(await switches.nth(0).innerText())) throw new Error('first switch: ' + await switches.nth(0).innerText());
+      await Promise.all([page.waitForNavigation(), switches.nth(1).click()]);
+      await page.waitForLoadState('load'); await page.waitForTimeout(800);
+      if (!/edittype=page/i.test(page.url())) throw new Error('url: ' + page.url());
+      const data = JSON.parse(await page.locator('#cofoundry-sv__data').textContent());
+      if (data.isCustomEntityRoute || data.visualEditorMode !== 'Edit' || data.entityNameSingular !== 'Page') throw new Error(JSON.stringify(data));
+      if (`/admin-next/pages/${data.pageId}` !== detailsPageUrl) throw new Error('not the details page: ' + data.pageId);
+      if ((await page.evaluate(() => document.documentElement.className)) !== 'cofoundry-editmode__page') throw new Error('html class');
+      // Only the template's region gets an overlay; the post's region is dimmed.
+      const names = await page.locator('.cofoundry-sv__ui-wrap--region .cofoundry-sv__ui-wrap-name').allTextContents();
+      if (names.join('|') !== 'Page Templates') throw new Error('region overlays: ' + names.join('|'));
+      const opacity = await page.locator('[data-cms-custom-entity-region]').evaluate(el => getComputedStyle(el).opacity);
+      if (opacity !== '0.5') throw new Error('post region not dimmed: ' + opacity);
+      await c.shot('ve-11-edit-template');
+    });
+
+    await c.step('edit template: add, edit and delete a block', async () => {
+      blockSelector = '[data-cms-page-region-block]';
+      await page.mouse.move(0, 0); await page.waitForTimeout(700);
+      await page.locator('.cofoundry-sv__btn-add-block--empty').click();
+      await waitForDialog('Add Content Block to Page Templates');
+      await modal().locator('tr:has-text("Plain text")').dblclick();
+      const text = modal().locator('.control-group:has(label:text-is("Plain text:")) textarea');
+      await text.waitFor({ timeout: 15000 });
+      await text.fill(`Template text ${stamp}`); await text.blur();
+      await waitForReload(() => modal().locator('input[type=submit][value="Save"]').click());
+      if (!/edittype=page/i.test(page.url())) throw new Error('edit type lost on reload: ' + page.url());
+      if ((await blocks().count()) !== 1) throw new Error('blocks: ' + await blocks().count());
+      if (!(await page.locator('[data-cms-page-region] [data-cms-page-region-block]').innerText()).includes(`Template text ${stamp}`)) throw new Error('block not in the template region');
+
+      await hoverBlock(0);
+      await page.locator('#cofoundry-sv__btn-block-edit').click();
+      await waitForDialog('Edit Content Block');
+      const edit = modal().locator('.control-group:has(label:text-is("Plain text:")) textarea');
+      await edit.waitFor({ timeout: 15000 });
+      if ((await edit.inputValue()) !== `Template text ${stamp}`) throw new Error('text not loaded: ' + await edit.inputValue());
+      await edit.fill(`Template edited ${stamp}`); await edit.blur();
+      await waitForReload(() => modal().locator('input[type=submit][value="Save"]').click());
+      if (!(await blocks().first().innerText()).includes(`Template edited ${stamp}`)) throw new Error('edit not shown');
+
+      await hoverBlock(0);
+      await (await advanced('cofoundry-sv__btn-block-delete')).click();
+      await waitForDialog('Delete Block');
+      await waitForReload(() => modal().locator('.main-cta').click());
+      if (await blocks().count()) throw new Error('block not deleted');
+    });
+
+    await c.step('edit template: publish publishes the page', async () => {
+      await page.locator('.cofoundry-sv__options__button:has-text("Publish")').click();
+      await waitForDialog('Publish Page');
+      await waitForReload(() => modal().locator('.main-cta').click());
+      await page.goto(detailsPageUrl); await c.settle();
+      if (!/^published$/i.test(await c.status())) throw new Error('details page status: ' + await c.status());
     });
   } finally {
     await c.step('custom entity: delete the page, post and author', async () => {

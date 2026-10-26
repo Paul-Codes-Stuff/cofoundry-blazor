@@ -180,7 +180,9 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   an old version to draft with and without an existing draft, and unpublish. It checks `/test/test`'s json is left
   alone. Then it creates an author, a blog post (with the first image in the library as its thumbnail, so it
   needs one) and a Custom Entity Details page, and adds, edits and deletes a block in the post's region and
-  publishes the post. It deletes everything it created. About 4 minutes. The frame is
+  publishes the post. Then it switches to "Edit template" (`edittype=page`): only the template's own region gets
+  an overlay, the dialogs say "Page", and adding, editing and deleting a block there and publishing publish the
+  details page. It deletes everything it created. About 5 minutes. The frame is
   `page.frameLocator('#cofoundry-src__iFrame')`, and TinyMCE is a frame inside it.
 - **`extension-module-step.js`** covers the module extension point through the sandbox's Products module, a
   Blazor page in Dev.Sandbox (`Cofoundry/Admin/Blazor`): the nav link, direct load (endpoints) and in-app
@@ -270,6 +272,10 @@ can compare the two side by side.
   the window. Wait after a shot before hovering a block, and move the mouse off it first: after a reload the
   pointer may already be inside, which fires no `mouseenter`. Move up/down, add above/below and delete are in the
   "..." menu, which opens on hover.
+- **Hover a block at its bottom left with `page.mouse.move`**, after scrolling it 200px below the top. The
+  site's fixed navbar covers blocks near the top, the block's name label covers its top left and its "+" (add
+  below) the middle of a short block. The popover that opens then covers a short (one line) block, so
+  `locator.hover()` keeps retrying "element intercepts pointer events" and times out.
 - **Git Bash rewrites arguments that start with `/`** into Windows paths. `/admin-next/pages` becomes
   `C:/Program Files/Git/admin-next/pages`. Pass driver paths without the leading slash. For curl, use full
   URLs, or `MSYS_NO_PATHCONV=1`.
