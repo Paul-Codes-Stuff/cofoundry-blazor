@@ -68,6 +68,7 @@ node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-adm
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/error-boundary-step.js  # unexpected errors
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/session-step.js  # signed out in another tab
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/image-upload-size-step.js  # picker upload size rules
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/admin-api-step.js  # Cofoundry.Web.Admin.Api
 STYLES_BASELINE=1 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/styles-step.js  # before a style change
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/styles-step.js  # after: compares screenshots
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
@@ -164,6 +165,12 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   writing `styles-diff-<screen>.png` with the changes in red. Relative times ("15 hours ago") and new data
   show up as small diffs, and the page templates table has once shifted a few pixels with nothing changed,
   so read the diff images before blaming the CSS. Saves nothing.
+- **`admin-api-step.js`** covers `Cofoundry.Web.Admin.Api`, which the sandbox serves at `/admin-next/api`
+  (`Cofoundry:AdminApi:BaseUrl` in its appsettings.json) next to the original at `/admin/api`. It checks a
+  signed-out request gets a 401, that 30-odd GET endpoints return byte-identical bodies from both (per-item
+  paths are skipped when their list is empty), that a write without the antiforgery token is refused (it takes
+  a token from an AngularJS admin page, as the AngularJS client does), a validation error, and adds, renames
+  and deletes a role through the copy. It leaves nothing behind.
 - **`extension-module-step.js`** covers the module extension point through the sandbox's Products module, a
   Blazor page in Dev.Sandbox (`Cofoundry/Admin/Blazor`): the nav link, direct load (endpoints) and in-app
   navigation (router), the signed-out redirect, validation, its custom selector field, save and cancel. The
@@ -211,8 +218,20 @@ NODE_PATH="$TEMP/blazor-admin-pw/node_modules" node .claude/skills/run-blazor-ad
 
 It checks the signed-out redirect to `/cms/auth/login` (with styles applied), sign in, that no nav link
 points at `/admin-next`, in-app navigation and back, a dialog, direct loads of the root and a static SSR page,
-the session check, that `/admin-next` no longer serves the admin, and sign out. Stop that sandbox only, e.g. in
+the session check, that `/admin-next` no longer serves the admin, and sign out. It opens the first page's
+details, so it needs at least one page (the "nav links" and "dialog" steps fail on an empty pages list). Stop that sandbox only, e.g. in
 PowerShell: `Get-CimInstance Win32_Process -Filter "Name='Dev.Sandbox.exe'" | ? CommandLine -match 5008 | % { Stop-Process -Id $_.ProcessId }`.
+
+## Admin API base url collision
+
+`Cofoundry.Web.Admin.Api` refuses to start at the AngularJS admin's own API path while `Cofoundry.Web.Admin` is
+installed. To check, start a second sandbox with the colliding setting; it should exit at once with "already
+serves the admin API at "admin/api"" in the log:
+
+```bash
+cd samples/src/Dev/Dev.Sandbox && Cofoundry__AdminApi__BaseUrl=admin/api ASPNETCORE_ENVIRONMENT=Development timeout 90 dotnet run --no-build --no-launch-profile --urls http://localhost:5008 > "$TEMP/sandbox2.log" 2>&1
+grep "serves the admin API" "$TEMP/sandbox2.log"
+```
 
 ## Unit tests
 

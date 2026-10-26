@@ -120,6 +120,12 @@ public static class AdminBlazorRoutes
     public const string SessionCheckRoute = "/auth/session";
 
     /// <summary>
+    /// Reserved within the admin for Cofoundry.Web.Admin.Api, whose default base url is the admin directory
+    /// followed by "/api": the admin doesn't handle requests under it.
+    /// </summary>
+    public const string ApiRoute = "/api";
+
+    /// <summary>
     /// The account recovery page linked from the reset password email, which adds the token as a
     /// query parameter (see <see cref="AdminBlazorMailTemplateBuilder"/>).
     /// </summary>

@@ -53,14 +53,16 @@ In the `Cofoundry:AdminBlazor` configuration section (`AdminBlazorSettings`):
 
 Razor `@page` directives only accept string literals, so pages declare their routes **without** the prefix
 (`@page "/pages"`, and `@page "/"` for the root). `AdminBlazorStartupConfigurationTask` maps the admin in its
-own branch of the pipeline (`app.Map(prefix, ...)`, before Cofoundry's routing), where the prefix is the
-request's `PathBase`, as for any ASP.NET Core app hosted under a sub-path. `App.razor` sets `<base href>` to it,
+own branch of the pipeline (before Cofoundry's routing, moving the prefix to the request's `PathBase` as
+`app.Map(prefix, ...)` would), as for any ASP.NET Core app hosted under a sub-path. `App.razor` sets `<base href>` to it,
 so the router finds the same pages on the server (static SSR) and in the browser, and `blazor.web.js`
 connects to the circuit hub under the prefix. A route group doesn't work: static SSR looks the endpoint's
 prefixed route up among the declared ones and fails. Code builds urls with `AdminBlazorRoutes`, which reads
 the prefix from the settings at startup. Asset paths are absolute (`AdminAssetPaths`), since a relative one
 would resolve under the prefix. Cofoundry's catch-all page route never sees the admin's requests, so an
-unknown admin url gets the admin's own "not found" page.
+unknown admin url gets the admin's own "not found" page. The one exception is `/{prefix}/api`, which the
+branch leaves to the rest of the pipeline for `Cofoundry.Web.Admin.Api` (its README), whose default path is
+the admin directory followed by `/api`.
 
 ## How it differs from the AngularJS admin
 

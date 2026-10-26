@@ -14,6 +14,7 @@
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.Vimeo\Cofoundry.Plugins.Vimeo.Admin\Cofoundry.Plugins.Vimeo.Admin.csproj" />
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.Vimeo\Cofoundry.Plugins.Vimeo.Admin.Blazor\Cofoundry.Plugins.Vimeo.Admin.Blazor.csproj" />
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.Imaging.SkiaSharp\Cofoundry.Plugins.Imaging.SkiaSharp\Cofoundry.Plugins.Imaging.SkiaSharp.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Cofoundry.Web.Admin.Api\Cofoundry.Web.Admin.Api.csproj" />
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Web.Admin.Blazor\Cofoundry.Web.Admin.Blazor.csproj" />
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Web.Admin\Cofoundry.Web.Admin.csproj" />
   </ItemGroup>

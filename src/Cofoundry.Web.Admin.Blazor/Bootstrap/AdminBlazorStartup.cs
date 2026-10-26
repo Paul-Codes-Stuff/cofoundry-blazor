@@ -99,8 +99,21 @@ public class AdminBlazorStartupConfigurationTask
             return;
         }
 
-        app.Map(AdminBlazorRoutes.Root, admin =>
+        // "{Root}/api" is left to the main pipeline, for Cofoundry.Web.Admin.Api (Cofoundry:AdminApi:BaseUrl),
+        // e.g. the Blazor admin at "admin" and the API at its default "admin/api". No admin page uses it.
+        app.MapWhen(IsAdminRequest, admin =>
         {
+            // What app.Map does: the prefix moves from the Path to the PathBase.
+            admin.Use((context, next) =>
+            {
+                var request = context.Request;
+                request.Path.StartsWithSegments(AdminBlazorRoutes.Root, StringComparison.OrdinalIgnoreCase, out var matched, out var remaining);
+                request.PathBase = request.PathBase.Add(matched);
+                request.Path = remaining;
+
+                return next(context);
+            });
+
             admin.UseRouting();
 
             // The prefix only needs to be the PathBase for matching. Put the request back as it came, since
@@ -146,5 +159,13 @@ public class AdminBlazorStartupConfigurationTask
                 });
             });
         });
+    }
+
+    private static bool IsAdminRequest(HttpContext context)
+    {
+        var path = context.Request.Path;
+
+        return path.StartsWithSegments(AdminBlazorRoutes.Root, StringComparison.OrdinalIgnoreCase, out var remaining)
+            && !remaining.StartsWithSegments(AdminBlazorRoutes.ApiRoute, StringComparison.OrdinalIgnoreCase);
     }
 }

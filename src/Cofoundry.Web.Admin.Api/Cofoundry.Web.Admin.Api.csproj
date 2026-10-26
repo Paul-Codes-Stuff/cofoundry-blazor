@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Cofoundry.Web.Admin.Api</PackageId>
+    <Description>
+      The Cofoundry admin panel API (the "/admin/api" endpoints) without the AngularJS admin panel. Used by
+      admin modules and plugins that call the API, after Cofoundry.Web.Admin is removed.
+    </Description>
+    <PackageTags>Cofoundry Web Admin CMS API</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RootNamespace>Cofoundry.Web.Admin.Api</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cofoundry.Core\Cofoundry.Core.csproj" />
+    <ProjectReference Include="..\Cofoundry.Domain\Cofoundry.Domain.csproj" />
+    <ProjectReference Include="..\Cofoundry.Web\Cofoundry.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+</Project>

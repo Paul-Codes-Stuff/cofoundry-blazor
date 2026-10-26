@@ -39,16 +39,21 @@ Read `src/Cofoundry.Web.Admin.Blazor/README.md` first: it has the status, what i
 The Blazor admin calling the domain directly does not break anything today, because `Cofoundry.Web.Admin` and its
 `/admin/api` controllers are still installed. But `/admin/api` is a public surface that other code depends on:
 
-- the **Visual Editor**, which stays on the MVC site and calls the API (`VisualEditor/Js/DataServices/PageBlockService.js`)
+- the **Visual Editor**, which calls the API (`VisualEditor/Js/DataServices/PageBlockService.js`). It is itself part of
+  `Cofoundry.Web.Admin` (`Admin/Modules/VisualEditor`, an AngularJS app plus a global MVC result filter), so it
+  goes when that package does unless it's moved out too
 - **custom admin modules and plugins** that ship their own controllers deriving from `BaseAdminApiController`
   (sandbox Products module, `Cofoundry.Plugins.ErrorLogging.Admin`, `Cofoundry.Plugins.YouTube.Admin`)
 - possibly external scripts using the admin cookie (unknown)
 
-Agreed direction, not yet done:
+Agreed direction:
 
-1. Treat `/admin/api` as a supported surface. **Do not remove it** when the AngularJS UI goes. The likely route is
-   moving the API controllers and `BaseAdminApiController` into their own package (e.g. `Cofoundry.Web.Admin.Api`)
-   with no AngularJS dependency.
+1. Treat `/admin/api` as a supported surface. **Do not remove it** when the AngularJS UI goes. **Done as a copy:**
+   `src/Cofoundry.Web.Admin.Api` (read its README) has the API controllers, model binders, `BaseAdminApiController`
+   and `ForAdminApiController`, with no AngularJS dependency and `Cofoundry.Web.Admin` untouched. Its base url is
+   `Cofoundry:AdminApi:BaseUrl` (default `{Cofoundry:Admin:DirectoryName}/api`; the sandbox uses `admin-next/api`).
+   The plugins' controllers still derive from `Cofoundry.Web.Admin`'s base class, because their AngularJS clients
+   build urls from the AngularJS admin's directory.
 2. Keep the Blazor admin on in-process domain calls. Routing it through the API wouldn't help compatibility.
 3. The bigger break is the **AngularJS extension model**: custom modules, custom form-field directives (e.g. the
    YouTube plugin) and shared AngularJS services. Blazor now has its own extension points
@@ -104,6 +109,12 @@ Agreed direction, not yet done:
 - Uploads: buffer into `BufferedFileSource` (the domain reads files more than once). A field that sets its value
   itself must call `NotifyFieldChanged()`, and a page that changes another field in code (e.g. a title from the
   file name) calls `AdminForm.NotifyFieldChanged`, or a stale "required" message stays visible.
+- **`Cofoundry.Web.Admin`'s Visual Editor filter wraps every MVC result** outside `/{Admin:DirectoryName}` and
+  `/api` (a global `VisualEditorContentFilter`) and rewrites it with a UTF-8 BOM. Any MVC endpoint the port adds
+  outside those paths gets it: `Cofoundry.Web.Admin.Api` removes it from its actions
+  (`AdminApiActionDescriptorProvider`). Blazor components aren't MVC results, so the admin isn't affected.
+- The Blazor admin's pipeline branch skips `/{prefix}/api` (`AdminBlazorRoutes.ApiRoute`), where
+  `Cofoundry.Web.Admin.Api` lives by default once the Blazor admin takes the `admin` directory.
 
 ## Status and next steps
 
@@ -132,7 +143,8 @@ Agreed direction, not yet done:
   with `Cofoundry__AdminBlazor__DirectoryName=cms`, see SKILL.md) for a non-default prefix; `account-step.js` for My Account and editing yourself
   in Users; `error-boundary-step.js` (uses the sandbox's dev-only `/admin-next/test/error` page) for the error
   boundary; `session-step.js` for the session check; `image-upload-size-step.js` for picker upload size rules;
-  `smoke` also deletes the page it duplicates).
+  `admin-api-step.js` for `Cofoundry.Web.Admin.Api` (compares its GETs with the original's, writes through it);
+  `smoke` also deletes the page it duplicates). The steps that open a page's details need at least one page.
 - **Dev.Sandbox has a "Member" user area** (`Cofoundry/UserAreas/MemberUserArea.cs`, code `MEM`) so access rules
   and a non-admin users list can be exercised. Access Control is hidden on sites with only the admin area.
 - **To revisit:** the modal dialog close icon (top right, `Components/Dialogs/ModalDialog.razor`) was reported as
