@@ -51,63 +51,100 @@ public class AdminBlazorServiceConfigurationTask : IStartupServiceConfigurationT
 }
 
 /// <summary>
-/// Razor Component endpoints carry anti-forgery metadata, so the anti-forgery middleware has
-/// to run after authentication/authorization and before endpoints are executed.
+/// Maps the Blazor admin in its own branch of the pipeline under <see cref="AdminBlazorSettings.DirectoryName"/>,
+/// before Cofoundry's routing, so Cofoundry's catch-all page route never sees its requests.
 /// </summary>
-public class AdminBlazorAntiforgeryStartupConfigurationTask
+/// <remarks>
+/// Razor <c>@page</c> routes are literals, so pages declare them without the prefix. In the branch the prefix
+/// is the request's <c>PathBase</c> while routing, which is how ASP.NET Core hosts an app under a sub-path:
+/// the endpoints match the declared routes, so static SSR finds its page in the router's table of declared
+/// routes, and App.razor's base href gives the browser the same base. A route group can't do this: static
+/// SSR looks the endpoint's prefixed template up among the declared routes, and fails.
+/// </remarks>
+public class AdminBlazorStartupConfigurationTask
     : IStartupConfigurationTask
     , IRunAfterStartupConfigurationTask
-{
-    public int Ordering => (int)StartupTaskOrdering.Early;
-
-    public IReadOnlyCollection<Type> RunAfter => [typeof(AuthStartupConfigurationTask)];
-
-    public void Configure(IApplicationBuilder app)
-    {
-        app.UseAntiforgery();
-    }
-}
-
-/// <summary>
-/// Maps the Blazor admin. Registered early so that it takes precedence over Cofoundry's
-/// catch-all page route.
-/// </summary>
-public class AdminBlazorRouteRegistration : IOrderedRouteRegistration
+    , IRunBeforeStartupConfigurationTask
 {
     private readonly AdminSettings _adminSettings;
+    private readonly AdminBlazorSettings _adminBlazorSettings;
     private readonly AdminBlazorModuleRegistry _moduleRegistry;
 
-    public AdminBlazorRouteRegistration(AdminSettings adminSettings, AdminBlazorModuleRegistry moduleRegistry)
+    public AdminBlazorStartupConfigurationTask(
+        AdminSettings adminSettings,
+        AdminBlazorSettings adminBlazorSettings,
+        AdminBlazorModuleRegistry moduleRegistry
+        )
     {
         _adminSettings = adminSettings;
+        _adminBlazorSettings = adminBlazorSettings;
         _moduleRegistry = moduleRegistry;
     }
 
-    public int Ordering => (int)RouteRegistrationOrdering.Early;
+    public int Ordering => (int)StartupTaskOrdering.Early;
 
-    public void RegisterRoutes(IEndpointRouteBuilder routeBuilder)
+    // After static files (blazor.web.js and the _content assets are served from the site root) and the
+    // database auto-update.
+    public IReadOnlyCollection<Type> RunAfter => [typeof(StaticFileStartupConfigurationTask), typeof(AutoUpdateMiddlewareStartupConfigurationTask)];
+
+    public IReadOnlyCollection<Type> RunBefore => [typeof(UseRoutingStartupConfigurationTask)];
+
+    public void Configure(IApplicationBuilder app)
     {
+        // Before anything reads the routes.
+        AdminBlazorRoutes.SetPrefix(_adminBlazorSettings.DirectoryName);
+
         if (_adminSettings.Disabled)
         {
             return;
         }
 
-        // Pages from other assemblies (IAdminBlazorModuleRegistration) need endpoints too, or a request
-        // straight to one falls through to Cofoundry's page route. Routes.razor adds them to the router.
-        routeBuilder
-            .MapRazorComponents<App>()
-            .AddInteractiveServerRenderMode()
-            .AddAdditionalAssemblies([.. _moduleRegistry.AdditionalAssemblies]);
-
-        // Authenticating runs the cookie's checks (expiry, and the security stamp once its validation
-        // interval has passed). A plain 401 rather than a challenge, which would redirect to sign in.
-        routeBuilder.MapGet(AdminBlazorRoutes.SessionCheck, async (HttpContext context) =>
+        app.Map(AdminBlazorRoutes.Root, admin =>
         {
-            var result = await context.AuthenticateAsync(AuthenticationSchemeNames.UserArea(CofoundryAdminUserArea.Code));
-            var isSignedIn = result.Succeeded
-                && result.Principal.FindFirst(CofoundryClaimTypes.UserAreaCode)?.Value == CofoundryAdminUserArea.Code;
+            admin.UseRouting();
 
-            return isSignedIn ? Results.NoContent() : Results.Unauthorized();
+            // The prefix only needs to be the PathBase for matching. Put the request back as it came, since
+            // Cofoundry builds absolute urls from the PathBase (ISiteUrlResolver), which would otherwise
+            // double the prefix in, e.g., the emails the admin sends. The router uses the matched endpoint.
+            admin.Use((context, next) =>
+            {
+                var request = context.Request;
+                if (request.PathBase.Value?.EndsWith(AdminBlazorRoutes.Root, StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    var pathBase = request.PathBase.Value;
+                    request.Path = new PathString(pathBase[^AdminBlazorRoutes.Root.Length..]).Add(request.Path);
+                    request.PathBase = new PathString(pathBase[..^AdminBlazorRoutes.Root.Length]);
+                }
+
+                return next(context);
+            });
+
+            admin.UseAuthentication();
+            admin.UseAuthorization();
+
+            // Razor Component endpoints carry anti-forgery metadata, checked between routing and the endpoint.
+            admin.UseAntiforgery();
+
+            admin.UseEndpoints(endpoints =>
+            {
+                // Pages from other assemblies (IAdminBlazorModuleRegistration) need endpoints too, or a
+                // request straight to one 404s. Routes.razor adds them to the router.
+                endpoints
+                    .MapRazorComponents<App>()
+                    .AddInteractiveServerRenderMode()
+                    .AddAdditionalAssemblies([.. _moduleRegistry.AdditionalAssemblies]);
+
+                // Authenticating runs the cookie's checks (expiry, and the security stamp once its validation
+                // interval has passed). A plain 401 rather than a challenge, which would redirect to sign in.
+                endpoints.MapGet(AdminBlazorRoutes.SessionCheckRoute, async (HttpContext context) =>
+                {
+                    var result = await context.AuthenticateAsync(AuthenticationSchemeNames.UserArea(CofoundryAdminUserArea.Code));
+                    var isSignedIn = result.Succeeded
+                        && result.Principal.FindFirst(CofoundryClaimTypes.UserAreaCode)?.Value == CofoundryAdminUserArea.Code;
+
+                    return isSignedIn ? Results.NoContent() : Results.Unauthorized();
+                });
+            });
         });
     }
 }

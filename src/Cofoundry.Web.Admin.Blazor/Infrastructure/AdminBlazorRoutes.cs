@@ -1,61 +1,70 @@
 namespace Cofoundry.Web.Admin.Blazor;
 
 /// <summary>
-/// Central definition of the routes used by the Blazor admin. Blazor <c>@page</c> routes
-/// are compile-time constants, so the prefix cannot be driven from configuration like the
-/// AngularJS admin's <c>AdminSettings.DirectoryName</c>. It is deliberately different to the
-/// AngularJS admin prefix so that both admins can be installed side-by-side during migration.
-/// Razor <c>@page</c> directives only accept string literals, so each page component repeats the
-/// "admin-next" prefix literally. To change the prefix, update <see cref="Prefix"/> and every
-/// <c>@page</c> directive (search for "admin-next").
+/// Central definition of the routes used by the Blazor admin. The prefix comes from
+/// <see cref="AdminBlazorSettings.DirectoryName"/> ("admin-next" by default), which must differ from the
+/// AngularJS admin's <c>AdminSettings.DirectoryName</c> while both admins are installed.
+/// <para>
+/// Razor <c>@page</c> directives only accept string literals, so pages declare their routes without the
+/// prefix (e.g. <c>@page "/pages"</c>). <c>AdminBlazorStartupConfigurationTask</c> maps them in a branch of
+/// the pipeline for the prefix, and <c>App.razor</c> sets the document's base href to it.
+/// </para>
 /// </summary>
 public static class AdminBlazorRoutes
 {
-    /// <summary>
-    /// The root path segment of the Blazor admin, without slashes.
-    /// </summary>
-    public const string Prefix = "admin-next";
+    public const string DefaultPrefix = "admin-next";
 
-    public const string Root = "/" + Prefix;
+    /// <summary>
+    /// The root path segment of the Blazor admin, without slashes. Set from
+    /// <see cref="AdminBlazorSettings.DirectoryName"/> when the routes are registered.
+    /// </summary>
+    public static string Prefix { get; private set; } = DefaultPrefix;
+
+    internal static void SetPrefix(string prefix)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(prefix);
+        Prefix = prefix.Trim('/');
+    }
+
+    public static string Root => "/" + Prefix;
 
     /// <summary>
     /// The landing page. <see cref="Root"/> also renders the dashboard.
     /// </summary>
-    public const string Dashboard = Root + "/dashboard";
+    public static string Dashboard => Root + "/dashboard";
 
-    public const string Pages = Root + "/pages";
+    public static string Pages => Root + "/pages";
 
     public static string PagesInDirectory(int pageDirectoryId) => $"{Pages}?pageDirectoryId={pageDirectoryId}";
 
     public static string PagesUsingTemplate(int pageTemplateId) => $"{Pages}?pageTemplateId={pageTemplateId}";
-    public const string PageNew = Pages + "/new";
-    public const string PageDetailsTemplate = Pages + "/{PageId:int}";
+    public static string PageNew => Pages + "/new";
 
     public static string PageDetails(int pageId) => $"{Pages}/{pageId}";
 
-    public const string Images = Root + "/images";
-    public const string ImageNew = Images + "/new";
+    public static string Images => Root + "/images";
+    public static string ImageNew => Images + "/new";
 
     public static string ImageDetails(int imageAssetId) => $"{Images}/{imageAssetId}";
 
-    public const string Documents = Root + "/documents";
-    public const string DocumentNew = Documents + "/new";
+    public static string Documents => Root + "/documents";
+    public static string DocumentNew => Documents + "/new";
 
     public static string DocumentDetails(int documentAssetId) => $"{Documents}/{documentAssetId}";
 
-    public const string Settings = Root + "/settings";
+    public static string Settings => Root + "/settings";
 
-    public const string Roles = Root + "/roles";
-    public const string RoleNew = Roles + "/new";
+    public static string Roles => Root + "/roles";
+    public static string RoleNew => Roles + "/new";
 
     public static string RoleDetails(int roleId) => $"{Roles}/{roleId}";
 
-    public const string PageTemplates = Root + "/page-templates";
+    public static string PageTemplates => Root + "/page-templates";
 
     public static string PageTemplateDetails(int pageTemplateId) => $"{PageTemplates}/{pageTemplateId}";
 
-    public const string Directories = Root + "/directories";
-    public const string DirectoryNew = Directories + "/new";
+    public static string Directories => Root + "/directories";
+    public static string DirectoryNew => Directories + "/new";
 
     public static string DirectoryDetails(int pageDirectoryId) => $"{Directories}/{pageDirectoryId}";
 
@@ -87,29 +96,34 @@ public static class AdminBlazorRoutes
     /// <summary>
     /// The signed-in user's own details ("My Account").
     /// </summary>
-    public const string Account = Root + "/account";
-    public const string AccountEdit = Account + "?edit=true";
-    public const string AccountChangePassword = Account + "/change-password";
+    public static string Account => Root + "/account";
+    public static string AccountEdit => Account + "?edit=true";
+    public static string AccountChangePassword => Account + "/change-password";
 
     /// <summary>
     /// First-run setup, only available until the site is set up.
     /// </summary>
-    public const string Setup = Root + "/setup";
+    public static string Setup => Root + "/setup";
 
-    public const string Login = Root + "/auth/login";
-    public const string Logout = Root + "/auth/logout";
-    public const string ForgotPassword = Root + "/auth/forgot-password";
+    public static string Login => Root + "/auth/login";
+    public static string Logout => Root + "/auth/logout";
+    public static string ForgotPassword => Root + "/auth/forgot-password";
 
     /// <summary>
     /// Returns 204 while the admin is signed in, else 401. Polled by <c>js/session-check.js</c>.
     /// </summary>
-    public const string SessionCheck = Root + "/auth/session";
+    public static string SessionCheck => Root + SessionCheckRoute;
+
+    /// <summary>
+    /// <see cref="SessionCheck"/>'s route within the admin, where the prefix is the request's PathBase.
+    /// </summary>
+    public const string SessionCheckRoute = "/auth/session";
 
     /// <summary>
     /// The account recovery page linked from the reset password email, which adds the token as a
     /// query parameter (see <see cref="AdminBlazorMailTemplateBuilder"/>).
     /// </summary>
-    public const string ResetPassword = Root + "/auth/reset-password";
+    public static string ResetPassword => Root + "/auth/reset-password";
 
     public static string ForgotPasswordWithEmail(string? email)
     {

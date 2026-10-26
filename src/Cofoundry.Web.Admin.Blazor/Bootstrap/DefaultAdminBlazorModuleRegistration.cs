@@ -18,7 +18,7 @@ public class DefaultAdminBlazorModuleRegistration : IAdminBlazorModuleRegistrati
 {
     public IEnumerable<AdminBlazorModule> GetModules()
     {
-        yield return new("COFDSH", typeof(Dashboard), AdminBlazorRoutes.Dashboard);
+        yield return new("COFDSH", typeof(Dashboard), "/dashboard");
         yield return new("COFPAG", typeof(PageList));
         yield return new("COFIMG", typeof(ImageList));
         yield return new("COFDOC", typeof(DocumentList));

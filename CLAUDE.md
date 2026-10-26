@@ -13,8 +13,10 @@ Read `src/Cofoundry.Web.Admin.Blazor/README.md` first: it has the status, what i
 - **Auth:** sign-in/out is ported (`Components/Auth`, `/admin-next/auth/login|logout`). These pages are static
   SSR (`[ExcludeFromInteractiveRouting]`) because they set the auth cookie; `App.razor` picks the render mode
   per page. Forgot/reset/change password are ported too (same folder, static SSR, `AuthPageBase`).
-  `AdminBlazorMailTemplateBuilder` points the admin emails' reset and sign-in links at `/admin-next`, for mail
-  sent from either admin (the domain would otherwise build them from `AdminSettings.DirectoryName`).
+  `AdminBlazorMailTemplateBuilder` points the admin emails' reset and sign-in links at the Blazor admin, for mail
+  sent from either admin, only when `Cofoundry:AdminBlazor:UseForEmailLinks` is on (off by default; the domain
+  otherwise builds them from `AdminSettings.DirectoryName`). Dev.Sandbox turns it on.
+- **Prefix:** `/admin-next` is the default of `Cofoundry:AdminBlazor:DirectoryName` (`AdminBlazorSettings`).
   My Account (`Components/Account`) and first-run setup (`Components/Setup`, `/admin-next/setup`) are static SSR
   too: changing your own email or password updates your security stamp and the domain re-issues the cookie.
 - **A circuit can't set cookies.** `CircuitAwareUserSessionService.RefreshAsync` skips the refresh inside a
@@ -68,8 +70,10 @@ Agreed direction, not yet done:
 
 ## Gotchas (learned from the first build)
 
-- Razor `@page` accepts **string literals only**, so the `/admin-next` prefix is repeated in each page
-  component. To change it, update `AdminBlazorRoutes.Prefix` and every `@page` directive.
+- Razor `@page` accepts **string literals only**, so pages declare routes **without** the prefix (`@page "/pages"`).
+  `AdminBlazorStartupConfigurationTask` maps the admin in an `app.Map(prefix)` branch (prefix = `PathBase`;
+  a `MapGroup` breaks static SSR pages) and `App.razor` sets `<base href>` to it. Build urls with `AdminBlazorRoutes` (properties, not constants: the prefix is set at startup), and keep
+  asset urls absolute, since relative ones resolve under the base href.
 - **Never name a Razor variable `page`** in markup: `@page.X` is parsed as the `@page` directive.
 - Form fields show messages with `FieldValidationMessage` (the field's label replaces the property name in
   DataAnnotations messages), not `ValidationMessage`. Browser steps match the label: "The Application Name
@@ -124,7 +128,8 @@ Agreed direction, not yet done:
   and Users, `access-rules-step.js` for Directories and access rules, `page-templates-step.js` for Page Templates, `custom-entities-step.js`, `custom-entity-pickers-step.js`, `nested-data-models-step.js` and `field-types-step.js` (run with `BROWSER_TZ`, uses the dev-only Field Tests entity `SIMFLD`) for Custom Entities, `plugins-step.js`
   for the Error Logging, YouTube and Vimeo plugins; its Vimeo steps need internet access; `auth-step.js` for
   forgot/reset/change password and the setup redirect; `setup-test.js` (standalone, needs a sandbox on an
-  empty database, see SKILL.md) for first-run setup; `account-step.js` for My Account and editing yourself
+  empty database, see SKILL.md) for first-run setup; `directory-name-test.js` (standalone, a second sandbox
+  with `Cofoundry__AdminBlazor__DirectoryName=cms`, see SKILL.md) for a non-default prefix; `account-step.js` for My Account and editing yourself
   in Users; `error-boundary-step.js` (uses the sandbox's dev-only `/admin-next/test/error` page) for the error
   boundary; `session-step.js` for the session check; `image-upload-size-step.js` for picker upload size rules;
   `smoke` also deletes the page it duplicates).
@@ -154,7 +159,7 @@ Agreed direction, not yet done:
   if the Visual Editor moves; it stays on the MVC site for now.
 - **Unit tests:** `test/Cofoundry.Web.Admin.Blazor.Tests` (xunit v3, like the repo's other test projects) covers
   pure helpers only: routes, `StringUtilities`, `AdminFormFields`, `FieldValidationMessage.UseTitle`,
-  `ImageAssetFilter`, `CommandValidationErrors` and the plugins' `ParseVideoId`. Run `dotnet test test/Cofoundry.Web.Admin.Blazor.Tests`. UI is covered by the skill's
+  `ImageAssetFilter`, `CommandValidationErrors`, `AdminBlazorMailTemplateBuilder` (with and without `UseForEmailLinks`) and the plugins' `ParseVideoId`. Run `dotnet test test/Cofoundry.Web.Admin.Blazor.Tests`. UI is covered by the skill's
   browser steps.
 
 ## Git

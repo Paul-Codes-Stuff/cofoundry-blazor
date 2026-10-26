@@ -196,6 +196,24 @@ Cofoundry installs its tables on startup. The test checks sign in sends you to s
 fields, mismatched and too-short passwords), completing setup, signing in as the new admin (a throwaway
 `setup-<stamp>@example.com`), and that setup then redirects to the dashboard.
 
+## Directory name (non-default prefix)
+
+The steps above assume `/admin-next`. `directory-name-test.js` checks the admin under another
+`Cofoundry:AdminBlazor:DirectoryName`, against a second sandbox on the same database and build (stop nothing;
+`--no-build` avoids fighting the first sandbox over the dlls):
+
+```bash
+# run_in_background:
+cd samples/src/Dev/Dev.Sandbox && ASPNETCORE_ENVIRONMENT=Development Cofoundry__AdminBlazor__DirectoryName=cms dotnet run --no-build --no-launch-profile --urls http://localhost:5008 > "$TEMP/sandbox-cms.log" 2>&1
+# once "Now listening" is in the log:
+NODE_PATH="$TEMP/blazor-admin-pw/node_modules" node .claude/skills/run-blazor-admin/directory-name-test.js http://localhost:5008 cms
+```
+
+It checks the signed-out redirect to `/cms/auth/login` (with styles applied), sign in, that no nav link
+points at `/admin-next`, in-app navigation and back, a dialog, direct loads of the root and a static SSR page,
+the session check, that `/admin-next` no longer serves the admin, and sign out. Stop that sandbox only, e.g. in
+PowerShell: `Get-CimInstance Win32_Process -Filter "Name='Dev.Sandbox.exe'" | ? CommandLine -match 5008 | % { Stop-Process -Id $_.ProcessId }`.
+
 ## Unit tests
 
 ```bash

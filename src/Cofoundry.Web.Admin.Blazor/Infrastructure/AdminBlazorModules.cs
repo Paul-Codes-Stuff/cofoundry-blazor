@@ -30,20 +30,21 @@ public sealed class AdminBlazorModule
 {
     /// <param name="adminModuleCode">The <see cref="AdminModule.AdminModuleCode"/> of the module, e.g. "COFPAG".</param>
     /// <param name="pageComponent">
-    /// The module's landing page: a routable component with an <c>@page</c> route under
-    /// <see cref="AdminBlazorRoutes.Root"/> that has no parameters.
+    /// The module's landing page: a routable component with an <c>@page</c> route that has no parameters.
+    /// Admin pages declare routes without the admin's prefix (see <see cref="AdminBlazorRoutes"/>).
     /// </param>
-    /// <param name="url">
-    /// Which of the page's routes the nav links to. Only needed when it has more than one without parameters.
+    /// <param name="route">
+    /// Which of the page's routes the nav links to, as declared (e.g. "/dashboard"). Only needed when it has
+    /// more than one without parameters.
     /// </param>
-    public AdminBlazorModule(string adminModuleCode, Type pageComponent, string? url = null)
+    public AdminBlazorModule(string adminModuleCode, Type pageComponent, string? route = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(adminModuleCode);
         ArgumentNullException.ThrowIfNull(pageComponent);
 
         AdminModuleCode = adminModuleCode;
         PageComponent = pageComponent;
-        Url = GetUrl(adminModuleCode, pageComponent, url);
+        Route = GetRoute(adminModuleCode, pageComponent, route);
     }
 
     public string AdminModuleCode { get; }
@@ -51,16 +52,23 @@ public sealed class AdminBlazorModule
     public Type PageComponent { get; }
 
     /// <summary>
-    /// The page's route, which the nav links to.
+    /// The page's route as declared, without the admin's prefix.
     /// </summary>
-    public string Url { get; }
+    public string Route { get; }
+
+    /// <summary>
+    /// The url the nav links to: <see cref="Route"/> under the admin's prefix. Read when needed, since the
+    /// prefix comes from configuration and modules may be created before it is set.
+    /// </summary>
+    public string Url => Route == "/" ? AdminBlazorRoutes.Root : AdminBlazorRoutes.Root + Route;
 
     /// <summary>
     /// Optionally, the module itself, for when nothing else registers it: Cofoundry doesn't merge modules
     /// with the same code, so this is skipped when another <see cref="IAdminModuleRegistration"/> has
     /// <see cref="AdminModuleCode"/>. That lets a plugin's Blazor package work alone and also next to its
     /// AngularJS package. Its <see cref="AdminModule.AdminModuleCode"/> must match, and an empty
-    /// <see cref="AdminModule.Url"/> is set to <see cref="Url"/>, so both admins link to the Blazor page.
+    /// <see cref="AdminModule.Url"/> is set to <see cref="Url"/> (by <see cref="AdminBlazorModuleRegistry"/>,
+    /// when the module is read), so both admins link to the Blazor page.
     /// </summary>
     public AdminModule? Module
     {
@@ -72,18 +80,19 @@ public sealed class AdminBlazorModule
                 throw new ArgumentException($"The module's code {value.AdminModuleCode} doesn't match {AdminModuleCode}.", nameof(Module));
             }
 
-            if (value != null && string.IsNullOrEmpty(value.Url))
-            {
-                value.Url = Url;
-            }
-
+            UsesBlazorUrl = value != null && string.IsNullOrEmpty(value.Url);
             _module = value;
         }
     }
 
     private readonly AdminModule? _module;
 
-    private static string GetUrl(string adminModuleCode, Type pageComponent, string? url)
+    /// <summary>
+    /// True if <see cref="Module"/> had no url, so it links to <see cref="Url"/>.
+    /// </summary>
+    internal bool UsesBlazorUrl { get; private init; }
+
+    private static string GetRoute(string adminModuleCode, Type pageComponent, string? route)
     {
         var description = $"{pageComponent.FullName}, the page for admin module {adminModuleCode},";
 
@@ -94,25 +103,26 @@ public sealed class AdminBlazorModule
 
         var routes = pageComponent
             .GetCustomAttributes<RouteAttribute>()
-            .Select(r => r.Template.TrimEnd('/'))
-            .Where(t => !t.Contains('{')
-                && (t.Equals(AdminBlazorRoutes.Root, StringComparison.OrdinalIgnoreCase)
-                    || t.StartsWith(AdminBlazorRoutes.Root + "/", StringComparison.OrdinalIgnoreCase)))
+            .Select(r => NormaliseRoute(r.Template))
+            .Where(t => !t.Contains('{'))
             .ToList();
 
-        if (url != null)
+        if (route != null)
         {
-            return routes.FirstOrDefault(r => r.Equals(url.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
-                ?? throw new ArgumentException($"{description} has no @page route '{url}'.", nameof(url));
+            var normalised = NormaliseRoute(route);
+            return routes.FirstOrDefault(r => r.Equals(normalised, StringComparison.OrdinalIgnoreCase))
+                ?? throw new ArgumentException($"{description} has no @page route '{route}'.", nameof(route));
         }
 
         return routes.Count switch
         {
             1 => routes[0],
-            0 => throw new ArgumentException($"{description} needs an @page route under {AdminBlazorRoutes.Root} without parameters.", nameof(pageComponent)),
-            _ => throw new ArgumentException($"{description} has several routes; say which one the nav links to.", nameof(url))
+            0 => throw new ArgumentException($"{description} needs an @page route without parameters.", nameof(pageComponent)),
+            _ => throw new ArgumentException($"{description} has several routes; say which one the nav links to.", nameof(route))
         };
     }
+
+    private static string NormaliseRoute(string route) => "/" + route.Trim('/');
 }
 
 /// <summary>
@@ -153,9 +163,18 @@ public class AdminBlazorModuleRegistry
     /// <summary>
     /// The modules defined by their Blazor registration (<see cref="AdminBlazorModule.Module"/>).
     /// </summary>
-    public IEnumerable<AdminModule> GetModuleDefinitions() => _modules.Values
-        .Select(m => m.Module)
-        .OfType<AdminModule>();
+    public IEnumerable<AdminModule> GetModuleDefinitions()
+    {
+        foreach (var module in _modules.Values.Where(m => m.Module != null))
+        {
+            if (module.UsesBlazorUrl)
+            {
+                module.Module!.Url = module.Url;
+            }
+
+            yield return module.Module!;
+        }
+    }
 }
 
 /// <summary>

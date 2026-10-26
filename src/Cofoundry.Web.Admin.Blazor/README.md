@@ -22,7 +22,8 @@ when the host itself contains `.razor` files, so without it the admin renders a 
 </PropertyGroup>
 ```
 
-* The Blazor admin lives under **`/admin-next`** (the AngularJS admin stays at `/admin`).
+* The Blazor admin lives under **`/admin-next`** by default (the AngularJS admin stays at `/admin`). The
+  paths below assume the default; see "Settings" to change it.
 * Sign-in/out is at `/admin-next/auth/login` and `/logout`. Signed-out requests to `/admin-next/...` are sent
   there; `/admin/...` still uses the MVC login. Forgot password, reset password and forced password change
   are at `/admin-next/auth/forgot-password`, `reset-password` and `change-password`. First-run setup is at
@@ -30,10 +31,36 @@ when the host itself contains `.razor` files, so without it the admin renders a 
 * The nav lists every permitted module. Modules with a Blazor page (see "Extending the admin") link to it;
   the others, including custom modules not yet ported, link to their AngularJS admin URL.
 
-### Changing the prefix
+### Settings
 
-Razor `@page` directives only accept string literals, so the prefix is repeated in each page component.
-Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` directive.
+In the `Cofoundry:AdminBlazor` configuration section (`AdminBlazorSettings`):
+
+| Setting | Default | |
+| --- | --- | --- |
+| `DirectoryName` | `admin-next` | The path to the Blazor admin, like `Cofoundry:Admin:DirectoryName` for the AngularJS one. Letters, numbers and dashes. While both admins are installed the two must differ. |
+| `UseForEmailLinks` | `false` | Points the links in the admin user area's emails at the Blazor admin (see "Ported so far"). Off by default, so installing the Blazor admin next to the AngularJS one doesn't change what existing admin users are sent. |
+
+```json
+{
+  "Cofoundry": {
+    "AdminBlazor": {
+      "DirectoryName": "admin-next",
+      "UseForEmailLinks": true
+    }
+  }
+}
+```
+
+Razor `@page` directives only accept string literals, so pages declare their routes **without** the prefix
+(`@page "/pages"`, and `@page "/"` for the root). `AdminBlazorStartupConfigurationTask` maps the admin in its
+own branch of the pipeline (`app.Map(prefix, ...)`, before Cofoundry's routing), where the prefix is the
+request's `PathBase`, as for any ASP.NET Core app hosted under a sub-path. `App.razor` sets `<base href>` to it,
+so the router finds the same pages on the server (static SSR) and in the browser, and `blazor.web.js`
+connects to the circuit hub under the prefix. A route group doesn't work: static SSR looks the endpoint's
+prefixed route up among the declared ones and fails. Code builds urls with `AdminBlazorRoutes`, which reads
+the prefix from the settings at startup. Asset paths are absolute (`AdminAssetPaths`), since a relative one
+would resolve under the prefix. Cofoundry's catch-all page route never sees the admin's requests, so an
+unknown admin url gets the admin's own "not found" page.
 
 ## How it differs from the AngularJS admin
 
@@ -79,10 +106,11 @@ screenshots of the admin with a baseline taken before a change.
   unticked gives a browser-session cookie, ticked a persistent one
 * Forgot password, reset password (from the emailed link) and forced password change (after signing in with a
   temporary password), also static SSR and sharing `AuthPageBase`. The domain builds the admin emails' links
-  from the AngularJS admin's directory, so `AdminBlazorMailTemplateBuilder` (an
-  `IUserMailTemplateBuilder<CofoundryAdminUserArea>`, picked up by Cofoundry's scan) points the reset link at
-  `/admin-next/auth/reset-password` and sign-in links at `/admin-next`. That applies to emails sent from
-  either admin, so the AngularJS forgot password page also emails a Blazor link. A site with its own builder
+  from the AngularJS admin's directory. With `UseForEmailLinks` on (see "Settings"; off by default),
+  `AdminBlazorMailTemplateBuilder` (an `IUserMailTemplateBuilder<CofoundryAdminUserArea>`, picked up by
+  Cofoundry's scan) points the reset link at `/admin-next/auth/reset-password` and sign-in links at
+  `/admin-next`. That applies to emails sent from either admin, so the AngularJS forgot password page then
+  also emails a Blazor link. Dev.Sandbox turns it on in `appsettings.json`. A site with its own builder
   for the admin user area replaces this one and keeps the AngularJS links
 * My Account (`Components/Account`, static SSR): your details (display name, email, audit data) and change
   password, at `/admin-next/account`. "Edit" links to `?edit=true` and the form posts back, then redirects
@@ -212,15 +240,15 @@ assembly scanning, so an extension only needs to be referenced by the site.
 
 * **Modules (pages):** implement `IAdminBlazorModuleRegistration` (`Infrastructure/AdminBlazorModules.cs`),
   returning `new AdminBlazorModule("<AdminModuleCode>", typeof(MyModulePage))`. The nav then links that module
-  to the page's `@page` route, which must be under `/admin-next` and have no parameters (pass the url when the
-  page has more than one). The page's assembly is added to the router and to the endpoints, so every routable
+  to the page's `@page` route, which is declared without the admin's prefix (`@page "/products"`, see
+  "Settings") and must have no parameters (pass the route when the page has more than one). The page's assembly is added to the router and to the endpoints, so every routable
   component in it works, by direct request or in-app navigation. Later registrations replace earlier ones, so
   a site can also swap a built-in module's page. The built-in modules are registered the same way
   (`DefaultAdminBlazorModuleRegistration`).
   * The module itself (title, menu, ordering, permission) still comes from the domain's
     `IAdminModuleRegistration`. A module ported from AngularJS keeps its `IStandardAngularModuleRegistration`
-    and only adds the Blazor registration. A Blazor-only module implements `IAdminModuleRegistration` with its
-    `/admin-next/...` url.
+    and only adds the Blazor registration. A Blazor-only module can describe itself with
+    `AdminBlazorModule.Module` (below), leaving its `Url` empty so it follows the configured prefix.
   * A package that may be installed with or without its AngularJS counterpart (a plugin) sets
     `AdminBlazorModule.Module` instead. `AdminBlazorModuleDefinitionRegistration` adds that module to Cofoundry's
     list (so both admins' navs show it, linking to the Blazor page) only when no other `IAdminModuleRegistration`
@@ -286,6 +314,5 @@ references both versions of each.
   in the AngularJS admin). Move users to another role before deleting them if the role should go too
 * Unit tests (`test/Cofoundry.Web.Admin.Blazor.Tests`) cover the pure helpers only (routes, string utilities,
   the server-error field matching, nested item errors, message wording, video id parsing, image size
-  restrictions). Components and
-  pages are covered by
+  restrictions, the email links setting). Components and pages are covered by
   the browser steps in `.claude/skills/run-blazor-admin`
