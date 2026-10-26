@@ -195,7 +195,8 @@ Agreed direction:
   (`VisualEditorToolbar`, rendered with `HtmlRenderer`), as UTF-8 without a BOM. The page script posts actions to
   an iframe showing the Blazor page `/admin-next/visual-editor/frame`, whose dialogs run the block/publish
   commands and then reload the page. `AdminBlazorVisualEditorStateService` replaces the AngularJS
-  `?mode=`/`?version=` parsing.
+  `?mode=`/`?version=` parsing. Its icons are Font Awesome 4: `VisualEditorFontAwesome` (opt-in, on in Dev.Sandbox)
+  links the admin's copy (`css/font-awesome.css`) or `VisualEditorFontAwesomeUrl` for sites without their own.
 - **Next:** the remaining known gaps in the README. Every plugin with an AngularJS admin part now has a Blazor
   package.
 - **Unit tests:** `test/Cofoundry.Web.Admin.Blazor.Tests` (xunit v3, like the repo's other test projects) covers

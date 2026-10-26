@@ -1,0 +1,7 @@
+/*
+    Font Awesome 4.3 on its own, the copy admin.scss compiles in. The visual editor adds it to the site's pages
+    when Cofoundry:AdminBlazor:VisualEditorFontAwesome is on, for the toolbar's and block menu's icons on sites
+    that don't load Font Awesome themselves. Compiled to wwwroot/css/font-awesome.css, next to the fonts.
+*/
+
+@import "ThirdParty/font-awesome";

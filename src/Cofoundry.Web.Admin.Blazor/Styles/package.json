@@ -1,10 +1,10 @@
 {
   "name": "cofoundry-web-admin-blazor-styles",
   "private": true,
-  "description": "Compiles the Blazor admin's stylesheets (admin.scss, visual-editor.scss) to wwwroot/css.",
+  "description": "Compiles the Blazor admin's stylesheets (admin.scss, visual-editor.scss, font-awesome.scss) to wwwroot/css.",
   "scripts": {
-    "build": "sass --no-source-map --style=expanded admin.scss:../wwwroot/css/admin.css visual-editor.scss:../wwwroot/css/visual-editor.css",
-    "watch": "sass --no-source-map --style=expanded --watch admin.scss:../wwwroot/css/admin.css visual-editor.scss:../wwwroot/css/visual-editor.css"
+    "build": "sass --no-source-map --style=expanded admin.scss:../wwwroot/css/admin.css visual-editor.scss:../wwwroot/css/visual-editor.css font-awesome.scss:../wwwroot/css/font-awesome.css",
+    "watch": "sass --no-source-map --style=expanded --watch admin.scss:../wwwroot/css/admin.css visual-editor.scss:../wwwroot/css/visual-editor.css font-awesome.scss:../wwwroot/css/font-awesome.css"
   },
   "devDependencies": {
     "sass": "1.77.8"

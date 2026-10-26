@@ -27,6 +27,11 @@ public static class AdminAssetPaths
 
     public const string VisualEditorStyles = ContentRoot + "/css/visual-editor.css";
 
+    /// <summary>
+    /// Font Awesome 4.3 on its own, for the visual editor's icons (<see cref="AdminBlazorSettings.VisualEditorFontAwesome"/>).
+    /// </summary>
+    public const string FontAwesomeStyles = ContentRoot + "/css/font-awesome.css";
+
     public const string VisualEditorLogo = ContentRoot + "/img/visual-editor/logo-thumb.png";
 
     /// <summary>

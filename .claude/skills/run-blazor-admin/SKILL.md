@@ -180,7 +180,8 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   and deletes a role through the copy. It leaves nothing behind.
 - **`visual-editor-step.js`** covers the visual editor on the site's pages (the sandbox sets
   `Cofoundry:AdminBlazor:UseVisualEditor`). It creates a General page and opens it with `?mode=edit`: the toolbar,
-  page data and styles, no BOM, adding blocks through the iframe's dialogs (the empty region's "+", "Add below"),
+  page data and styles, Font Awesome (the sandbox sets `VisualEditorFontAwesome`: the link, the icons' font and
+  that it loads), no BOM, adding blocks through the iframe's dialogs (the empty region's "+", "Add below"),
   cancel, edit, move up and delete, publish (and that a signed-out visitor gets no editor), a second version, copy
   an old version to draft with and without an existing draft, and unpublish. It checks `/test/test`'s json is left
   alone. Then it creates an author, a blog post (with the first image in the library as its thumbnail, so it

@@ -44,6 +44,8 @@ In the `Cofoundry:AdminBlazor` configuration section (`AdminBlazorSettings`):
 | `DirectoryName` | `admin-next` | The path to the Blazor admin, like `Cofoundry:Admin:DirectoryName` for the AngularJS one. Letters, numbers and dashes. While both admins are installed the two must differ. |
 | `UseForEmailLinks` | `false` | Points the links in the admin user area's emails at the Blazor admin (see "Ported so far"). Off by default, so installing the Blazor admin next to the AngularJS one doesn't change what existing admin users are sent. |
 | `UseVisualEditor` | `false` | Uses this package's visual editor on the site's pages instead of the AngularJS one (see "Visual editor"). Only read while `Cofoundry.Web.Admin` is installed; without it this package's editor is always used. |
+| `VisualEditorFontAwesome` | `false` | Adds Font Awesome to the site's pages with the visual editor, for its toolbar and block menu icons. Turn it on for sites that don't load Font Awesome themselves; leave it off for sites that do, since the icons are Font Awesome 4 classes and its `.fa` rules can clash with a newer version. |
+| `VisualEditorFontAwesomeUrl` | the admin's copy | Where `VisualEditorFontAwesome` loads the stylesheet from. Defaults to the admin's own Font Awesome 4.3 (`/_content/Cofoundry.Web.Admin.Blazor/css/font-awesome.css`, no third-party request). Set it to use a CDN instead, e.g. `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.min.css`. |
 
 ```json
 {
@@ -51,7 +53,8 @@ In the `Cofoundry:AdminBlazor` configuration section (`AdminBlazorSettings`):
     "AdminBlazor": {
       "DirectoryName": "admin-next",
       "UseForEmailLinks": true,
-      "UseVisualEditor": true
+      "UseVisualEditor": true,
+      "VisualEditorFontAwesome": true
     }
   }
 }
@@ -298,8 +301,9 @@ While `Cofoundry.Web.Admin` is installed its editor stays on unless `UseVisualEd
 `VisualEditorInstallation` removes the AngularJS filter (matched by type name, as this package doesn't reference
 `Cofoundry.Web.Admin`) and adds this one. Either editor stays off when the admin or pages are disabled or
 `Cofoundry:Admin:AutoInjectVisualEditor` is false. `IVisualEditorRequestExclusionRule` keeps it out of other
-requests: the default rule excludes both admins and `/api`. As before, the site's own styles apply to the block
-popover's icons: the editor doesn't load Font Awesome on the site's pages.
+requests: the default rule excludes both admins and `/api`. The toolbar and block popover use Font Awesome 4
+icons, which the AngularJS editor left to the site to load. Here `VisualEditorFontAwesome` (see "Settings") adds
+the admin's own copy, compiled from `Styles/font-awesome.scss`, or a CDN's, before the editor's stylesheet.
 
 ## Extending the admin
 

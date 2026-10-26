@@ -35,4 +35,18 @@ public class AdminBlazorSettings : CofoundryConfigurationSettingsBase
     /// always used (see <see cref="VisualEditorInstallation"/>).
     /// </summary>
     public bool UseVisualEditor { get; set; }
+
+    /// <summary>
+    /// Adds Font Awesome to the site's pages along with the visual editor, whose toolbar and block menu use its
+    /// icons. Off by default: turn it on for sites that don't load Font Awesome themselves. The icons are
+    /// Font Awesome 4 classes, and its <c>.fa</c> rules can clash with a site's own, newer Font Awesome.
+    /// </summary>
+    public bool VisualEditorFontAwesome { get; set; }
+
+    /// <summary>
+    /// Where <see cref="VisualEditorFontAwesome"/> loads Font Awesome's stylesheet from. Defaults to the admin's
+    /// own copy of Font Awesome 4.3; set it to use a CDN instead, e.g.
+    /// "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.min.css".
+    /// </summary>
+    public string? VisualEditorFontAwesomeUrl { get; set; }
 }

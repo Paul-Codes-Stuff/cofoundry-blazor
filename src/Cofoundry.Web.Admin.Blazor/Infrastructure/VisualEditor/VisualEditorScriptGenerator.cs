@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Cofoundry.Web.Admin.Blazor.Components.VisualEditor;
@@ -23,24 +24,39 @@ public class VisualEditorScriptGenerator
     private readonly IPageResponseDataCache _pageResponseDataCache;
     private readonly IPermissionValidationService _permissionValidationService;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly AdminBlazorSettings _adminBlazorSettings;
 
     public VisualEditorScriptGenerator(
         IPageResponseDataCache pageResponseDataCache,
         IPermissionValidationService permissionValidationService,
-        ILoggerFactory loggerFactory
+        ILoggerFactory loggerFactory,
+        AdminBlazorSettings adminBlazorSettings
         )
     {
         _pageResponseDataCache = pageResponseDataCache;
         _permissionValidationService = permissionValidationService;
         _loggerFactory = loggerFactory;
+        _adminBlazorSettings = adminBlazorSettings;
     }
 
     public string CreateHeadScript()
     {
-        return $"""
+        var head = $"""
             	<link rel="stylesheet" href="{AdminAssetPaths.VisualEditorStyles}" />
             	<script src="{AdminAssetPaths.VisualEditorScript}" defer></script>
             """;
+
+        if (!_adminBlazorSettings.VisualEditorFontAwesome)
+        {
+            return head;
+        }
+
+        // First, so the editor's own styles win where the two overlap.
+        var url = string.IsNullOrWhiteSpace(_adminBlazorSettings.VisualEditorFontAwesomeUrl)
+            ? AdminAssetPaths.FontAwesomeStyles
+            : _adminBlazorSettings.VisualEditorFontAwesomeUrl.Trim();
+
+        return $"\t<link rel=\"stylesheet\" href=\"{HtmlEncoder.Default.Encode(url)}\" />" + Environment.NewLine + head;
     }
 
     /// <summary>

@@ -88,6 +88,13 @@ module.exports = async (page, c) => {
       // The toolbar is styled (fixed to the bottom) by visual-editor.css.
       const position = await page.locator('#cofoundry-sv').evaluate(el => getComputedStyle(el).position);
       if (position !== 'fixed') throw new Error('toolbar not styled: ' + position);
+      // The sandbox sets Cofoundry:AdminBlazor:VisualEditorFontAwesome, and its site has no Font Awesome of its own:
+      // the admin's copy is linked first and the icons get its font, which loads.
+      if (!/<link[^>]+font-awesome\.css[^>]*>\s*<link[^>]+visual-editor\.css/.test(html)) throw new Error('no Font Awesome link before the editor stylesheet');
+      const iconFont = await page.locator('#cofoundry-sv .fa').first().evaluate(el => getComputedStyle(el).fontFamily);
+      if (!/FontAwesome/.test(iconFont)) throw new Error('icon font: ' + iconFont);
+      const loaded = await page.evaluate(() => document.fonts.load('14px FontAwesome', '\uf040').then(fonts => fonts.length));
+      if (!loaded) throw new Error('the Font Awesome font did not load');
       if (await frameShown()) throw new Error('frame shown before any action');
       if (!(await page.locator('.cofoundry-sv__ui-wrap--region').count())) throw new Error('no region overlay');
       if (!(await page.locator('.cofoundry-sv__options__button:has-text("Publish")').count())) throw new Error('no Publish button');
