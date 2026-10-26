@@ -37,12 +37,22 @@ module.exports = async (page, c) => {
   const hoverBlock = async index => {
     await page.mouse.move(0, 0); await page.waitForTimeout(700);
     // Clear of the site's fixed navbar, where Playwright's own scrolling can leave it, and at the bottom left:
-    // the block's name label covers its top left, and its "+" (add below) the middle of a short block. A plain
-    // mouse move, as the popover it opens covers a short block, which a hover() would keep retrying on.
+    // the block's name label and the popover cover its top left, and its "+" (add below) the middle of a short
+    // block. A plain mouse move, since a hover() keeps retrying while anything covers its point.
     const block = blocks().nth(index);
     await block.evaluate(el => window.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + window.scrollY - 200)));
     const box = await block.boundingBox();
     await page.mouse.move(box.x + 3, box.y + Math.max(1, box.height - 3), { steps: 5 }); await page.waitForTimeout(300);
+  };
+
+  // Where the popover sits against the hovered block: over its top left corner, or above it (short blocks).
+  const popoverPlacement = async index => {
+    const block = await blocks().nth(index).boundingBox();
+    const popover = await page.locator('#cofoundry-sv__block-popover-container').boundingBox();
+    const near = (a, b) => Math.abs(a - b) <= 2;
+    if (near(popover.y, block.y) && near(popover.x, block.x)) return 'over';
+    if (near(popover.y + popover.height, block.y) && popover.x > block.x) return 'above';
+    return `elsewhere: popover ${JSON.stringify(popover)}, block ${JSON.stringify(block)}`;
   };
 
   // Move, add above/below and delete are in the "..." menu, which opens on hover.
@@ -130,6 +140,9 @@ module.exports = async (page, c) => {
 
     await c.step('add a second block below', async () => {
       await hoverBlock(0);
+      // A Content Section is a few lines high: the popover sits over its top left corner, as it always did.
+      const placement = await popoverPlacement(0);
+      if (placement !== 'over') throw new Error('popover ' + placement);
       const addBelow = await advanced('cofoundry-sv__btn-block-addbelow');
       // Not c.shot: a full page screenshot resizes the window, which hides the popover.
       await page.screenshot({ path: require('path').join(process.env.OUT_DIR || require('path').join(require('os').tmpdir(), 'blazor-admin-run'), 've-04-popover.png') });
@@ -416,6 +429,10 @@ module.exports = async (page, c) => {
       if (!(await page.locator('[data-cms-page-region] [data-cms-page-region-block]').innerText()).includes(`Template text ${stamp}`)) throw new Error('block not in the template region');
 
       await hoverBlock(0);
+      // A one line block: the popover goes above it, beside its name label, so the text stays visible.
+      const placement = await popoverPlacement(0);
+      if (placement !== 'above') throw new Error('popover ' + placement);
+      await page.screenshot({ path: require('path').join(process.env.OUT_DIR || require('path').join(require('os').tmpdir(), 'blazor-admin-run'), 've-12-short-block-popover.png') });
       await page.locator('#cofoundry-sv__btn-block-edit').click();
       await waitForDialog('Edit Content Block');
       const edit = modal().locator('.control-group:has(label:text-is("Plain text:")) textarea');

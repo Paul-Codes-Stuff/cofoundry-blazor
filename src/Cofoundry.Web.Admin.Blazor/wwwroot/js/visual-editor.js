@@ -280,8 +280,32 @@
             showButton('addBlockBelow', scope.isMultiBlock);
 
             blockToolbar.style.display = 'block';
-            blockToolbar.style.top = position.top + 'px';
-            blockToolbar.style.left = (position.left || 0) + 'px';
+
+            var top = position.top,
+                left = position.left || 0,
+                popoverHeight = blockToolbar.offsetHeight;
+
+            // The popover sits over the block's top left corner, as in the AngularJS editor, which hides most of
+            // a short (e.g. one line) block. Those get it just above instead, beside the block's name label,
+            // unless the block is at the very top of the page.
+            if (el.offsetHeight < popoverHeight * 2 && top >= popoverHeight) {
+                top -= popoverHeight;
+                left += getNameLabelWidth(el);
+            }
+
+            blockToolbar.style.top = top + 'px';
+            blockToolbar.style.left = left + 'px';
+        }
+
+        function getNameLabelWidth(el) {
+            for (var i = 0; i < currentElements.length; ++i) {
+                if (currentElements[i].el === el) {
+                    var label = currentElements[i].uiElements[0].querySelector('.cofoundry-sv__ui-wrap-name');
+                    return label ? label.offsetWidth : 0;
+                }
+            }
+
+            return 0;
         }
 
         function hideBlockToolbar() {
