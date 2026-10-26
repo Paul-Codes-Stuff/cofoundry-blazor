@@ -136,6 +136,10 @@
                     if (isMultiBlock || !data.hasContent) {
                         addBlockButton = createAddBlockButton(data);
                         wrapContainer.appendChild(addBlockButton);
+
+                        if (data.isBlock) {
+                            moveAddBlockButtonOffShortBlock(addBlockButton, wrap, data);
+                        }
                     }
 
                     el.addEventListener('mouseenter', onMouseEnter);
@@ -208,6 +212,20 @@
             });
 
             return button;
+        }
+
+        // A block's button is centred on its bottom edge, which covers the middle of a short (e.g. one line)
+        // block's text. Those get it at the bottom right corner of the block's outline instead (which is at least
+        // 100px wide and 30px high), just past its end. Measured once it's in the page, as the site's css can
+        // change its size.
+        function moveAddBlockButtonOffShortBlock(button, wrap, data) {
+            if (data.height >= button.offsetHeight * 2) return;
+
+            var width = Math.max(data.width, wrap.offsetWidth),
+                height = Math.max(data.height, wrap.offsetHeight);
+
+            button.style.left = data.x + width + (button.offsetWidth / 2) + 2 + 'px';
+            button.style.top = data.y + height + 'px';
         }
 
         function removeUI() {

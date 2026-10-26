@@ -182,8 +182,9 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   `Cofoundry:AdminBlazor:UseVisualEditor`). It creates a General page and opens it with `?mode=edit`: the toolbar,
   page data and styles, Font Awesome (the sandbox sets `VisualEditorFontAwesome`: the link, the icons' font and
   that it loads), no BOM, adding blocks through the iframe's dialogs (the empty region's "+", "Add below"),
-  cancel, edit, move up and delete, where the block popover sits (over a Content Section's corner, above a
-  one line Plain text block), publish (and that a signed-out visitor gets no editor), a second version, copy
+  cancel, edit, move up and delete, where the block popover and "+" (add below) sit (over a Content Section's
+  corner and centred on its bottom edge; above a one line Plain text block and past its outline's bottom right
+  corner, still adding below), publish (and that a signed-out visitor gets no editor), a second version, copy
   an old version to draft with and without an existing draft, and unpublish. It checks `/test/test`'s json is left
   alone. Then it creates an author, a blog post (with the first image in the library as its thumbnail, so it
   needs one) and a Custom Entity Details page, and adds, edits and deletes a block in the post's region and
@@ -332,7 +333,8 @@ can compare the two side by side.
   site's fixed navbar covers blocks near the top, the block's name label covers its top left and its "+" (add
   below) the middle of a short block, so `locator.hover()` keeps retrying "element intercepts pointer events"
   and times out. The popover sits over a block's top left corner, or just above a block less than twice its
-  height (beside the name label); `popoverPlacement` in the step checks both.
+  height (beside the name label); `popoverPlacement` in the step checks both. A short block's "+" moves past the
+  bottom right corner of its outline (`addButtonPlacement`).
 - **Git Bash rewrites arguments that start with `/`** into Windows paths. `/admin-next/pages` becomes
   `C:/Program Files/Git/admin-next/pages`. Pass driver paths without the leading slash. For curl, use full
   URLs, or `MSYS_NO_PATHCONV=1`.

@@ -55,6 +55,24 @@ module.exports = async (page, c) => {
     return `elsewhere: popover ${JSON.stringify(popover)}, block ${JSON.stringify(block)}`;
   };
 
+  // Where a block's "+" (add below) sits: centred on its bottom edge, or past the bottom right corner of its
+  // outline (short blocks, whose outline can be taller than the block: it has a min-height).
+  const addButtonPlacement = async (index, outlineBottom) => {
+    const block = await blocks().nth(index).boundingBox();
+    const bottom = outlineBottom ? Math.max(block.y + block.height, block.y + 30) : block.y + block.height;
+    const buttons = await page.locator('.cofoundry-sv__btn-add-block').evaluateAll(els => els
+      .filter(el => el.offsetWidth && !el.classList.contains('cofoundry-sv__btn-add-block--empty'))
+      .map(el => { const r = el.getBoundingClientRect(); return { x: r.x + window.scrollX, y: r.y + window.scrollY, width: r.width, height: r.height }; }));
+    const scroll = await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }));
+    const top = { x: block.x + scroll.x, y: bottom + scroll.y };
+    const button = buttons.find(b => Math.abs(b.y + b.height / 2 - top.y) <= 2);
+    if (!button) return 'no button on the bottom edge';
+    const centre = button.x + button.width / 2;
+    if (Math.abs(centre - (top.x + block.width / 2)) <= 2) return 'centred';
+    if (button.x > top.x + block.width) return 'past the end';
+    return `elsewhere: button ${JSON.stringify(button)}, block ${JSON.stringify(block)}`;
+  };
+
   // Move, add above/below and delete are in the "..." menu, which opens on hover.
   const advanced = async id => {
     await page.locator('#cofoundry-sv__block-popover-container .advanced > button').hover(); await page.waitForTimeout(300);
@@ -143,6 +161,8 @@ module.exports = async (page, c) => {
       // A Content Section is a few lines high: the popover sits over its top left corner, as it always did.
       const placement = await popoverPlacement(0);
       if (placement !== 'over') throw new Error('popover ' + placement);
+      const button = await addButtonPlacement(0);
+      if (button !== 'centred') throw new Error('add below button ' + button);
       const addBelow = await advanced('cofoundry-sv__btn-block-addbelow');
       // Not c.shot: a full page screenshot resizes the window, which hides the popover.
       await page.screenshot({ path: require('path').join(process.env.OUT_DIR || require('path').join(require('os').tmpdir(), 'blazor-admin-run'), 've-04-popover.png') });
@@ -432,6 +452,14 @@ module.exports = async (page, c) => {
       // A one line block: the popover goes above it, beside its name label, so the text stays visible.
       const placement = await popoverPlacement(0);
       if (placement !== 'above') throw new Error('popover ' + placement);
+      // Its "+" (add below) goes past the end of the line rather than over the middle of the text.
+      const button = await addButtonPlacement(0, true);
+      if (button !== 'past the end') throw new Error('add below button ' + button);
+      // It still adds below this block (the overlays are added regions first, so a block's button comes last).
+      await page.locator('.cofoundry-sv__btn-add-block').last().click();
+      await waitForDialog('Add Content Block');
+      await modal().locator('button:text-is("Cancel")').click(); await page.waitForTimeout(800);
+      if (await frameShown()) throw new Error('frame still shown');
       await page.screenshot({ path: require('path').join(process.env.OUT_DIR || require('path').join(require('os').tmpdir(), 'blazor-admin-run'), 've-12-short-block-popover.png') });
       await page.locator('#cofoundry-sv__btn-block-edit').click();
       await waitForDialog('Edit Content Block');
