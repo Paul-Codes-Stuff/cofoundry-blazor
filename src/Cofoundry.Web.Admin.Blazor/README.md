@@ -338,10 +338,6 @@ references both versions of each.
   search-as-you-type dropdown, as in the AngularJS admin
 * Upload fields have no "Remove" button. The AngularJS field only shows it when the field is optional, and every
   image and document upload form (in both admins) requires a file
-* **To revisit:** the close icon (top right) on modal dialogs (`ModalDialog`) was reported as doing nothing. It
-  couldn't be reproduced since: in headless Chrome the icon is the topmost element and a real click closes the
-  image/document pickers, upload dialogs (stacked on a picker), Duplicate and the access rules editor. If it
-  happens again, note which dialog and browser
 * A role can't be deleted while any user references it, including soft-deleted users (a domain rule, the same
   in the AngularJS admin). Move users to another role before deleting them if the role should go too
 * Unit tests (`test/Cofoundry.Web.Admin.Blazor.Tests`) cover the pure helpers only (routes, string utilities,

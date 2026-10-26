@@ -158,9 +158,6 @@ Agreed direction:
   `smoke` also deletes the page it duplicates). The steps that open a page's details need at least one page.
 - **Dev.Sandbox has a "Member" user area** (`Cofoundry/UserAreas/MemberUserArea.cs`, code `MEM`) so access rules
   and a non-admin users list can be exercised. Access Control is hidden on sites with only the admin area.
-- **To revisit:** the modal dialog close icon (top right, `Components/Dialogs/ModalDialog.razor`) was reported as
-  not working, but couldn't be reproduced (it works on every dialog tried, stacked ones too). Ask which dialog
-  and browser if it comes up again.
 - **Server-side validation:** fields join their `AdminForm` (`AdminFormFields`, from `FormFieldBase`), and
   `FormStatus` files each command error under the field showing its property, as the AngularJS
   `validationErrorService` did. Only unmatched errors are listed. Tested by `server-validation-step.js`.
