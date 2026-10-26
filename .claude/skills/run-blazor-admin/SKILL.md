@@ -271,6 +271,24 @@ OUT_DIR="$TEMP/blazor-admin-run-only" node .claude/skills/run-blazor-admin/direc
 
 Stop it alone with the PowerShell line in "Directory name".
 
+## NuGet compatibility
+
+The new projects (the Blazor admin, `Cofoundry.Web.Admin.Api`, the plugins' `*.Admin.Blazor`) must work with the
+published Cofoundry packages, so the branch leaves Core, Domain, Web, `eng/Base.props` and the plugins' other
+projects as released (see CLAUDE.md). To check, with internet access (no sandbox needed, about 2 minutes):
+
+```bash
+node .claude/skills/run-blazor-admin/nuget-compat-check.js          # latest stable Cofoundry.Web
+node .claude/skills/run-blazor-admin/nuget-compat-check.js 0.13.2   # a given release
+```
+
+It reads the commit the release was built from (its nuspec's `repository commit`) and fails if those projects
+differ from it here, then copies the new projects' tracked files to a temp folder, swaps every reference to
+another project for that project's package at the same version, and builds each. `KEEP=1` keeps the copy and
+prints its path. A release whose commit isn't in this clone skips the source half: fetch
+`cofoundry-cms/cofoundry` first. Checked: 0.13.2 passes both; 0.13.1 fails the source half (its csproj package
+versions differ) and still builds.
+
 ## Admin API base url collision
 
 `Cofoundry.Web.Admin.Api` refuses to start at the AngularJS admin's own API path while `Cofoundry.Web.Admin` is

@@ -33,6 +33,13 @@ Read `src/Cofoundry.Web.Admin.Blazor/README.md` first: it has the status, what i
   `Styles` (compiled to `wwwroot/css/admin.css` with `npm run build` there; commit both, see "Styles" in the
   README). Check a style change with the skill's `styles-step.js`: baseline first, then compare.
 - **Dropdown data** is loaded up front by `AdminLookups`, not by self-loading selector components.
+- **Works with the published packages:** the Blazor admin, `Cofoundry.Web.Admin.Api` and the plugins'
+  `*.Admin.Blazor` packages must run on the released Cofoundry.Core, Cofoundry.Domain and Cofoundry.Web packages
+  (0.13.2 so far), so a site can add them without upgrading Cofoundry. **Do not change `Cofoundry.Core`,
+  `Cofoundry.Domain`, `Cofoundry.Web`, `eng/Base.props` or the plugins' non-Blazor projects.** Anything the admin
+  needs goes in the admin, even if a core change would be neater. `nuget-compat-check.js` in the skill checks
+  both halves (no source changes since the release's commit, and a build against the packages); run it before
+  committing anything that touches those projects or the new projects' references, and against each new release.
 
 ## Backwards compatibility (open, revisit before retiring the AngularJS admin)
 

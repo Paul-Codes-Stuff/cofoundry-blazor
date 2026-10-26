@@ -13,6 +13,10 @@ installed **alongside** the AngularJS admin while modules are migrated one at a 
 Reference this project from your website next to `Cofoundry.Web.Admin`. Cofoundry's startup tasks, route
 registrations and DI registrations are discovered automatically, so no extra `Program.cs` code is needed.
 
+It needs no changes to Cofoundry itself: it runs on the published Cofoundry.Core, Cofoundry.Domain and
+Cofoundry.Web packages (checked against 0.13.2 with `nuget-compat-check.js` in the `run-blazor-admin` skill), as
+do `Cofoundry.Web.Admin.Api` and the plugins' `*.Admin.Blazor` packages.
+
 The host project must also set `RequiresAspNetWebAssets`. The SDK only serves `_framework/blazor.web.js`
 when the host itself contains `.razor` files, so without it the admin renders a blank page:
 
