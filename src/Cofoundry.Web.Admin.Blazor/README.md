@@ -385,6 +385,10 @@ references both versions of each.
 
 * The YouTube field's lookup with an API key hasn't been tested (the sandbox has no key), and the preview shows
   YouTube's "Error 153" in headless Chrome. The AngularJS field embeds the same url
+* The visual editor's block menus (and their "+" add-below button) open on mouse hover only (`mouseenter` in
+  `wwwroot/js/visual-editor.js`), with no touch handling. Phone browsers usually turn a tap into a hover, but it
+  hasn't been tried on a touch device. The admin's small-screen layout (see "Styles") has only been checked in
+  desktop Chrome at phone and tablet sizes, not on real devices either
 * The page picker (page collection field) is multi-select only, since the single page field is a
   search-as-you-type dropdown, as in the AngularJS admin
 * A role can't be deleted while any user references it, including soft-deleted users (a domain rule, the same
