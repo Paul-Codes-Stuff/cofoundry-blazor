@@ -1,0 +1,305 @@
+@inject IPermissionValidationService PermissionValidationService
+@inject IPageRouteLibrary PageRouteLibrary
+@inject ImageAssetsSettings ImageAssetsSettings
+
+@* Port of the AngularJS visual editor's Toolbar.cshtml, rendered to a string by VisualEditorScriptGenerator
+   and injected into the site's page. Static html: js/visual-editor.js adds the publish buttons and binds the
+   region and block buttons. Its links go to the Blazor admin. *@
+
+<!-- ADMIN IFRAME -->
+@if (PageData != null)
+{
+    <iframe id="cofoundry-src__iFrame" src="@AdminBlazorRoutes.VisualEditorFrame" class="cofoundry-sv__iFrame" title="Cofoundry visual editor"></iframe>
+}
+<!-- END ADMIN IFRAME -->
+
+<!-- PAGE TOOLBAR -->
+<div id="cofoundry-sv" class="cofoundry-sv active">
+
+    <div class="cofoundry-sv__navmenu">
+        <div class="cofoundry-sv__mini-menu cofoundry-sv__mini-menu--align-left">
+            @* There's no admin user context on static pages, so no menu. *@
+            @if (ResponseData != null)
+            {
+                <div class="cofoundry-sv__mini-menu__content">
+                    <ol class="cofoundry-sv__navmenu-list">
+                        @if (Can<DashboardAdminModulePermission>())
+                        {
+                            <li><a href="@AdminBlazorRoutes.Dashboard" class="cofoundry-sv__navmenu-list__item"><span class="fa fa-chevron-left"></span> Dashboard</a></li>
+                        }
+                        @if (Can<PageAdminModulePermission>())
+                        {
+                            <li><a href="@AdminBlazorRoutes.Pages" class="cofoundry-sv__navmenu-list__item"><span class="fa fa-chevron-left"></span> Pages</a></li>
+                        }
+                        @if (Can<PageDirectoryAdminModulePermission>())
+                        {
+                            <li><a href="@AdminBlazorRoutes.Directories" class="cofoundry-sv__navmenu-list__item"><span class="fa fa-chevron-left"></span> Directories</a></li>
+                        }
+                        @if (!ImageAssetsSettings.Disabled && Can<ImageAssetAdminModulePermission>())
+                        {
+                            <li><a href="@AdminBlazorRoutes.Images" class="cofoundry-sv__navmenu-list__item"><span class="fa fa-chevron-left"></span> Images</a></li>
+                        }
+                        @if (Can<SettingsAdminModulePermission>())
+                        {
+                            <li><a href="@AdminBlazorRoutes.Settings" class="cofoundry-sv__navmenu-list__item"><span class="fa fa-chevron-left"></span> Settings</a></li>
+                        }
+                        @if (_canEditDraft && !_isViewingSpecificVersion && PageData!.IsCustomEntityRoute)
+                        {
+                            <li class="cofoundry-sv__navmenu-list__divider">
+                                <a href="@AdminBlazorRoutes.CustomEntityDetails(PageData.CustomEntityDefinitionCode!, PageData.CustomEntityId!.Value)" class="cofoundry-sv__navmenu-list__item">
+                                    <span class="fa fa-pencil"></span>
+                                    Edit this @ResponseData.CustomEntityDefinition!.Name in admin suite
+                                </a>
+                            </li>
+                        }
+                    </ol>
+                </div>
+            }
+            <a href="@AdminBlazorRoutes.Dashboard" class="cofoundry-sv__mini-menu__toggle">
+                <img class="cofoundry-sv__logo" src="@AdminAssetPaths.VisualEditorLogo" alt="Cofoundry" />
+            </a>
+        </div>
+    </div>
+
+    <div class="cofoundry-sv__page-details">
+        <div class="cofoundry-sv__mini-menu cofoundry-sv__mini-menu--flow">
+            @if (ResponseData != null)
+            {
+                @if (_versions.Count > 0)
+                {
+                    <div class="cofoundry-sv__mini-menu__content">
+                        <h3>@_entityNameSingular Versions</h3>
+                        <ol class="cofoundry-sv__version-list">
+                            @foreach (var version in _versions)
+                            {
+                                <li>
+                                    <a href="@version.Url" class="@("cofoundry-sv__version-list__item" + (version.IsActive ? " active" : null))">
+                                        <span class="@version.Status"></span>
+                                        @version.Text, Created on @version.CreateDate
+                                    </a>
+                                </li>
+                            }
+                        </ol>
+                    </div>
+                }
+                <button type="button" class="cofoundry-sv__mini-menu__toggle">
+                    <span class="@("cofoundry-sv__page-details__status " + ResponseData.Version.WorkFlowStatus.ToString().ToLowerInvariant())"></span>
+                    <span class="cofoundry-sv__page-details__name">@_currentVersionText, @ResponseData.Version.Title</span>
+                    @if (RequestPath.Length > 1)
+                    {
+                        <span class="cofoundry-sv__page-details__url">@RequestPath</span>
+                    }
+                </button>
+            }
+            else
+            {
+                <button type="button" class="cofoundry-sv__mini-menu__toggle">
+                    <span class="cofoundry-sv__page-details__name">@RequestPath</span>
+                    <span class="cofoundry-sv__page-details__url">Static page</span>
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="cofoundry-sv__mode">
+        @if (ResponseData != null && !_isViewingSpecificVersion)
+        {
+            var routingInfo = ResponseData.PageRoutingInfo;
+            var workFlowStatus = ResponseData.Version.WorkFlowStatus;
+            var isCustomEntityRoute = PageData!.IsCustomEntityRoute;
+
+            @if (_publishState.Description == PublishStateDescription.Published)
+            {
+                <a href="@PageRouteLibrary.VisualEditor(routingInfo, VisualEditorMode.Live, isCustomEntityRoute)"
+                   class="@ModeButtonClass(workFlowStatus == WorkFlowStatus.Published)">
+                    <span>Current<br />live</span>
+                </a>
+            }
+
+            @if (_canEditDraft)
+            {
+                @if (_isEditTypeSwitchRequired)
+                {
+                    <span class="cofoundry-sv__mode__button__group">
+                        <a href="@PageRouteLibrary.VisualEditor(routingInfo, VisualEditorMode.Edit, true)"
+                           class="@ModeButtonClass(isCustomEntityRoute && _isEditing)">
+                            <span>Edit<br />@ResponseData.CustomEntityDefinition!.Name</span>
+                        </a>
+                        <a href="@PageRouteLibrary.VisualEditor(routingInfo, VisualEditorMode.Edit, false)"
+                           class="@ModeButtonClass(!isCustomEntityRoute && _isEditing)">
+                            <span>Edit<br />template</span>
+                        </a>
+                    </span>
+                }
+                else
+                {
+                    <a href="@PageRouteLibrary.VisualEditor(routingInfo, VisualEditorMode.Edit, isCustomEntityRoute)"
+                       class="@ModeButtonClass(_isEditing)">
+                        <span>Edit<br />draft</span>
+                    </a>
+                }
+                @if (ResponseData.HasDraftVersion)
+                {
+                    <a href="@PageRouteLibrary.VisualEditor(routingInfo, VisualEditorMode.Preview, isCustomEntityRoute)"
+                       class="@ModeButtonClass(!_isEditing && workFlowStatus == WorkFlowStatus.Draft)">
+                        <span>Preview<br />draft</span>
+                    </a>
+                }
+            }
+        }
+        <div class="cofoundry-sv__options"></div>
+    </div>
+</div>
+<!-- END PAGE TOOLBAR -->
+
+@if (ResponseData != null && _isEditing)
+{
+    <!-- REGION TOOLBAR UI -->
+    <button id="cofoundry-sv__btn-add-block" class="cofoundry-sv__btn-add-block" type="button" style="display:none;"></button>
+    <!-- END REGION TOOLBAR UI -->
+
+    <!-- BLOCK TOOLBAR UI -->
+    <div id="cofoundry-sv__block-popover-container">
+        <ul class="cofoundry-sv__block-popover--main-actions">
+            <li class="edit">
+                <button id="cofoundry-sv__btn-block-edit" type="button" title="Edit this block">
+                    <i class="fa fa-edit"></i> Edit
+                </button>
+            </li>
+            <li class="advanced">
+                <button type="button">...</button>
+                <div class="cofoundry-sv__block-popover--adv-actions">
+                    <ul>
+                        <li class="up">
+                            <button id="cofoundry-sv__btn-block-moveup" type="button" title="Move this content block up">
+                                <i class="fa fa-chevron-up"></i> Move up
+                            </button>
+                        </li>
+                        <li class="down">
+                            <button id="cofoundry-sv__btn-block-movedown" type="button" title="Move this content block down">
+                                <i class="fa fa-chevron-down"></i> Move down
+                            </button>
+                        </li>
+                        <li class="addAbove">
+                            <button id="cofoundry-sv__btn-block-addabove" type="button" title="Add a new content block above">
+                                <i class="fa fa-chevron-circle-up"></i> Add above
+                            </button>
+                        </li>
+                        <li class="addBelow">
+                            <button id="cofoundry-sv__btn-block-addbelow" type="button" title="Add a new content block below">
+                                <i class="fa fa-chevron-circle-down"></i> Add below
+                            </button>
+                        </li>
+                        <li class="delete">
+                            <button id="cofoundry-sv__btn-block-delete" type="button" title="Delete this content block">
+                                <i class="fa fa-trash-o"></i> Delete
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+        </ul>
+    </div>
+    <!-- END BLOCK TOOLBAR UI -->
+
+    <div id="cofoundry-sv__ui-wrap" style="display:none;">
+        <div class="cofoundry-sv__ui-wrap-name">Placeholder</div>
+    </div>
+}
+
+@code {
+    private const int MaxVersions = 8;
+
+    private bool _isEditing;
+    private bool _isViewingSpecificVersion;
+    private bool _canEditDraft;
+    private bool _isEditTypeSwitchRequired;
+    private string _entityNameSingular = "Page";
+    private string _currentVersionText = string.Empty;
+    private PublishState _publishState;
+    private IReadOnlyList<VersionLink> _versions = [];
+
+    /// <summary>
+    /// Null on pages that aren't Cofoundry pages.
+    /// </summary>
+    [Parameter] public IPageResponseData? ResponseData { get; set; }
+
+    [Parameter] public VisualEditorPageData? PageData { get; set; }
+
+    [Parameter, EditorRequired] public string RequestPath { get; set; } = "/";
+
+    protected override void OnParametersSet()
+    {
+        if (ResponseData == null || PageData == null)
+        {
+            return;
+        }
+
+        var routingInfo = ResponseData.PageRoutingInfo;
+        var pageVersion = ResponseData.PageVersion;
+        var isCustomEntityPage = routingInfo.CustomEntityRoute != null;
+        var customEntityCode = routingInfo.PageRoute.CustomEntityDefinitionCode;
+        var canEditPage = Can<PageUpdatePermission>();
+        var canEditCustomEntity = !string.IsNullOrEmpty(customEntityCode)
+            && PermissionValidationService.HasCustomEntityPermission<CustomEntityUpdatePermission>(customEntityCode, ResponseData.CofoundryAdminUserContext);
+
+        _isEditing = ResponseData.VisualEditorMode == VisualEditorMode.Edit;
+        _isViewingSpecificVersion = ResponseData.VisualEditorMode == VisualEditorMode.SpecificVersion;
+        _publishState = routingInfo.GetPublishState();
+        _canEditDraft = (pageVersion.HasCustomEntityRegions || pageVersion.HasPageRegions) && (canEditPage || canEditCustomEntity);
+        _isEditTypeSwitchRequired = isCustomEntityPage && pageVersion.HasCustomEntityRegions && pageVersion.HasPageRegions
+            && canEditCustomEntity && canEditPage;
+        _entityNameSingular = PageData.IsCustomEntityRoute ? ResponseData.CustomEntityDefinition!.Name : "Page";
+
+        // On a page with custom entities, the page itself is better described as the template.
+        if (_isEditTypeSwitchRequired && !PageData.IsCustomEntityRoute)
+        {
+            _entityNameSingular = "Template";
+        }
+
+        IEnumerable<IVersionRoute> versions = PageData.IsCustomEntityRoute
+            ? routingInfo.CustomEntityRoute!.Versions
+            : routingInfo.PageRoute.Versions;
+        _versions = CreateVersionLinks(versions.ToList(), routingInfo);
+    }
+
+    private List<VersionLink> CreateVersionLinks(IReadOnlyList<IVersionRoute> versions, PageRoutingInfo routingInfo)
+    {
+        var links = new List<VersionLink>();
+        var versionNumber = versions.Count;
+
+        foreach (var version in versions.Take(MaxVersions))
+        {
+            var text = version.WorkFlowStatus == WorkFlowStatus.Draft ? "Draft" : "V" + versionNumber;
+            if (version.IsLatestPublishedVersion)
+            {
+                text += " (" + TextFormatter.PascalCaseToSentence(_publishState.Description.ToString()) + ")";
+            }
+
+            var isActive = version == ResponseData!.Version;
+            if (isActive)
+            {
+                _currentVersionText = text;
+            }
+
+            links.Add(new VersionLink(
+                PageRouteLibrary.VisualEditor(routingInfo, version),
+                text,
+                version.WorkFlowStatus.ToString().ToLowerInvariant(),
+                version.CreateDate,
+                isActive));
+            versionNumber--;
+        }
+
+        return links;
+    }
+
+    private bool Can<TPermission>() where TPermission : IPermissionApplication, new()
+    {
+        return PermissionValidationService.HasPermission<TPermission>(ResponseData!.CofoundryAdminUserContext);
+    }
+
+    private static string ModeButtonClass(bool isActive) => "cofoundry-sv__mode__button" + (isActive ? " active" : null);
+
+    private sealed record VersionLink(string Url, string Text, string Status, DateTime CreateDate, bool IsActive);
+}

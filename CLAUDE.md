@@ -39,9 +39,10 @@ Read `src/Cofoundry.Web.Admin.Blazor/README.md` first: it has the status, what i
 The Blazor admin calling the domain directly does not break anything today, because `Cofoundry.Web.Admin` and its
 `/admin/api` controllers are still installed. But `/admin/api` is a public surface that other code depends on:
 
-- the **Visual Editor**, which calls the API (`VisualEditor/Js/DataServices/PageBlockService.js`). It is itself part of
-  `Cofoundry.Web.Admin` (`Admin/Modules/VisualEditor`, an AngularJS app plus a global MVC result filter), so it
-  goes when that package does unless it's moved out too
+- the AngularJS **Visual Editor**, which calls the API (`VisualEditor/Js/DataServices/PageBlockService.js`). It is
+  part of `Cofoundry.Web.Admin` (`Admin/Modules/VisualEditor`, an AngularJS app plus a global MVC result filter),
+  so it goes with that package. **Ported:** the Blazor package has its own editor, which calls the domain
+  directly (`Cofoundry:AdminBlazor:UseVisualEditor`, see "Status")
 - **custom admin modules and plugins** that ship their own controllers deriving from `BaseAdminApiController`
   (sandbox Products module, `Cofoundry.Plugins.ErrorLogging.Admin`, `Cofoundry.Plugins.YouTube.Admin`)
 - possibly external scripts using the admin cookie (unknown)
@@ -109,10 +110,17 @@ Agreed direction:
 - Uploads: buffer into `BufferedFileSource` (the domain reads files more than once). A field that sets its value
   itself must call `NotifyFieldChanged()`, and a page that changes another field in code (e.g. a title from the
   file name) calls `AdminForm.NotifyFieldChanged`, or a stale "required" message stays visible.
+- **A field hidden by a condition still validates.** `AdminForm` validates the whole command, including a
+  hidden field's value, and that field's message is hidden with it, so Save silently does nothing. Clear the
+  value when the field is hidden (e.g. `AddPage` clears `UrlPath` for custom entity details pages).
+- **Visual editor steps:** `c.shot` takes full page screenshots, which resize the window, and the editor redraws
+  its overlays 500ms after a resize; hover a block from outside it, after a pause. The `data-cms-*` attributes
+  only exist in edit mode, and `?version=` of the live version redirects to `?mode=live`.
 - **`Cofoundry.Web.Admin`'s Visual Editor filter wraps every MVC result** outside `/{Admin:DirectoryName}` and
   `/api` (a global `VisualEditorContentFilter`) and rewrites it with a UTF-8 BOM. Any MVC endpoint the port adds
   outside those paths gets it: `Cofoundry.Web.Admin.Api` removes it from its actions
-  (`AdminApiActionDescriptorProvider`). Blazor components aren't MVC results, so the admin isn't affected.
+  (`AdminApiActionDescriptorProvider`). Blazor components aren't MVC results, so the admin isn't affected. With
+  `UseVisualEditor` on, our filter replaces it and writes no BOM.
 - The Blazor admin's pipeline branch skips `/{prefix}/api` (`AdminBlazorRoutes.ApiRoute`), where
   `Cofoundry.Web.Admin.Api` lives by default once the Blazor admin takes the `admin` directory.
 
@@ -133,11 +141,13 @@ Agreed direction:
   `IDataModelFieldComponentRegistration` extension point), and the plugins' Blazor packages:
   `Cofoundry.Plugins.ErrorLogging.Admin.Blazor` (error log list and details) and
   `Cofoundry.Plugins.YouTube.Admin.Blazor` (the `[YouTube]` field and picker) and
-  `Cofoundry.Plugins.Vimeo.Admin.Blazor` (the `[Vimeo]` field and picker).
+  `Cofoundry.Plugins.Vimeo.Admin.Blazor` (the `[Vimeo]` field and picker), and the visual editor
+  (`Infrastructure/VisualEditor`, `Components/VisualEditor`, `wwwroot/js/visual-editor*.js`; see below).
 - **Builds and runs.** Smoke-tested in `samples/src/Dev/Dev.Sandbox` with the `run-blazor-admin` skill (`smoke`
   for Pages, `assets-step.js` for Images/Documents, `settings-step.js` for Site Settings, `image-picker-step.js` for the picker, `roles-users-step.js` for Roles
   and Users, `access-rules-step.js` for Directories and access rules, `page-templates-step.js` for Page Templates, `custom-entities-step.js`, `custom-entity-pickers-step.js`, `nested-data-models-step.js` and `field-types-step.js` (run with `BROWSER_TZ`, uses the dev-only Field Tests entity `SIMFLD`) for Custom Entities, `plugins-step.js`
-  for the Error Logging, YouTube and Vimeo plugins; its Vimeo steps need internet access; `auth-step.js` for
+  for the Error Logging, YouTube and Vimeo plugins; `visual-editor-step.js` for the visual editor (creates and
+  deletes its own page, blog post and author); its Vimeo steps need internet access; `auth-step.js` for
   forgot/reset/change password and the setup redirect; `setup-test.js` (standalone, needs a sandbox on an
   empty database, see SKILL.md) for first-run setup; `directory-name-test.js` (standalone, a second sandbox
   with `Cofoundry__AdminBlazor__DirectoryName=cms`, see SKILL.md) for a non-default prefix; `account-step.js` for My Account and editing yourself
@@ -166,12 +176,20 @@ Agreed direction:
   solution's plugin folders). Dev.Sandbox references both versions of Error Logging, YouTube and Vimeo, and has a
   `test/error` route that throws so there is an error to log. The plugin installs its own table
   (`CofoundryPlugin.Error`) on startup.
+- **Visual editor:** the site's pages get the Blazor editor when `Cofoundry:AdminBlazor:UseVisualEditor` is on
+  (Dev.Sandbox sets it) or `Cofoundry.Web.Admin` isn't installed. `VisualEditorInstallation` then swaps the
+  AngularJS `VisualEditorContentFilter` (matched by type name) for ours, which injects `visual-editor.css/js`, the
+  page data as json (`#cofoundry-sv__data`, not `Cofoundry.PageResponseData`) and the toolbar
+  (`VisualEditorToolbar`, rendered with `HtmlRenderer`), as UTF-8 without a BOM. The page script posts actions to
+  an iframe showing the Blazor page `/admin-next/visual-editor/frame`, whose dialogs run the block/publish
+  commands and then reload the page. `AdminBlazorVisualEditorStateService` replaces the AngularJS
+  `?mode=`/`?version=` parsing.
 - **Next:** the remaining known gaps in the README. Every plugin with an AngularJS admin part now has a Blazor
-  package. Page block editing (and `[CustomEntityMultiTypeCollection]`) only matters
-  if the Visual Editor moves; it stays on the MVC site for now.
+  package. `[CustomEntityMultiTypeCollection]` (page blocks only) still shows the unsupported-field placeholder.
 - **Unit tests:** `test/Cofoundry.Web.Admin.Blazor.Tests` (xunit v3, like the repo's other test projects) covers
   pure helpers only: routes, `StringUtilities`, `AdminFormFields`, `FieldValidationMessage.UseTitle`,
-  `ImageAssetFilter`, `CommandValidationErrors`, `AdminBlazorMailTemplateBuilder` (with and without `UseForEmailLinks`) and the plugins' `ParseVideoId`. Run `dotnet test test/Cofoundry.Web.Admin.Blazor.Tests`. UI is covered by the skill's
+  `ImageAssetFilter`, `CommandValidationErrors`, `AdminBlazorMailTemplateBuilder` (with and without `UseForEmailLinks`),
+  `HtmlDocumentScriptInjector`, `VisualEditorInstallation` and the plugins' `ParseVideoId`. Run `dotnet test test/Cofoundry.Web.Admin.Blazor.Tests`. UI is covered by the skill's
   browser steps.
 
 ## Git

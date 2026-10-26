@@ -6,7 +6,7 @@ installed **alongside** the AngularJS admin while modules are migrated one at a 
 > **Status: first slice.** Builds cleanly. The Dashboard, Pages (list, filter, create, details/edit, publish,
 > unpublish, change URL, duplicate, access rules), Directories, Page Templates, Images, Documents, Site Settings, Roles, Users
 > and Custom Entities (phases 1 to 4: every data-model field type except page blocks' multi-type collection)
-> modules have been smoke-tested in `Dev.Sandbox`.
+> modules and the visual editor have been smoke-tested in `Dev.Sandbox`.
 
 ## Installing side-by-side
 
@@ -39,13 +39,15 @@ In the `Cofoundry:AdminBlazor` configuration section (`AdminBlazorSettings`):
 | --- | --- | --- |
 | `DirectoryName` | `admin-next` | The path to the Blazor admin, like `Cofoundry:Admin:DirectoryName` for the AngularJS one. Letters, numbers and dashes. While both admins are installed the two must differ. |
 | `UseForEmailLinks` | `false` | Points the links in the admin user area's emails at the Blazor admin (see "Ported so far"). Off by default, so installing the Blazor admin next to the AngularJS one doesn't change what existing admin users are sent. |
+| `UseVisualEditor` | `false` | Uses this package's visual editor on the site's pages instead of the AngularJS one (see "Visual editor"). Only read while `Cofoundry.Web.Admin` is installed; without it this package's editor is always used. |
 
 ```json
 {
   "Cofoundry": {
     "AdminBlazor": {
       "DirectoryName": "admin-next",
-      "UseForEmailLinks": true
+      "UseForEmailLinks": true,
+      "UseVisualEditor": true
     }
   }
 }
@@ -156,6 +158,7 @@ screenshots of the admin with a baseline taken before a change.
   `HasLocale` and `Ordering` drive the UI as in the AngularJS module. Ordering only applies to definitions that
   implement `IOrderableCustomEntityDefinition`. The nav maps every module restricted by
   `CustomEntityAdminModulePermission` to its Blazor list
+* Visual editor: the toolbar and block editing on the site's pages (see "Visual editor")
 
 ### Dynamic data-model forms
 
@@ -235,6 +238,32 @@ limit is 30MB (`BufferedFileSource.MaxFileSize`), matching the request size limi
 As in the AngularJS admin, images larger than `ImageAssetsSettings.MaxUploadWidth`/`MaxUploadHeight` are resized
 to a JPEG in the browser first (`wwwroot/js/image-upload.js`), and the title defaults to the file name.
 
+### Visual editor
+
+The visual editor is the toolbar and the region and block overlays an admin sees on the site's own pages. The
+AngularJS admin's version (`Cofoundry.Web.Admin/Admin/Modules/VisualEditor`) has three parts, and each has a
+counterpart here (`Infrastructure/VisualEditor`, `Components/VisualEditor`):
+
+| AngularJS admin | Blazor admin |
+| --- | --- |
+| `VisualEditorContentFilter`, a global MVC result filter, adds the scripts and toolbar to the html of every page an admin views | `VisualEditorContentFilter` does the same (`VisualEditorScriptGenerator`). The toolbar is `VisualEditorToolbar`, rendered with `HtmlRenderer`. Html is written as UTF-8 without the BOM the AngularJS filter added. Other responses pass through unchanged |
+| `var Cofoundry = { PageResponseData: ... }`, the whole page response including its view model | `<script type="application/json" id="cofoundry-sv__data">`, only what the editor uses (`VisualEditorPageData`). Site scripts that read `Cofoundry.PageResponseData` need another source |
+| `ContentPage/GuiController.js` draws the overlays and sends actions to the iframe | `wwwroot/js/visual-editor.js`, a plain-JS port with the same markup and css classes. It queues actions until the frame's circuit says it's ready |
+| The iframe holds an AngularJS app (`VisualEditorController`) with the Add/Edit block dialogs, calling `/admin/api` | The iframe loads `/admin-next/visual-editor/frame` (`VisualEditorFrame`, no nav), whose dialogs (`AddPageBlockDialog`, `EditPageBlockDialog`, confirms) call the domain through the executor. The block form is the dynamic data-model form, plus the display template |
+| `AdminVisualEditorStateService` reads `?mode=` and `?version=` | `AdminBlazorVisualEditorStateService`, registered above it, does the same, so those links still work once the AngularJS admin is removed |
+
+Pages and custom entity pages are both supported: add (to an empty region, above or below a block), edit, move
+up/down and delete blocks, publish/unpublish and copy a version to draft from the toolbar. Each change reloads
+the page, as before. The styles are `Styles/visual-editor.scss`, compiled to `wwwroot/css/visual-editor.css` by
+the same `npm run build` (the AngularJS editor's Sass, without the admin partials it shared).
+
+While `Cofoundry.Web.Admin` is installed its editor stays on unless `UseVisualEditor` is set. When it's set
+`VisualEditorInstallation` removes the AngularJS filter (matched by type name, as this package doesn't reference
+`Cofoundry.Web.Admin`) and adds this one. Either editor stays off when the admin or pages are disabled or
+`Cofoundry:Admin:AutoInjectVisualEditor` is false. `IVisualEditorRequestExclusionRule` keeps it out of other
+requests: the default rule excludes both admins and `/api`. As before, the site's own styles apply to the block
+popover's icons: the editor doesn't load Font Awesome on the site's pages.
+
 ## Extending the admin
 
 The Blazor equivalents of the AngularJS extension model. Everything is discovered through Cofoundry's usual
@@ -302,7 +331,8 @@ references both versions of each.
 
 * The YouTube field's lookup with an API key hasn't been tested (the sandbox has no key), and the preview shows
   YouTube's "Error 153" in headless Chrome. The AngularJS field embeds the same url
-* `[CustomEntityMultiTypeCollection]` (only used by page blocks) isn't ported; it comes with page block editing
+* `[CustomEntityMultiTypeCollection]` (only used by page blocks) isn't ported. The visual editor's block forms
+  show the unsupported-field placeholder for it (e.g. the sandbox's Content Section "Entities" field)
 * The page picker (page collection field) is multi-select only, since the single page field is a
   search-as-you-type dropdown, as in the AngularJS admin
 * Upload fields have no "Remove" button. The AngularJS field only shows it when the field is optional, and every
@@ -311,10 +341,9 @@ references both versions of each.
   couldn't be reproduced since: in headless Chrome the icon is the topmost element and a real click closes the
   image/document pickers, upload dialogs (stacked on a picker), Duplicate and the access rules editor. If it
   happens again, note which dialog and browser
-* Visual editor (stays on the MVC site; links use `?mode=edit`)
 * A role can't be deleted while any user references it, including soft-deleted users (a domain rule, the same
   in the AngularJS admin). Move users to another role before deleting them if the role should go too
 * Unit tests (`test/Cofoundry.Web.Admin.Blazor.Tests`) cover the pure helpers only (routes, string utilities,
   the server-error field matching, nested item errors, message wording, video id parsing, image size
-  restrictions, the email links setting). Components and pages are covered by
+  restrictions, the email links setting, the visual editor's html injection and filter swap). Components and pages are covered by
   the browser steps in `.claude/skills/run-blazor-admin`

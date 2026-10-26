@@ -69,6 +69,7 @@ node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-adm
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/session-step.js  # signed out in another tab
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/image-upload-size-step.js  # picker upload size rules
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/admin-api-step.js  # Cofoundry.Web.Admin.Api
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/visual-editor-step.js  # visual editor on the site
 STYLES_BASELINE=1 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/styles-step.js  # before a style change
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/styles-step.js  # after: compares screenshots
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
@@ -171,6 +172,15 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   paths are skipped when their list is empty), that a write without the antiforgery token is refused (it takes
   a token from an AngularJS admin page, as the AngularJS client does), a validation error, and adds, renames
   and deletes a role through the copy. It leaves nothing behind.
+- **`visual-editor-step.js`** covers the visual editor on the site's pages (the sandbox sets
+  `Cofoundry:AdminBlazor:UseVisualEditor`). It creates a General page and opens it with `?mode=edit`: the toolbar,
+  page data and styles, no BOM, adding blocks through the iframe's dialogs (the empty region's "+", "Add below"),
+  cancel, edit, move up and delete, publish (and that a signed-out visitor gets no editor), a second version, copy
+  an old version to draft with and without an existing draft, and unpublish. It checks `/test/test`'s json is left
+  alone. Then it creates an author, a blog post (with the first image in the library as its thumbnail, so it
+  needs one) and a Custom Entity Details page, and adds, edits and deletes a block in the post's region and
+  publishes the post. It deletes everything it created. About 4 minutes. The frame is
+  `page.frameLocator('#cofoundry-src__iFrame')`, and TinyMCE is a frame inside it.
 - **`extension-module-step.js`** covers the module extension point through the sandbox's Products module, a
   Blazor page in Dev.Sandbox (`Cofoundry/Admin/Blazor`): the nav link, direct load (endpoints) and in-app
   navigation (router), the signed-out redirect, validation, its custom selector field, save and cancel. The
@@ -255,6 +265,10 @@ can compare the two side by side.
 
 ## Gotchas
 
+- **Visual editor overlays redraw 500ms after a window resize**, and `c.shot` (a full page screenshot) resizes
+  the window. Wait after a shot before hovering a block, and move the mouse off it first: after a reload the
+  pointer may already be inside, which fires no `mouseenter`. Move up/down, add above/below and delete are in the
+  "..." menu, which opens on hover.
 - **Git Bash rewrites arguments that start with `/`** into Windows paths. `/admin-next/pages` becomes
   `C:/Program Files/Git/admin-next/pages`. Pass driver paths without the leading slash. For curl, use full
   URLs, or `MSYS_NO_PATHCONV=1`.

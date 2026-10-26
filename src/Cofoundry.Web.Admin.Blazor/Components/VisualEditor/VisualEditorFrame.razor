@@ -1,0 +1,291 @@
+@page "/visual-editor/frame"
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@implements IAsyncDisposable
+@inject IAdminBlazorExecutor Executor
+@inject IJSRuntime JS
+
+@* Port of the AngularJS visual editor's frame (VisualEditorController.js). The site's page loads this in a
+   hidden iframe and sends it the admin's actions (js/visual-editor.js); the iframe is shown while a dialog
+   is open. Changes reload the page, as before. *@
+
+@switch (_dialog)
+{
+    case Dialog.AddBlock:
+        <AddPageBlockDialog Context="_context!" Args="_addBlockArgs!" OnSaved="() => ReloadAsync(false)" OnCancel="CloseAsync" />
+        break;
+    case Dialog.EditBlock:
+        <EditPageBlockDialog Context="_context!" Args="_blockArgs!" OnSaved="() => ReloadAsync(false)" OnCancel="CloseAsync" />
+        break;
+    case Dialog.DeleteBlock:
+        <ConfirmDialog Title="Delete Block" Message="Are you sure you want to delete this content block?"
+                       OkButtonTitle="Yes, delete it"
+                       OnOk="() => RunAsync(CreateDeleteBlockCommand(), false)"
+                       OnClosed="OnConfirmClosed" />
+        break;
+    case Dialog.Publish:
+        <ConfirmDialog Title="@($"Publish {_context!.EntityNameSingular}")"
+                       Message="@($"Are you sure you want to publish this {_context.EntityNameSingular.ToLowerInvariant()}?")"
+                       OkButtonTitle="Yes, publish it"
+                       OnOk="() => RunAsync(CreatePublishCommand(), true)"
+                       OnClosed="OnConfirmClosed" />
+        break;
+    case Dialog.Unpublish:
+        <ConfirmDialog Title="@($"Unpublish {_context!.EntityNameSingular}")"
+                       Message="@($"Unpublishing this {_context.EntityNameSingular.ToLowerInvariant()} will remove it from the live site and put it into draft status. Are you sure you want to continue?")"
+                       OkButtonTitle="Yes, unpublish it"
+                       OnOk="() => RunAsync(CreateUnpublishCommand(), true)"
+                       OnClosed="OnConfirmClosed" />
+        break;
+    case Dialog.CopyToDraft:
+        <ConfirmDialog Title="@($"Copy {_context!.EntityNameSingular} Version")"
+                       Message="@($"A draft version of this {_context.EntityNameSingular.ToLowerInvariant()} already exists. Copying this version will delete the current draft. Do you wish to continue?")"
+                       OkButtonTitle="Yes, replace it"
+                       OnOk="CopyToDraftReplacingExistingAsync"
+                       OnClosed="OnConfirmClosed" />
+        break;
+    case Dialog.Error:
+        <ModalDialog Title="Sorry, that didn't work" OnClose="CloseAsync">
+            <div class="modal-actions">
+                <AdminButton Text="Close" Class="main-cta" OnClick="CloseAsync" />
+            </div>
+            <div class="modal-body">
+                @foreach (var error in _errors)
+                {
+                    <p>@error.Message</p>
+                }
+            </div>
+        </ModalDialog>
+        break;
+}
+
+@code {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
+
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<VisualEditorFrame>? _reference;
+    private Dialog _dialog;
+    private VisualEditorPageData? _context;
+    private VisualEditorAddBlockArgs? _addBlockArgs;
+    private VisualEditorBlockArgs? _blockArgs;
+    private IReadOnlyCollection<ValidationError> _errors = [];
+    private bool _isBusy;
+    private bool _isReloading;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _module = await JS.InvokeAsync<IJSObjectReference>("import", AdminAssetPaths.VisualEditorFrameScript);
+        _reference = DotNetObjectReference.Create(this);
+        await _module.InvokeVoidAsync("init", _reference);
+    }
+
+    /// <summary>
+    /// An action from the site's page, with its arguments and the page's <see cref="VisualEditorPageData"/>.
+    /// </summary>
+    [JSInvokable]
+    public async Task HandleMessage(string action, string argsJson, string contextJson)
+    {
+        // One at a time: while a dialog is open the frame covers the page anyway.
+        if (_dialog != Dialog.None || _isBusy || _isReloading)
+        {
+            return;
+        }
+
+        _context = JsonSerializer.Deserialize<VisualEditorPageData>(contextJson, JsonOptions)!;
+        _errors = [];
+
+        switch (action)
+        {
+            case "addBlock":
+                _addBlockArgs = JsonSerializer.Deserialize<VisualEditorAddBlockArgs>(argsJson, JsonOptions)!;
+                _dialog = Dialog.AddBlock;
+                break;
+            case "editBlock":
+                _blockArgs = JsonSerializer.Deserialize<VisualEditorBlockArgs>(argsJson, JsonOptions)!;
+                _dialog = Dialog.EditBlock;
+                break;
+            case "deleteBlock":
+                _blockArgs = JsonSerializer.Deserialize<VisualEditorBlockArgs>(argsJson, JsonOptions)!;
+                _dialog = Dialog.DeleteBlock;
+                break;
+            case "moveBlock":
+                _blockArgs = JsonSerializer.Deserialize<VisualEditorBlockArgs>(argsJson, JsonOptions)!;
+                await RunWithoutDialogAsync(CreateMoveBlockCommand(), false);
+                break;
+            case "publish":
+                _dialog = Dialog.Publish;
+                break;
+            case "unpublish":
+                _dialog = Dialog.Unpublish;
+                break;
+            case "copyToDraft":
+                if (_context.HasDraftVersion)
+                {
+                    // Warn first: copying replaces the existing draft.
+                    _dialog = Dialog.CopyToDraft;
+                }
+                else
+                {
+                    await RunWithoutDialogAsync(CreateCopyToDraftCommand(), true);
+                }
+                break;
+            default:
+                await CloseAsync();
+                return;
+        }
+
+        StateHasChanged();
+    }
+
+    private ICommand CreateMoveBlockCommand()
+    {
+        var direction = _blockArgs!.IsUp ? OrderedItemMoveDirection.Up : OrderedItemMoveDirection.Down;
+
+        return _context!.IsCustomEntityRoute
+            ? new MoveCustomEntityVersionPageBlockCommand { CustomEntityVersionPageBlockId = _blockArgs.VersionBlockId, Direction = direction }
+            : new MovePageVersionBlockCommand { PageVersionBlockId = _blockArgs.VersionBlockId, Direction = direction };
+    }
+
+    private ICommand CreateDeleteBlockCommand()
+    {
+        return _context!.IsCustomEntityRoute
+            ? new DeleteCustomEntityVersionPageBlockCommand { CustomEntityVersionPageBlockId = _blockArgs!.VersionBlockId }
+            : new DeletePageVersionBlockCommand { PageVersionBlockId = _blockArgs!.VersionBlockId };
+    }
+
+    private ICommand CreatePublishCommand()
+    {
+        return _context!.IsCustomEntityRoute
+            ? new PublishCustomEntityCommand(_context.CustomEntityId!.Value)
+            : new PublishPageCommand(_context.PageId);
+    }
+
+    private ICommand CreateUnpublishCommand()
+    {
+        return _context!.IsCustomEntityRoute
+            ? new UnPublishCustomEntityCommand(_context.CustomEntityId!.Value)
+            : new UnPublishPageCommand(_context.PageId);
+    }
+
+    private ICommand CreateDeleteDraftCommand()
+    {
+        return _context!.IsCustomEntityRoute
+            ? new DeleteCustomEntityDraftVersionCommand { CustomEntityId = _context.CustomEntityId!.Value }
+            : new DeletePageDraftVersionCommand { PageId = _context.PageId };
+    }
+
+    private ICommand CreateCopyToDraftCommand()
+    {
+        return _context!.IsCustomEntityRoute
+            ? new AddCustomEntityDraftVersionCommand { CustomEntityId = _context.CustomEntityId!.Value, CopyFromCustomEntityVersionId = _context.VersionId }
+            : new AddPageDraftVersionCommand { PageId = _context.PageId, CopyFromPageVersionId = _context.VersionId };
+    }
+
+    private async Task CopyToDraftReplacingExistingAsync()
+    {
+        if (await ExecuteAsync(CreateDeleteDraftCommand()))
+        {
+            await RunAsync(CreateCopyToDraftCommand(), true);
+        }
+    }
+
+    /// <summary>
+    /// Runs a confirm dialog's command. On success the page reloads; on failure the errors are shown once
+    /// the confirm dialog has closed.
+    /// </summary>
+    private async Task RunAsync(ICommand command, bool resetMode)
+    {
+        if (await ExecuteAsync(command))
+        {
+            await ReloadAsync(resetMode);
+        }
+    }
+
+    private async Task RunWithoutDialogAsync(ICommand command, bool resetMode)
+    {
+        _isBusy = true;
+        try
+        {
+            await RunAsync(command, resetMode);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+
+        if (_errors.Count > 0)
+        {
+            _dialog = Dialog.Error;
+        }
+    }
+
+    private async Task<bool> ExecuteAsync(ICommand command)
+    {
+        var result = await Executor.ExecuteAsync(command);
+        _errors = result.Errors;
+
+        return result.Succeeded;
+    }
+
+    private async Task OnConfirmClosed(bool confirmed)
+    {
+        if (_isReloading)
+        {
+            return;
+        }
+
+        if (confirmed && _errors.Count > 0)
+        {
+            _dialog = Dialog.Error;
+            return;
+        }
+
+        await CloseAsync();
+    }
+
+    private async Task ReloadAsync(bool resetMode)
+    {
+        // Keep the dialog up (and the frame shown) until the page goes.
+        _isReloading = true;
+        await _module!.InvokeVoidAsync("reloadParent", resetMode);
+    }
+
+    private async Task CloseAsync()
+    {
+        _dialog = Dialog.None;
+        _errors = [];
+
+        if (_module != null)
+        {
+            await _module.InvokeVoidAsync("closeDialog");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module != null)
+        {
+            try
+            {
+                await _module.InvokeVoidAsync("dispose");
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The page has gone, e.g. after a reload.
+            }
+        }
+
+        _reference?.Dispose();
+    }
+
+    private enum Dialog { None, AddBlock, EditBlock, DeleteBlock, Publish, Unpublish, CopyToDraft, Error }
+}

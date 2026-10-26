@@ -1,0 +1,16 @@
+@inherits LayoutComponentBase
+
+@* The layout of the visual editor's frame (Components/VisualEditor), which shows dialogs over the site's page,
+   so it has no nav or footer, and a transparent background (cofoundry-visual-editor-frame on the body). *@
+<CascadingValue Value="_modalDialogStack" IsFixed="true">
+    @Body
+
+    @for (var level = 0; level < ModalDialogStack.MaxDepth; level++)
+    {
+        <SectionOutlet SectionName="@ModalDialogStack.GetSectionName(level)" />
+    }
+</CascadingValue>
+
+@code {
+    private readonly ModalDialogStack _modalDialogStack = new();
+}

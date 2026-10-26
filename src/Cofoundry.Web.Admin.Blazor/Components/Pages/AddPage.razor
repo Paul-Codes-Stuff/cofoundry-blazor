@@ -154,12 +154,28 @@ else
         _command!.PageType = pageType;
         _command.PageTemplateId = 0;
         FilterTemplates();
+
+        // Each type validates that the other's url field is empty, and that field is hidden, so its message
+        // would be too: clear it here rather than at save, which validates first.
+        if (pageType == PageType.CustomEntityDetails)
+        {
+            _command.UrlPath = null;
+        }
+        else
+        {
+            _command.CustomEntityRoutingRule = null;
+            _command.UrlPath = StringUtilities.Slugify(_command.Title, 200);
+        }
     }
 
     private void OnTitleChanged(string? title)
     {
         _command!.Title = title ?? string.Empty;
-        _command.UrlPath = StringUtilities.Slugify(title, 200);
+
+        if (_command.PageType != PageType.CustomEntityDetails)
+        {
+            _command.UrlPath = StringUtilities.Slugify(title, 200);
+        }
     }
 
     // Custom entity pages only offer custom entity templates; everything else offers generic ones.
@@ -180,16 +196,7 @@ else
             return;
         }
 
-        if (_command!.PageType == PageType.CustomEntityDetails)
-        {
-            _command.UrlPath = null;
-        }
-        else
-        {
-            _command.CustomEntityRoutingRule = null;
-        }
-
-        _command.Publish = publish;
+        _command!.Publish = publish;
         _isPublishing = publish;
         _isSaving = true;
         _errors = [];

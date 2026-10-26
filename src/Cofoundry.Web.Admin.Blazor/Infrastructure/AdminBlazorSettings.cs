@@ -28,4 +28,11 @@ public class AdminBlazorSettings : CofoundryConfigurationSettingsBase
     /// either admin.
     /// </summary>
     public bool UseForEmailLinks { get; set; }
+
+    /// <summary>
+    /// Uses the Blazor admin's visual editor on the site's pages instead of the AngularJS one, while
+    /// Cofoundry.Web.Admin is installed. Off by default. Without Cofoundry.Web.Admin the Blazor editor is
+    /// always used (see <see cref="VisualEditorInstallation"/>).
+    /// </summary>
+    public bool UseVisualEditor { get; set; }
 }

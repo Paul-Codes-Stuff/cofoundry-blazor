@@ -96,6 +96,11 @@ public static class AdminBlazorRoutes
     /// <summary>
     /// The signed-in user's own details ("My Account").
     /// </summary>
+    /// <summary>
+    /// The page the visual editor's iframe loads on the site's pages: its dialogs show there.
+    /// </summary>
+    public static string VisualEditorFrame => Root + "/visual-editor/frame";
+
     public static string Account => Root + "/account";
     public static string AccountEdit => Account + "?edit=true";
     public static string AccountChangePassword => Account + "/change-password";

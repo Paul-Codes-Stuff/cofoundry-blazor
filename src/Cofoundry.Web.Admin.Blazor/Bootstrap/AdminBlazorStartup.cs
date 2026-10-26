@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -21,6 +22,10 @@ public class AdminBlazorServiceConfigurationTask : IStartupServiceConfigurationT
             .AddInteractiveServerComponents();
 
         mvcBuilder.Services.AddCascadingAuthenticationState();
+
+        mvcBuilder.Services
+            .AddOptions<MvcOptions>()
+            .PostConfigure<AdminSettings, PagesSettings, AdminBlazorSettings>(VisualEditorInstallation.ConfigureFilters);
 
         mvcBuilder.Services.AddAuthorization(options =>
         {

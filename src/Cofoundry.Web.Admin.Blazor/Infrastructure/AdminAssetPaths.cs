@@ -19,6 +19,21 @@ public static class AdminAssetPaths
 
     public const string SessionCheckScript = ContentRoot + "/js/session-check.js";
 
+    /// <summary>
+    /// Injected into the site's pages for admins, with <see cref="VisualEditorStyles"/>. Plain JavaScript with no
+    /// dependencies, since it runs alongside the site's own scripts.
+    /// </summary>
+    public const string VisualEditorScript = ContentRoot + "/js/visual-editor.js";
+
+    public const string VisualEditorStyles = ContentRoot + "/css/visual-editor.css";
+
+    public const string VisualEditorLogo = ContentRoot + "/img/visual-editor/logo-thumb.png";
+
+    /// <summary>
+    /// Loaded by the visual editor's frame page (<c>Components/VisualEditor/VisualEditorFrame.razor</c>).
+    /// </summary>
+    public const string VisualEditorFrameScript = ContentRoot + "/js/visual-editor-frame.js";
+
     public const string HtmlEditorScript = ContentRoot + "/js/html-editor.js";
 
     /// <summary>

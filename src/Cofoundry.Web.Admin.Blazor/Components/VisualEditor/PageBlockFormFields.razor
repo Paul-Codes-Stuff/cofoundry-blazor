@@ -1,0 +1,24 @@
+@* The fields shared by the add and edit block dialogs: the block type's data model (cms-form-dynamic-field-set)
+   and, when the block type has any, a display template. *@
+<DataModelFieldSet Model="Form.DataModel" Schema="Schema" />
+
+@if (Schema.Templates.Count > 0)
+{
+    <FormFieldDropdown TValue="int?" Title="Display Template" Options="_templates" DefaultItemText="Default"
+                       @bind-Value="Form.PageBlockTypeTemplateId" />
+}
+
+@code {
+    private IReadOnlyList<SelectOption<int?>> _templates = [];
+
+    [Parameter, EditorRequired] public PageBlockForm Form { get; set; } = default!;
+
+    [Parameter, EditorRequired] public PageBlockTypeDetails Schema { get; set; } = default!;
+
+    protected override void OnParametersSet()
+    {
+        _templates = Schema.Templates
+            .Select(t => new SelectOption<int?>(t.PageBlockTypeTemplateId, t.Name))
+            .ToList();
+    }
+}

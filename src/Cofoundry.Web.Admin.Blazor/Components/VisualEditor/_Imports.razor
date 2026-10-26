@@ -1,0 +1,5 @@
+@* The visual editor's frame requires a signed-in admin user. Applied here rather than the root _Imports so it
+   does not land on App.razor or Routes.razor, which must render for signed-out users. The toolbar is rendered
+   on the site by VisualEditorScriptGenerator, not routed, so it isn't affected. *@
+@attribute [AdminBlazorAuthorize]
+@layout VisualEditorFrameLayout

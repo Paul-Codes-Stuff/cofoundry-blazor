@@ -1,0 +1,36 @@
+/*
+    The Visual Editor's stylesheet, injected into the site's pages for signed-in admins (toolbar, region and
+    block overlays). Compiled to wwwroot/css/visual-editor.css by "npm run build" in this folder.
+
+    A copy of the AngularJS admin's VisualEditor/Sass. That build also pulled in the shared Common partials
+    (.heading-primary, .invisible, .inline-link...), which have nothing to do with the editor and would style
+    the site's own markup, so they're left out.
+*/
+
+@import "Libs/compass";
+@import "Libs/mixins";
+
+@import "Config/colors";
+@import "Config/dimensions";
+@import "Config/fonts";
+@import "Config/settings";
+
+@import "VisualEditor/mixins";
+@import "VisualEditor/vendor";
+
+// Block styles
+@import "VisualEditor/blocks/page-ui";
+@import "VisualEditor/blocks/frame";
+@import "VisualEditor/blocks/preview-menu";
+@import "VisualEditor/blocks/mini-menu";
+@import "VisualEditor/blocks/versions";
+@import "VisualEditor/blocks/navmenu";
+@import "VisualEditor/blocks/tabs";
+
+// Element styles
+@import "VisualEditor/elements/page-details";
+@import "VisualEditor/elements/mode";
+@import "VisualEditor/elements/options";
+@import "VisualEditor/elements/settings";
+@import "VisualEditor/elements/edit-mode";
+@import "VisualEditor/elements/info-list";
