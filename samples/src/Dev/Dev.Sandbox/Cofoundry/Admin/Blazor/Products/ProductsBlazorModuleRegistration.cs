@@ -5,14 +5,26 @@ using Cofoundry.Web.Admin.Blazor;
 namespace Dev.Sandbox;
 
 /// <summary>
-/// Moves the Products module's nav link to its Blazor page. The module itself (title, menu, ordering)
-/// still comes from <see cref="ProductsModuleRegistration"/>, the AngularJS registration.
+/// Adds the Products module's Blazor page. The module is described here as well as in the AngularJS
+/// registration (ProductsModuleRegistration), so it also works without the AngularJS admin (a
+/// BlazorAdminOnly build); when both are installed the AngularJS description is used and only the nav link
+/// moves to Blazor.
 /// </summary>
 public class ProductsBlazorModuleRegistration : IAdminBlazorModuleRegistration
 {
     public IEnumerable<AdminBlazorModule> GetModules()
     {
-        yield return new("BTPPRD", typeof(ProductDetailsPage));
+        yield return new("BTPPRD", typeof(ProductDetailsPage))
+        {
+            Module = new AdminModule()
+            {
+                AdminModuleCode = "BTPPRD",
+                Title = "Products",
+                Description = "Testing module.",
+                MenuCategory = AdminModuleMenuCategory.ManageSite,
+                PrimaryOrdering = AdminModuleMenuPrimaryOrdering.Tertiary
+            }
+        };
     }
 }
 

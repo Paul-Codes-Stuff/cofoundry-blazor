@@ -178,30 +178,34 @@ public class AdminBlazorModuleRegistry
 }
 
 /// <summary>
-/// Adds the modules defined by Blazor registrations (<see cref="AdminBlazorModule.Module"/>) to Cofoundry's
-/// modules, for both admins, unless another <see cref="IAdminModuleRegistration"/> already has the code.
+/// Adds the modules defined by Blazor registrations (<see cref="AdminBlazorModule.Module"/>) and the built-in
+/// modules (<see cref="BuiltInAdminModules"/>) to Cofoundry's modules, for both admins, unless another
+/// <see cref="IAdminModuleRegistration"/> already has the code. With Cofoundry.Web.Admin installed, its own
+/// registrations describe the built-in modules; without it, these do.
 /// </summary>
 public class AdminBlazorModuleDefinitionRegistration : IAdminModuleRegistration
 {
     private readonly AdminBlazorModuleRegistry _registry;
+    private readonly BuiltInAdminModules _builtInModules;
     private readonly IServiceProvider _serviceProvider;
 
     public AdminBlazorModuleDefinitionRegistration(
         AdminBlazorModuleRegistry registry,
+        BuiltInAdminModules builtInModules,
         IServiceProvider serviceProvider
         )
     {
         _registry = registry;
+        _builtInModules = builtInModules;
         _serviceProvider = serviceProvider;
     }
 
     public IEnumerable<AdminModule> GetModules()
     {
+        // A Blazor registration's description wins over the built-in one with the same code.
         var definitions = _registry.GetModuleDefinitions().ToList();
-        if (definitions.Count == 0)
-        {
-            return definitions;
-        }
+        var registeredCodes = definitions.Select(m => m.AdminModuleCode).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        definitions.AddRange(_builtInModules.GetModules().Where(m => !registeredCodes.Contains(m.AdminModuleCode)));
 
         // Resolved here rather than injected, since this is one of them.
         var otherCodes = _serviceProvider

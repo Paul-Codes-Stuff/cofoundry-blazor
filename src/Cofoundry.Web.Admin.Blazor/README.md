@@ -66,6 +66,34 @@ unknown admin url gets the admin's own "not found" page. The one exception is `/
 branch leaves to the rest of the pipeline for `Cofoundry.Web.Admin.Api` (its README), whose default path is
 the admin directory followed by `/api`.
 
+## Installing without the AngularJS admin
+
+To replace the AngularJS admin rather than run beside it, reference `Cofoundry.Web.Admin.Blazor` and
+`Cofoundry.Web.Admin.Api` but not `Cofoundry.Web.Admin`, and use the plugins' `*.Admin.Blazor` packages without
+their AngularJS ones (which reference `Cofoundry.Web.Admin`). Then move the admin to the usual directory:
+
+```json
+{
+  "Cofoundry": {
+    "AdminBlazor": { "DirectoryName": "admin" }
+  }
+}
+```
+
+The API keeps its default base url, `{Cofoundry:Admin:DirectoryName}/api`, i.e. `/admin/api`, so existing
+API clients don't change. What changes without the AngularJS package:
+
+* **Nav:** the built-in modules (Dashboard, Pages, Users per user area, custom entities...) were described by
+  the AngularJS package's module registrations. `BuiltInAdminModules` describes them instead, used only for codes
+  no other registration has, so it does nothing while that package is installed.
+* **Visual editor:** the Blazor editor is always used (`UseVisualEditor` only matters beside the AngularJS one).
+* **API antiforgery token:** the AngularJS admin rendered one into its pages for its scripts. A client now gets
+  one from the site (`IAntiforgery`, e.g. the `__RequestVerificationToken` field of any form, including the
+  Blazor admin's static SSR ones) and sends it in ASP.NET Core's default header, `RequestVerificationToken`.
+
+The sandbox checks this with a `BlazorAdminOnly` build (`dotnet build -p:BlazorAdminOnly=true`; see "Blazor
+admin only" in the `run-blazor-admin` skill), which passes every browser step.
+
 ## How it differs from the AngularJS admin
 
 | AngularJS admin | Blazor admin |

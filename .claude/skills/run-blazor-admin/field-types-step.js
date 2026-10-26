@@ -1,6 +1,6 @@
 // Data model field types (phase 4) on the sandbox's dev-only Field Tests entity (SIMFLD,
 // Cofoundry/CustomEntities/FieldTests). Fills every field, saves, and checks the stored model through the
-// AngularJS admin's api (/admin/api/custom-entities/{id}), so time zone conversion is checked against
+// admin api (Cofoundry.Web.Admin.Api's /admin-next/api/custom-entities/{id}), so time zone conversion is checked against
 // what the domain stored, not just what the form shows. Run it with BROWSER_TZ set to a zone that isn't
 // UTC (e.g. America/New_York) so the "Local" fields actually convert. The asset fields upload their test
 // files through the pickers. Deletes what it creates.
@@ -23,7 +23,7 @@ module.exports = async (page, c) => {
   const isEnum = (actual, name, number) => actual === name || actual === number;
   let id;
   const stored = async () => {
-    const res = await page.request.get(`/admin/api/custom-entities/${id}`);
+    const res = await page.request.get(`/admin-next/api/custom-entities/${id}`);
     if (!res.ok()) throw new Error(`api ${res.status()}`);
     const json = await res.json();
     return (json.data || json).latestVersion.model;

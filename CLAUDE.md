@@ -175,6 +175,12 @@ Agreed direction:
   solution's plugin folders). Dev.Sandbox references both versions of Error Logging, YouTube and Vimeo, and has a
   `test/error` route that throws so there is an error to log. The plugin installs its own table
   (`CofoundryPlugin.Error`) on startup.
+- **Without the AngularJS admin:** the sandbox's `-p:BlazorAdminOnly=true` build leaves out `Cofoundry.Web.Admin`
+  and the plugins' AngularJS packages (see "Blazor admin only" in SKILL.md). Every browser step passes on it,
+  and `directory-name-test.js` passes with the admin at `/admin` and the API at `/admin/api`. The built-in
+  modules' nav entries came from `Cofoundry.Web.Admin`'s registrations, so `BuiltInAdminModules` describes them
+  too, used only for codes no other registration has. Keep the two in step. Steps must work on both builds:
+  read data through `/admin-next/api`, never `/admin/api`, and use `BASE_URL`, not a hard-coded port.
 - **Visual editor:** the site's pages get the Blazor editor when `Cofoundry:AdminBlazor:UseVisualEditor` is on
   (Dev.Sandbox sets it) or `Cofoundry.Web.Admin` isn't installed. `VisualEditorInstallation` then swaps the
   AngularJS `VisualEditorContentFilter` (matched by type name) for ours, which injects `visual-editor.css/js`, the

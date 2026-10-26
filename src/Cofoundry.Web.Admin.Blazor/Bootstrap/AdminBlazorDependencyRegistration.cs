@@ -19,6 +19,7 @@ public class AdminBlazorDependencyRegistration : IDependencyRegistration
             .Register<BrowserTimeZone>(RegistrationOptions.Scoped())
             .RegisterAll<IAdminBlazorModuleRegistration>(RegistrationOptions.SingletonScope())
             .Register<AdminBlazorModuleRegistry>(RegistrationOptions.SingletonScope())
+            .Register<BuiltInAdminModules>()
             .RegisterAll<IDataModelFieldComponentRegistration>(RegistrationOptions.SingletonScope())
             .Register<DataModelFieldComponentRegistry>(RegistrationOptions.SingletonScope())
             .Register<VisualEditorScriptGenerator>()

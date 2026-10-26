@@ -27,8 +27,10 @@ module.exports = async (page, c) => {
     const links = page.locator('nav.main-nav a:text-is("Error Log")');
     if ((await links.count()) !== 1) throw new Error('Blazor nav links: ' + await links.count());
     if ((await links.getAttribute('href')) !== '/admin-next/errors') throw new Error('href ' + await links.getAttribute('href'));
-    // The AngularJS package also describes the module, so the Blazor one must not add a second.
+    // The AngularJS package also describes the module, so the Blazor one must not add a second. A
+    // BlazorAdminOnly build has no AngularJS admin to check.
     const res = await page.request.get('/admin');
+    if (res.status() === 404) return;
     const html = await res.text();
     const count = (html.match(/>\s*Error Log\s*</g) || []).length;
     if (count !== 1) throw new Error('AngularJS nav entries: ' + count);
@@ -82,7 +84,7 @@ module.exports = async (page, c) => {
   const title = `YouTube ${stamp}`;
   let id;
   const stored = async () => {
-    const res = await page.request.get(`/admin/api/custom-entities/${id}`);
+    const res = await page.request.get(`/admin-next/api/custom-entities/${id}`);
     const json = await res.json();
     return (json.data || json).latestVersion.model.video;
   };
@@ -163,7 +165,7 @@ module.exports = async (page, c) => {
     await page.waitForTimeout(600);
   };
   const storedVimeo = async () => {
-    const res = await page.request.get(`/admin/api/custom-entities/${id}`);
+    const res = await page.request.get(`/admin-next/api/custom-entities/${id}`);
     const json = await res.json();
     return (json.data || json).latestVersion.model.vimeoVideo;
   };

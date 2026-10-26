@@ -1,12 +1,14 @@
 // The Blazor admin under a non-default Cofoundry:AdminBlazor:DirectoryName. Start a second sandbox with the
 // setting (see SKILL.md, "Directory name"), then:
 //   ADMIN_USER=... ADMIN_PASS=... node .claude/skills/run-blazor-admin/directory-name-test.js http://localhost:5008 cms
+// An optional fourth argument is the admin API's path (Cofoundry:AdminApi:BaseUrl, e.g. admin/api), checked too.
 // It doesn't use driver.js, whose steps assume /admin-next. Saves nothing.
 const path = require('path');
 const { chromium } = require('playwright-core');
 
 const base = process.argv[2] || 'http://localhost:5008';
 const prefix = '/' + (process.argv[3] || 'cms');
+const apiPath = process.argv[4] ? '/' + process.argv[4].replace(/^\/|\/$/g, '') : null;
 const outDir = process.env.OUT_DIR || path.join(require('os').tmpdir(), 'blazor-admin-run');
 let failures = 0;
 
@@ -85,6 +87,18 @@ let failures = 0;
     if (/blazor\.web\.js/.test(body)) throw new Error('/admin-next still serves the admin');
     problems.length = 0;
   });
+
+  if (apiPath) {
+    await step('admin api', async () => {
+      const anon = await browser.newContext({ baseURL: base });
+      const res = await anon.request.get(apiPath + '/dashboard', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+      await anon.close();
+      if (res.status() !== 401) throw new Error('signed out: ' + res.status());
+      const pages = await page.request.get(apiPath + '/pages');
+      const body = pages.ok() ? await pages.json().catch(() => null) : null;
+      if (!body?.isValid || !Array.isArray(body.data?.items)) throw new Error(`pages: ${pages.status()} ${(await pages.text()).slice(0, 200)}`);
+    });
+  }
 
   await step('sign out', async () => {
     await page.goto(prefix + '/auth/logout'); await settle(800);

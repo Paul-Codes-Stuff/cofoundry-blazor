@@ -5,18 +5,39 @@
     <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
   </PropertyGroup>
 
-  <ItemGroup>
-    <!-- Both admins' versions of the plugins, as a site would install them during the migration. -->
+  <!--
+    dotnet build -p:BlazorAdminOnly=true builds the site without the AngularJS admin (Cofoundry.Web.Admin and the
+    plugins' AngularJS packages), as a site would be once that admin is retired. It builds into its own bin and
+    obj folders so the two builds can run side by side; see "Blazor admin only" in the run-blazor-admin skill.
+  -->
+  <PropertyGroup Condition="'$(BlazorAdminOnly)' == 'true'">
+    <OutputPath>bin\BlazorAdminOnly\</OutputPath>
+    <IntermediateOutputPath>obj\BlazorAdminOnly\</IntermediateOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(BlazorAdminOnly)' != 'true'">
+    <!-- The AngularJS admin and its version of the plugins, as a site would install them during the migration. -->
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.ErrorLogging\Cofoundry.Plugins.ErrorLogging.Admin\Cofoundry.Plugins.ErrorLogging.Admin.csproj" />
-    <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.ErrorLogging\Cofoundry.Plugins.ErrorLogging.Admin.Blazor\Cofoundry.Plugins.ErrorLogging.Admin.Blazor.csproj" />
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.YouTube\Cofoundry.Plugins.YouTube.Admin\Cofoundry.Plugins.YouTube.Admin.csproj" />
-    <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.YouTube\Cofoundry.Plugins.YouTube.Admin.Blazor\Cofoundry.Plugins.YouTube.Admin.Blazor.csproj" />
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.Vimeo\Cofoundry.Plugins.Vimeo.Admin\Cofoundry.Plugins.Vimeo.Admin.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Cofoundry.Web.Admin\Cofoundry.Web.Admin.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(BlazorAdminOnly)' == 'true'">
+    <!-- The AngularJS Products module (Cofoundry/Admin/Modules) needs Cofoundry.Web.Admin. -->
+    <Compile Remove="Cofoundry\Admin\Modules\**" />
+    <Content Remove="Cofoundry\Admin\Modules\**" />
+    <EmbeddedResource Remove="Cofoundry\Admin\Modules\**" />
+    <None Remove="Cofoundry\Admin\Modules\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.ErrorLogging\Cofoundry.Plugins.ErrorLogging.Admin.Blazor\Cofoundry.Plugins.ErrorLogging.Admin.Blazor.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.YouTube\Cofoundry.Plugins.YouTube.Admin.Blazor\Cofoundry.Plugins.YouTube.Admin.Blazor.csproj" />
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.Vimeo\Cofoundry.Plugins.Vimeo.Admin.Blazor\Cofoundry.Plugins.Vimeo.Admin.Blazor.csproj" />
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Plugins\Cofoundry.Plugins.Imaging.SkiaSharp\Cofoundry.Plugins.Imaging.SkiaSharp\Cofoundry.Plugins.Imaging.SkiaSharp.csproj" />
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Web.Admin.Api\Cofoundry.Web.Admin.Api.csproj" />
     <ProjectReference Include="..\..\..\..\src\Cofoundry.Web.Admin.Blazor\Cofoundry.Web.Admin.Blazor.csproj" />
-    <ProjectReference Include="..\..\..\..\src\Cofoundry.Web.Admin\Cofoundry.Web.Admin.csproj" />
   </ItemGroup>
 
 </Project>

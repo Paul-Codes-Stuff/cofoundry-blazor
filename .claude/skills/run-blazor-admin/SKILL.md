@@ -240,6 +240,37 @@ the session check, that `/admin-next` no longer serves the admin, and sign out. 
 details, so it needs at least one page (the "nav links" and "dialog" steps fail on an empty pages list). Stop that sandbox only, e.g. in
 PowerShell: `Get-CimInstance Win32_Process -Filter "Name='Dev.Sandbox.exe'" | ? CommandLine -match 5008 | % { Stop-Process -Id $_.ProcessId }`.
 
+## Blazor admin only (no AngularJS admin)
+
+`dotnet build -p:BlazorAdminOnly=true` builds Dev.Sandbox without `Cofoundry.Web.Admin`, the plugins' AngularJS
+packages and the sandbox's AngularJS Products module (`Cofoundry/Admin/Modules`), into `bin/BlazorAdminOnly` and
+`obj/BlazorAdminOnly`, so it runs beside the normal build on the same database. Check the output has no
+`Cofoundry.Web.Admin.dll`. The two builds share `obj/project.assets.json`, so build them one after the other (each
+restores itself), and stop the sandboxes first as usual.
+
+```bash
+cd samples/src/Dev/Dev.Sandbox && dotnet build -p:BlazorAdminOnly=true
+# run_in_background; the admin stays at /admin-next, so every step runs unchanged:
+cd samples/src/Dev/Dev.Sandbox && ASPNETCORE_ENVIRONMENT=Development dotnet run --no-build -p:BlazorAdminOnly=true --no-launch-profile --urls http://localhost:5008 > "$TEMP/sandbox-blazoronly.log" 2>&1
+# then any step, with BASE_URL (and an OUT_DIR, so the sign-in cookie and screenshots don't mix):
+BASE_URL=http://localhost:5008 OUT_DIR="$TEMP/blazor-admin-run-only" node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/account-step.js
+```
+
+Every step and `smoke` pass on it. Steps that compare with the AngularJS admin skip that part when `/admin`
+404s: `admin-api-step.js` checks the copy's GETs only, `plugins-step.js` skips the AngularJS nav count. Steps
+read stored values through `/admin-next/api` (the copy), never `/admin/api`, and must use `BASE_URL` (not a
+hard-coded port) for any request context of their own. To check the admin where it would live, at `/admin` with
+the API at `/admin/api`, restart that sandbox with the directories set and run `directory-name-test.js` with
+the API path:
+
+```bash
+# run_in_background:
+cd samples/src/Dev/Dev.Sandbox && ASPNETCORE_ENVIRONMENT=Development Cofoundry__AdminBlazor__DirectoryName=admin Cofoundry__AdminApi__BaseUrl=admin/api Cofoundry__Admin__DirectoryName=admin dotnet run --no-build -p:BlazorAdminOnly=true --no-launch-profile --urls http://localhost:5008 > "$TEMP/sandbox-blazoronly.log" 2>&1
+OUT_DIR="$TEMP/blazor-admin-run-only" node .claude/skills/run-blazor-admin/directory-name-test.js http://localhost:5008 admin admin/api
+```
+
+Stop it alone with the PowerShell line in "Directory name".
+
 ## Admin API base url collision
 
 `Cofoundry.Web.Admin.Api` refuses to start at the AngularJS admin's own API path while `Cofoundry.Web.Admin` is

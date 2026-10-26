@@ -14,7 +14,7 @@ module.exports = async (page, c) => {
   const modal = () => page.locator('.modal').last();
   const modalRows = async section => (await modal().locator(`fieldset:has(legend:has-text("${section}")) table.table tbody tr`).allInnerTexts())
     .map(s => s.replace(/\s+/g, ' ').trim());
-  const anonymous = await request.newContext({ baseURL: 'http://localhost:5006' });
+  const anonymous = await request.newContext({ baseURL: process.env.BASE_URL || 'http://localhost:5006' });
   const anonStatus = async path => (await anonymous.get(path, { maxRedirects: 0 })).status();
   const addRule = async (userArea, role) => {
     await modal().locator('a.btn-icon[title="Add"]').click(); await page.waitForTimeout(800);

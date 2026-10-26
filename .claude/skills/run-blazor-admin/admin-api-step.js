@@ -1,13 +1,15 @@
 // Cofoundry.Web.Admin.Api, the copy of the admin API, served by the sandbox at /admin-next/api
 // (Cofoundry:AdminApi:BaseUrl) next to Cofoundry.Web.Admin's original at /admin/api.
 //   node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/admin-api-step.js
-// It compares GET responses from both copies, then adds, edits and deletes a role through the copy. It
+// It compares GET responses from both copies (only the copy's are checked when the AngularJS admin isn't
+// installed, as in a BlazorAdminOnly build), then adds, edits and deletes a role through the copy. It
 // leaves nothing behind unless a step fails between the add and the delete (role "Admin API test <stamp>").
 const NEW = '/admin-next/api/';
 const OLD = '/admin/api/';
 
 module.exports = async (page, c) => {
   const api = page.request;
+  let hasOld = true;
   const json = async res => { try { return await res.json(); } catch { return null; } };
   let csrf;
   const write = (method, url, data) => api.fetch(url, { method, data, headers: { [csrf.header]: csrf.token } });
@@ -20,8 +22,10 @@ module.exports = async (page, c) => {
   });
 
   await c.step('GETs match the original api', async () => {
+    hasOld = (await api.get(OLD + 'dashboard')).status() !== 404;
+    if (!hasOld) console.log('       no AngularJS admin: checking the copy only');
     const firstId = async (path, key) => {
-      const body = await json(await api.get(OLD + path));
+      const body = await json(await api.get((hasOld ? OLD : NEW) + path));
       const items = body?.data?.items ?? body?.data;
       return items?.[0]?.[key];
     };
@@ -48,7 +52,12 @@ module.exports = async (page, c) => {
     if (skipped.length) console.log('       skipped, nothing to fetch: ' + skipped.join(', '));
     const mismatches = [];
     for (const path of paths.filter(p => !skipped.includes(p))) {
-      const [a, b] = await Promise.all([api.get(OLD + path), api.get(NEW + path)]);
+      const b = await api.get(NEW + path);
+      if (!hasOld) {
+        if (b.status() !== 200 || (await json(b)) == null) mismatches.push(`${path} (${b.status()})`);
+        continue;
+      }
+      const a = await api.get(OLD + path);
       const [ta, tb] = [await a.text(), await b.text()];
       if (a.status() !== 200 || b.status() !== 200 || ta !== tb) mismatches.push(`${path} (${a.status()}/${b.status()})`);
     }
@@ -59,13 +68,12 @@ module.exports = async (page, c) => {
   await c.step('antiforgery: a write without the token is refused', async () => {
     const res = await api.post(NEW + 'roles', { data: { title: 'x', userAreaCode: 'COF' } });
     if (res.status() !== 400) throw new Error('status ' + res.status());
-    // The AngularJS admin renders the request token into its pages; any page of the site's will do.
-    await page.goto('/admin/settings');
-    const html = await page.content();
-    const token = /constant\('csrfToken', '([^']+)'\)/.exec(html)?.[1];
-    const header = /constant\('csrfHeaderName', '([^']+)'\)/.exec(html)?.[1];
-    if (!token || !header) throw new Error('no token in the AngularJS page');
-    csrf = { token, header };
+    // Any antiforgery token the site renders will do, sent in ASP.NET Core's default header. The AngularJS
+    // admin renders one into its pages; without it, a static SSR form of the Blazor admin has one.
+    await page.goto('/admin-next/account?edit=true');
+    const token = await page.locator('input[name="__RequestVerificationToken"]').first().getAttribute('value');
+    if (!token) throw new Error('no token in the Blazor form');
+    csrf = { token, header: 'RequestVerificationToken' };
   });
 
   await c.step('validation errors come back as 400 with the errors', async () => {
@@ -82,8 +90,8 @@ module.exports = async (page, c) => {
     if (!added?.isValid || !added.data) throw new Error('add: ' + JSON.stringify(added).slice(0, 300));
     const roleId = added.data;
     try {
-      const fromOld = await json(await api.get(`${OLD}roles/${roleId}`));
-      if (fromOld?.data?.title !== title) throw new Error('the original api does not see the new role');
+      const fromOld = await json(await api.get(`${hasOld ? OLD : NEW}roles/${roleId}`));
+      if (fromOld?.data?.title !== title) throw new Error('the new role is not returned');
       const patched = await json(await write('PATCH', `${NEW}roles/${roleId}`, { title: title + ' (edited)' }));
       if (!patched?.isValid) throw new Error('patch: ' + JSON.stringify(patched).slice(0, 300));
       const edited = await json(await api.get(`${NEW}roles/${roleId}`));
