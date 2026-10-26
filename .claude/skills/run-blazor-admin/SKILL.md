@@ -68,6 +68,8 @@ node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-adm
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/error-boundary-step.js  # unexpected errors
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/session-step.js  # signed out in another tab
 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/image-upload-size-step.js  # picker upload size rules
+STYLES_BASELINE=1 node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/styles-step.js  # before a style change
+node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/styles-step.js  # after: compares screenshots
 node .claude/skills/run-blazor-admin/driver.js run path/to/step.js                 # your own steps
 ```
 
@@ -156,6 +158,12 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   checks the first goes to sign in when focused. The check is throttled, so it waits 15 seconds.
 - **`image-upload-size-step.js`** opens the blog post thumbnail's picker (min 460x460), uploads a 100x100 image
   (rejected) and a 500x500 one (accepted), and saves nothing.
+- **`styles-step.js`** is for stylesheet changes. With `STYLES_BASELINE=1` it screenshots 18 screens (lists,
+  forms, the field types form, a dialog, an open search dropdown, the signed-out login) into
+  `styles-baseline`; without, it takes them again and fails any screen with more than 0.2% of pixels changed,
+  writing `styles-diff-<screen>.png` with the changes in red. Relative times ("15 hours ago") and new data
+  show up as small diffs, and the page templates table has once shifted a few pixels with nothing changed,
+  so read the diff images before blaming the CSS. Saves nothing.
 - **`extension-module-step.js`** covers the module extension point through the sandbox's Products module, a
   Blazor page in Dev.Sandbox (`Cofoundry/Admin/Blazor`): the nav link, direct load (endpoints) and in-app
   navigation (router), the signed-out redirect, validation, its custom selector field, save and cancel. The

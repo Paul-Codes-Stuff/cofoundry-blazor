@@ -27,7 +27,9 @@ Read `src/Cofoundry.Web.Admin.Blazor/README.md` first: it has the status, what i
   scope seeded with the circuit's signed-in user (`CircuitAwareUserSessionService`), because Cofoundry's
   `WebUserSessionService` reads `HttpContext`, which is unreliable over SignalR.
 - **UI:** plain Razor components in `Components/Ui` that emit the same markup as the AngularJS `cms-*`
-  directives, so the copied compiled `wwwroot/css/shared.css` applies unchanged. No component library.
+  directives, so the AngularJS admin's styles apply unchanged. No component library. Their SCSS now lives in
+  `Styles` (compiled to `wwwroot/css/admin.css` with `npm run build` there; commit both, see "Styles" in the
+  README). Check a style change with the skill's `styles-step.js`: baseline first, then compare.
 - **Dropdown data** is loaded up front by `AdminLookups`, not by self-loading selector components.
 
 ## Backwards compatibility (open, revisit before retiring the AngularJS admin)

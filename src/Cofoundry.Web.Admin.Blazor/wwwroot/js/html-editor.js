@@ -1,5 +1,5 @@
 // TinyMCE for FormFieldHtml, the equivalent of the AngularJS ui-tinymce directive. TinyMCE 4.4.3 is the
-// build the AngularJS admin bundles; its skin is already in shared.css, so skin loading is turned off.
+// build the AngularJS admin bundles; its skin is already in admin.css, so skin loading is turned off.
 // Changes are sent to .NET (debounced while typing, at once on change or blur, so a save straight after
 // typing gets the latest html).
 let loading;

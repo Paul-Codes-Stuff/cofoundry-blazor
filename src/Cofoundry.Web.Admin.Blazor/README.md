@@ -41,7 +41,7 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
 | --- | --- |
 | Browser calls `/admin/api/*` controllers | Components call the domain layer in-process via `IAdminBlazorExecutor` |
 | `HttpContext` identifies the user | A per-operation DI scope is seeded with the circuit's signed-in user (`CircuitAwareUserSessionService`) |
-| `cms-*` directives | Razor components in `Components/Ui`, emitting the same markup so the existing compiled `shared.css` applies |
+| `cms-*` directives | Razor components in `Components/Ui`, emitting the same markup so the AngularJS admin's styles apply (their SCSS is now in `Styles`) |
 | Self-loading selector directives | `AdminLookups` loads dropdown data up front |
 | `$routeProvider` per module | `@page` routes |
 | `validationErrorService` sends a server error to the field registered for its property | Fields join their `AdminForm` (`AdminFormFields`); `FormStatus` files each command error under the field showing that property and lists only the rest. Data model fields join under the data model property's name |
@@ -50,7 +50,26 @@ Change `AdminBlazorRoutes.Prefix` **and** every `@page "/admin-next/..."` direct
 | A 401 from the api sends you to sign in | A circuit keeps its user, so `js/session-check.js` asks `/admin-next/auth/session` whenever the tab is shown again and reloads the page if you've been signed out (in another tab, expired, or your password changed elsewhere), which sends you to sign in |
 | Every request can re-issue the auth cookie | A circuit can't set cookies. Pages where you change your own email or password (My Account, and editing yourself in Users) are static SSR, so the domain can re-issue the cookie with the new security stamp. `CircuitAwareUserSessionService` skips the refresh inside a circuit instead of throwing |
 
-`wwwroot/css` is a copy of the compiled AngularJS admin CSS and assets. Eventually the SCSS should move here.
+### Styles
+
+`Styles/admin.scss` compiles to `wwwroot/css/admin.css`, which `App.razor` links. The compiled file is committed,
+so building the project doesn't need Node. After changing the SCSS, compile it with Dart Sass (pinned to 1.77.8,
+which still runs on Node 14) and commit both:
+
+```bash
+cd src/Cofoundry.Web.Admin.Blazor/Styles
+npm install
+npm run build      # or: npm run watch
+```
+
+The SCSS started as a copy of the AngularJS admin's `Shared/Sass` and its `UIComponents` partials (same folder
+names, under `Styles/Components`), so the two admins look the same, and the copy now belongs to this project.
+The AngularJS build used Ruby Compass mixins, which Dart Sass can't compile: `Base/_reset.scss` holds the reset
+as plain CSS and `Libs/_compass.scss` the few mixins still used, without vendor prefixes or IE filters. The
+third-party CSS (Font Awesome 4.3, TinyMCE's skin, ui-select and selectize) is in `Styles/ThirdParty` and
+compiled in; only their fonts and images stay in `wwwroot/css`. `Blazor/_blazor.scss` is for markup only the
+Blazor admin has. The switch was checked with `styles-step.js` in the `run-blazor-admin` skill, which compares
+screenshots of the admin with a baseline taken before a change.
 
 ## Ported so far
 
@@ -151,7 +170,7 @@ chosen by the schema's data template name:
   have a multi-select mode for the collection fields, which share `IdCollectionFieldBase` with the page
   collection.
 * Html: `FormFieldHtml` runs TinyMCE through `wwwroot/js/html-editor.js`. It's the same TinyMCE 4.4.3 build the
-  AngularJS admin bundles (copied to `wwwroot/lib/tinymce`, LGPL), and its skin is already in `shared.css`.
+  AngularJS admin bundles (copied to `wwwroot/lib/tinymce`, LGPL), and its skin is compiled into `admin.css`.
   The toolbar presets, `Rows`, `CustomToolbar`, `ConfigFilePath` (fetched in the browser) and `ConfigSource`
   options work as before. The "image" toolbar button opens `ImageAssetEditorDialog`. The AngularJS field also
   asked for the `imagetools` plugin, which its build doesn't include (a 404), so it's left out.

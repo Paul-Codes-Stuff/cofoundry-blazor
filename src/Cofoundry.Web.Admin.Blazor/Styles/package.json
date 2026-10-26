@@ -1,0 +1,12 @@
+{
+  "name": "cofoundry-web-admin-blazor-styles",
+  "private": true,
+  "description": "Compiles the Blazor admin's stylesheet (admin.scss) to wwwroot/css/admin.css.",
+  "scripts": {
+    "build": "sass --no-source-map --style=expanded admin.scss ../wwwroot/css/admin.css",
+    "watch": "sass --no-source-map --style=expanded --watch admin.scss ../wwwroot/css/admin.css"
+  },
+  "devDependencies": {
+    "sass": "1.77.8"
+  }
+}

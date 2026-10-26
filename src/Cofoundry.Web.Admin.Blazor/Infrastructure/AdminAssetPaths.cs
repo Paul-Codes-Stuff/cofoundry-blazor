@@ -22,7 +22,7 @@ public static class AdminAssetPaths
     public const string HtmlEditorScript = ContentRoot + "/js/html-editor.js";
 
     /// <summary>
-    /// TinyMCE 4.4.3, the build the AngularJS admin bundles (its skin is in shared.css).
+    /// TinyMCE 4.4.3, the build the AngularJS admin bundles (its skin is in admin.css).
     /// </summary>
     public const string TinyMceScript = ContentRoot + "/lib/tinymce/tinymce.min.js";
 

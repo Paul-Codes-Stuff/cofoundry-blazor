@@ -1,0 +1,43 @@
+// The Compass mixins the admin's styles use, which Dart Sass doesn't have. Compass added vendor prefixes and IE
+// filters for browsers that no longer need them, so these write the standard properties only.
+
+@mixin transition($transitions...) {
+    transition: $transitions;
+}
+
+@mixin transform($transforms) {
+    transform: $transforms;
+}
+
+@mixin translate($x, $y) {
+    transform: translate($x, $y);
+}
+
+@mixin translateX($x) {
+    transform: translateX($x);
+}
+
+@mixin border-radius($radius) {
+    border-radius: $radius;
+}
+
+@mixin border-top-left-radius($radius) {
+    border-top-left-radius: $radius;
+}
+
+@mixin border-top-right-radius($radius) {
+    border-top-right-radius: $radius;
+}
+
+@mixin box-shadow($shadow...) {
+    box-shadow: $shadow;
+}
+
+@mixin opacity($opacity) {
+    opacity: $opacity;
+}
+
+// Compass's clearfix, which contains floats by hiding overflow.
+@mixin clearfix {
+    overflow: hidden;
+}

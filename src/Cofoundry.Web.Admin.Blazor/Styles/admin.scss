@@ -1,0 +1,78 @@
+/*
+    The Blazor admin's stylesheet, compiled to wwwroot/css/admin.css by "npm run build" in this folder
+    (see "Styles" in the project README).
+
+    Started as a copy of the AngularJS admin's Shared/Sass/shared.scss and its UIComponents partials, so the
+    Razor components can emit the same markup as the cms-* directives. Compass, a Ruby Sass library that
+    Dart Sass can't compile, is replaced by plain CSS in Base/_reset.scss and the few mixins in Libs/_compass.scss.
+*/
+
+@import "Base/reset";
+
+/*===============================
+    THIRD PARTY
+    Plain CSS, imported inline.
+=============================== */
+@import "ThirdParty/font-awesome";
+@import "ThirdParty/tinymce-skin.min";
+@import "ThirdParty/ui-select";
+@import "ThirdParty/selectize.default";
+
+/*===============================
+    LIBRARIES
+=================================*/
+@import "Libs/compass";
+@import "Libs/mixins";
+
+/*===============================
+    CONFIG
+    Colour and dimension maps.
+=================================*/
+@import "Config/colors";
+@import "Config/dimensions";
+@import "Config/fonts";
+@import "Config/settings";
+
+/*===============================
+    COMMON BASE
+    Reused by the components.
+=================================*/
+@import "Common/heading";
+@import "Common/helpers";
+@import "Common/link";
+
+/*===============================
+    GLOBAL STYLES
+    Top level layout and typography.
+=================================*/
+@import "Core/dashboard";
+@import "Core/layout";
+@import "Core/login";
+@import "Core/navigation";
+@import "Core/setup";
+@import "Core/typography";
+
+/*===============================
+    COMPONENTS
+    The AngularJS UIComponents' styles, which the Razor components in Components/Ui reuse.
+=================================*/
+@import "Components/Buttons/button";
+@import "Components/CustomEntities/customentities";
+@import "Components/Form/form";
+@import "Components/FormFields/formfields";
+@import "Components/ImageAssets/image-asset";
+@import "Components/Layout/layout";
+@import "Components/Loader/loading";
+@import "Components/Loader/progressbar";
+@import "Components/Menus/menus";
+@import "Components/Modals/modals";
+@import "Components/Search/pager";
+@import "Components/StatusMessages/messages";
+@import "Components/Table/table";
+@import "Components/Tags/tag";
+
+/*===============================
+    BLAZOR
+    Markup only the Blazor admin has.
+=================================*/
+@import "Blazor/blazor";
