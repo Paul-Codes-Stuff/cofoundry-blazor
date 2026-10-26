@@ -76,3 +76,9 @@
     Markup only the Blazor admin has.
 =================================*/
 @import "Blazor/blazor";
+
+/*===============================
+    SMALL SCREENS
+    Last, so it overrides the layouts above below their breakpoints.
+=================================*/
+@import "Blazor/mobile";

@@ -139,6 +139,19 @@ compiled in; only their fonts and images stay in `wwwroot/css`. `Blazor/_blazor.
 Blazor admin has. The switch was checked with `styles-step.js` in the `run-blazor-admin` skill, which compares
 screenshots of the admin with a baseline taken before a change.
 
+**Small screens.** The AngularJS layout has an 850px minimum width, so on a phone or an upright tablet it scrolled
+sideways. `Blazor/_mobile.scss`, imported last, changes the layout below 950px only, so desktops look the same:
+
+* 768px to 949px: the slim nav stays and the page shrinks to fit beside it.
+* Below 768px: the nav is hidden behind a menu button (`AdminLayout`; `js/mobile-nav.js` toggles `nav-open` on
+  `<html>`, so it works on static SSR pages too and survives re-renders). A module link, the backdrop or Escape
+  closes it; a category's button keeps it open, showing that category's modules, since there's no hover.
+  The page takes the full width, the actions column becomes a row of buttons above the form, wide tables scroll
+  inside their `.table-wrap`, inputs use 16px text (iOS zooms in on smaller), large dialogs fill the screen and
+  small ones fit its width, and the sign-in and setup boxes fit the screen.
+
+`mobile-step.js` in the skill checks it.
+
 ## Ported so far
 
 * Shell: layout, permitted-module nav, auth

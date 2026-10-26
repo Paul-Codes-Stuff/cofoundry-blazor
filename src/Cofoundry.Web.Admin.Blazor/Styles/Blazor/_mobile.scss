@@ -1,0 +1,250 @@
+/**
+ * Small screens. The AngularJS admin's layout has an 850px minimum width and only gets wider at its
+ * breakpoints (950px and 1200px), so on a phone the page scrolled sideways. These rules apply below those
+ * widths only and are imported last, so desktop layouts are unchanged.
+ *
+ * Below $mobile-max the nav is hidden behind a menu button (AdminLayout, js/mobile-nav.js toggles "nav-open"
+ * on <html>), the page takes the full width, the actions column becomes a row above the form and dialogs fill
+ * the screen. Between that and 950px the slim nav stays and the page shrinks to fit beside it.
+ */
+
+$mobile-max: 767px;
+$mobile-bar-height: 50px;
+
+.mobile-nav-toggle,
+.mobile-nav-backdrop {
+    display: none;
+}
+
+@media screen and (max-width: 949px) {
+    main {
+        min-width: 0;
+    }
+}
+
+@media screen and (max-width: $mobile-max) {
+
+    /* NAV */
+
+    .mobile-nav-toggle {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 99999;
+        width: $mobile-bar-height;
+        height: $mobile-bar-height + 21px;
+        border: none;
+        background: $color-secondary;
+        color: #fff;
+        cursor: pointer;
+
+        .fa {
+            font-size: 1.6em;
+        }
+    }
+
+    .main-nav {
+        @include transition(transform .3s);
+        transform: translateX(-100%);
+    }
+
+    .mobile-nav-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 998;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    html.nav-open {
+        .main-nav {
+            transform: none;
+        }
+
+        .mobile-nav-backdrop {
+            display: block;
+        }
+
+        // Above the open nav, which covers its usual place.
+        .mobile-nav-toggle {
+            left: $nav-width-slim;
+            background: $color-secondary-dark;
+        }
+    }
+
+    // There's no hover on a touch screen, so the open nav always shows the selected category's modules.
+    .main-nav .category:hover:not(.selected) .sub-nav {
+        display: none;
+    }
+
+    .main-nav .category:hover:not(.selected) .main-button {
+        color: #a3a3a3;
+        background-color: $color-secondary;
+        border-left-color: $color-secondary;
+    }
+
+    /* PAGE */
+
+    .content {
+        left: 0;
+        width: 100%;
+        padding: 0 0 40px;
+    }
+
+    .page-header {
+        left: $mobile-bar-height;
+        padding: 10px 15px;
+        font-size: 140%;
+    }
+
+    .page-sub-header {
+        padding: 15px 10px;
+    }
+
+    .page-body {
+        &.page,
+        &.form,
+        &.form.with-actions {
+            margin: 85px 10px 0;
+        }
+
+        fieldset legend {
+            padding: 15px;
+        }
+
+        .control-group .control-group-area {
+            padding: 0 15px 25px;
+        }
+    }
+
+    .page-actions {
+        position: static;
+        width: auto;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 85px 10px 0;
+
+        .btn:not(.pager) {
+            width: auto;
+            margin-bottom: 0;
+
+            // In the full width column the icon sits in the left padding; here it goes before the text.
+            .fa {
+                position: static;
+                padding: 0 6px 0 0;
+                font-size: 1em;
+            }
+        }
+
+        + .page-body.form.with-actions {
+            margin-top: 15px;
+        }
+    }
+
+    .search-filter {
+        right: 10px;
+        width: calc(100vw - 20px);
+    }
+
+    // iOS zooms in on a focused input whose text is under 16px.
+    input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="date"],
+    input[type="datetime"], input[type="datetime-local"], input[type="time"], input[type="url"], input[type="tel"],
+    input[type="search"], textarea, select {
+        font-size: 16px;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .dashboard-item {
+        float: none;
+        width: 100%;
+
+        &:nth-child(odd) {
+            margin-left: 0;
+        }
+
+        &:nth-of-type(1) {
+            margin-top: 85px;
+        }
+
+        &:nth-of-type(2) {
+            margin-top: 0;
+        }
+    }
+
+    footer {
+        display: none;
+    }
+
+    /* SIGN IN AND SETUP */
+
+    // Both are 500px boxes; the sign-in one is centred with a negative margin, so it was cut off on both sides.
+    .login-container {
+        left: 10px;
+        right: 10px;
+        width: auto;
+        margin-left: 0;
+    }
+
+    .setup-container {
+        width: auto;
+        margin: 20px 10px;
+    }
+
+    /* DIALOGS */
+
+    // Above the menu button and the page header.
+    .modal-background {
+        z-index: 100000;
+    }
+
+    .modal {
+        left: 10px;
+        right: 10px;
+        width: auto;
+        z-index: 100001;
+
+        &,
+        &.is-root-modal,
+        &.is-root-modal.modal--show {
+            transform: none;
+        }
+    }
+
+    // Large dialogs (forms, pickers) fill the screen.
+    .modal.modal-lg {
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: auto;
+        border-radius: 0;
+
+        .modal-content {
+            padding-left: 0;
+        }
+
+        .page-actions {
+            margin: 70px 10px 0;
+        }
+
+        .page-body {
+            position: static;
+            margin: 15px 0 0;
+            overflow: visible;
+
+            .form-wrap {
+                padding: 0 10px 20px;
+            }
+        }
+
+        .modal-dialog {
+            overflow-y: auto;
+        }
+    }
+}

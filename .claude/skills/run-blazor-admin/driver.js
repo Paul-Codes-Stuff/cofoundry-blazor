@@ -6,7 +6,8 @@
 //   node driver.js run <step.js>      Run a custom step: module.exports = async (page, ctx) => {}
 //
 // Env: ADMIN_USER, ADMIN_PASS (required), BASE_URL (default http://localhost:5006),
-//      OUT_DIR (default <tmp>/blazor-admin-run). playwright-core is resolved via NODE_PATH.
+//      OUT_DIR (default <tmp>/blazor-admin-run), ADMIN_ROOT (default /admin-next; signing in and the steps that
+//      read it, e.g. mobile-step.js). playwright-core is resolved via NODE_PATH.
 
 const { chromium } = require('playwright-core');
 const fs = require('fs');
@@ -22,7 +23,9 @@ fs.mkdirSync(OUT, { recursive: true });
 const settle = async (page, ms = 1200) => { await page.waitForLoadState('networkidle'); await page.waitForTimeout(ms); };
 
 async function signIn(page, context) {
-  await page.goto('/admin-next/pages');
+  // ADMIN_ROOT: where the Blazor admin is, for a sandbox that moved it (e.g. /admin). Only run steps that read it
+  // (mobile-step.js) follow it; smoke and the others assume /admin-next.
+  await page.goto((process.env.ADMIN_ROOT || '/admin-next') + '/pages');
   if (!page.url().includes('/auth/login')) return;
   if (!process.env.ADMIN_USER || !process.env.ADMIN_PASS) throw new Error('Set ADMIN_USER and ADMIN_PASS');
   await page.fill('#Username', process.env.ADMIN_USER);

@@ -20,6 +20,11 @@ public static class AdminAssetPaths
     public const string SessionCheckScript = ContentRoot + "/js/session-check.js";
 
     /// <summary>
+    /// Opens and closes the nav on small screens, on every page (static SSR ones too).
+    /// </summary>
+    public const string MobileNavScript = ContentRoot + "/js/mobile-nav.js";
+
+    /// <summary>
     /// Injected into the site's pages for admins, with <see cref="VisualEditorStyles"/>. Plain JavaScript with no
     /// dependencies, since it runs alongside the site's own scripts.
     /// </summary>

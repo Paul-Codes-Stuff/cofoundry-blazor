@@ -166,6 +166,11 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   sandbox's dev-only `/admin-next/test/upload-fields` page, whose optional fields are the only ones with it: Remove
   clears a chosen image (back to the saved one, the first image in the library, so it needs one) and a chosen
   document. It clicks Remove for real, since the button has to sit above the transparent file input. Saves nothing.
+- **`mobile-step.js`** covers small screens (`Styles/Blazor/_mobile.scss`): at 390px and 768px no page (lists,
+  forms, details, the field types form, the signed-out sign-in pages) scrolls sideways; at 390px the nav is
+  hidden and the menu button opens it, a module link, the backdrop and Escape close it (on a static SSR page
+  too), actions sit above the form, a large dialog covers the menu button, and a confirm dialog and the search
+  filter fit the width; at 768px and 1400px there's no menu button. Screenshots `mobile-*.png`. Saves nothing.
 - **`styles-step.js`** is for stylesheet changes. With `STYLES_BASELINE=1` it screenshots 18 screens (lists,
   forms, the field types form, a dialog, an open search dropdown, the signed-out login) into
   `styles-baseline`; without, it takes them again and fails any screen with more than 0.2% of pixels changed,
@@ -270,6 +275,9 @@ the API path:
 # run_in_background:
 cd samples/src/Dev/Dev.Sandbox && ASPNETCORE_ENVIRONMENT=Development Cofoundry__AdminBlazor__DirectoryName=admin Cofoundry__AdminApi__BaseUrl=admin/api Cofoundry__Admin__DirectoryName=admin dotnet run --no-build -p:BlazorAdminOnly=true --no-launch-profile --urls http://localhost:5008 > "$TEMP/sandbox-blazoronly.log" 2>&1
 OUT_DIR="$TEMP/blazor-admin-run-only" node .claude/skills/run-blazor-admin/directory-name-test.js http://localhost:5008 admin admin/api
+# mobile-step.js also runs there: ADMIN_ROOT moves the driver's sign-in and the step's urls (other steps assume
+# /admin-next). Use its own OUT_DIR, so the saved sign-in is for that prefix.
+MSYS_NO_PATHCONV=1 ADMIN_ROOT=/admin BASE_URL=http://localhost:5008 OUT_DIR="$TEMP/blazor-admin-run-root" node .claude/skills/run-blazor-admin/driver.js run .claude/skills/run-blazor-admin/mobile-step.js
 ```
 
 Stop it alone with the PowerShell line in "Directory name".

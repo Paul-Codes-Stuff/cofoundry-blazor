@@ -8,6 +8,13 @@
 
     <main id="main">
 
+        @* Small screens only (Styles/Blazor/_mobile.scss): opens the nav, which is hidden there. Plain markup
+           handled by js/mobile-nav.js, so it works on static SSR pages too. *@
+        <button type="button" class="mobile-nav-toggle" aria-label="Menu" aria-expanded="false">
+            <i class="fa fa-bars"></i>
+        </button>
+        <div class="mobile-nav-backdrop"></div>
+
         <AdminNav />
 
         <div class="content">

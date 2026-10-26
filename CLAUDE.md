@@ -32,6 +32,9 @@ Read `src/Cofoundry.Web.Admin.Blazor/README.md` first: it has the status, what i
   directives, so the AngularJS admin's styles apply unchanged. No component library. Their SCSS now lives in
   `Styles` (compiled to `wwwroot/css/admin.css` with `npm run build` there; commit both, see "Styles" in the
   README). Check a style change with the skill's `styles-step.js`: baseline first, then compare.
+- **Small screens:** `Styles/Blazor/_mobile.scss` (imported last) only applies below 950px, so desktops match the
+  AngularJS admin; below 768px the nav sits behind a menu button (`js/mobile-nav.js`). Keep desktop-only rules
+  out of it, and check layout changes at phone width with `mobile-step.js` as well as `styles-step.js`.
 - **Dropdown data** is loaded up front by `AdminLookups`, not by self-loading selector components.
 - **Works with the published packages:** the Blazor admin, `Cofoundry.Web.Admin.Api` and the plugins'
   `*.Admin.Blazor` packages must run on the released Cofoundry.Core, Cofoundry.Domain and Cofoundry.Web packages
@@ -161,7 +164,7 @@ Agreed direction:
   with `Cofoundry__AdminBlazor__DirectoryName=cms`, see SKILL.md) for a non-default prefix; `account-step.js` for My Account and editing yourself
   in Users; `error-boundary-step.js` (uses the sandbox's dev-only `/admin-next/test/error` page) for the error
   boundary; `session-step.js` for the session check; `image-upload-size-step.js` for picker upload size rules;
-  `upload-remove-step.js` (uses the dev-only `/admin-next/test/upload-fields` page) for optional upload fields;
+  `upload-remove-step.js` (uses the dev-only `/admin-next/test/upload-fields` page) for optional upload fields; `mobile-step.js` for small screens;
   `admin-api-step.js` for `Cofoundry.Web.Admin.Api` (compares its GETs with the original's, writes through it);
   `smoke` also deletes the page it duplicates). The steps that open a page's details need at least one page.
 - **Dev.Sandbox has a "Member" user area** (`Cofoundry/UserAreas/MemberUserArea.cs`, code `MEM`) so access rules
