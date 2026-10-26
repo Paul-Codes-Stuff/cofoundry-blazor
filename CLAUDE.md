@@ -199,11 +199,14 @@ Agreed direction:
   links the admin's copy (`css/font-awesome.css`) or `VisualEditorFontAwesomeUrl` for sites without their own.
 - **Next:** the remaining known gaps in the README. Every plugin with an AngularJS admin part now has a Blazor
   package.
-- **Unit tests:** `test/Cofoundry.Web.Admin.Blazor.Tests` (xunit v3, like the repo's other test projects) covers
-  pure helpers only: routes, `StringUtilities`, `AdminFormFields`, `FieldValidationMessage.UseTitle`,
+- **Unit tests:** `test/Cofoundry.Web.Admin.Blazor.Tests` (xunit v3, like the repo's other test projects, plus
+  bUnit; Razor SDK, so tests can be `.razor` files) covers the shared form components with bUnit (`Components/Ui`
+  and `Components/DataModels` tests: `FormFieldText`, `FormSection`/`FieldHelp`, `FormStatus`, `Pager`, the
+  upload fields' Required/Remove, `DataModelFieldSet`) and pure helpers: routes, `StringUtilities`, `AdminFormFields`, `FieldValidationMessage.UseTitle`,
   `ImageAssetFilter`, `CommandValidationErrors`, `AdminBlazorMailTemplateBuilder` (with and without `UseForEmailLinks`),
-  `HtmlDocumentScriptInjector`, `VisualEditorInstallation` and the plugins' `ParseVideoId`. Run `dotnet test test/Cofoundry.Web.Admin.Blazor.Tests`. UI is covered by the skill's
-  browser steps.
+  `HtmlDocumentScriptInjector`, `VisualEditorInstallation` and the plugins' `ParseVideoId`. Run `dotnet test test/Cofoundry.Web.Admin.Blazor.Tests`. Pages are covered by the skill's
+  browser steps. A test that binds with `@bind-Value` has no parent component to re-render, so call
+  `cut.Render()` after an event that sets the value outside an `Input*` component (see `UploadFieldTests`).
 
 ## Git
 

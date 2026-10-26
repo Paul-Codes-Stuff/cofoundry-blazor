@@ -1,0 +1,114 @@
+@inherits BunitContext
+
+@code {
+    private sealed class Command
+    {
+        [Required]
+        public string? ApplicationName { get; set; }
+    }
+
+    [Fact]
+    public void EditMode_RendersInputLabelledByPropertyName()
+    {
+        var command = new Command { ApplicationName = "Cofoundry" };
+
+        var cut = Render(@<AdminForm Model="command">
+            <FormFieldText Title="Application Name" @bind-Value="command.ApplicationName" />
+        </AdminForm>);
+
+        var input = cut.Find("input");
+        Assert.Equal("ApplicationName", input.Id);
+        Assert.Equal("Cofoundry", input.GetAttribute("value"));
+        Assert.Equal("ApplicationName", cut.Find("label").GetAttribute("for"));
+        Assert.Equal("Application Name:", cut.Find("label").TextContent);
+    }
+
+    [Fact]
+    public void Change_UpdatesModel()
+    {
+        var command = new Command();
+
+        var cut = Render(@<AdminForm Model="command">
+            <FormFieldText Title="Application Name" @bind-Value="command.ApplicationName" />
+        </AdminForm>);
+
+        cut.Find("input").Change("Changed");
+
+        Assert.Equal("Changed", command.ApplicationName);
+    }
+
+    [Theory]
+    [InlineData("Cofoundry", "Cofoundry")]
+    [InlineData(null, "None")]
+    public void ReadOnlyForm_ShowsValueWithoutInput(string? value, string expected)
+    {
+        var command = new Command { ApplicationName = value };
+
+        var cut = Render(@<AdminForm Model="command" EditMode="false">
+            <FormFieldText Title="Application Name" @bind-Value="command.ApplicationName" />
+        </AdminForm>);
+
+        Assert.Empty(cut.FindAll("input"));
+        Assert.Equal(expected, cut.Find(".text-block-display-value").TextContent);
+        Assert.Contains("form-edit-off", cut.Find("form").ClassList);
+    }
+
+    [Fact]
+    public void ReadOnlyParameter_ShowsValueInEditMode()
+    {
+        var command = new Command { ApplicationName = "Cofoundry" };
+
+        var cut = Render(@<AdminForm Model="command">
+            <FormFieldText Title="Application Name" ReadOnly="true" @bind-Value="command.ApplicationName" />
+        </AdminForm>);
+
+        Assert.Empty(cut.FindAll("input"));
+        Assert.Equal("Cofoundry", cut.Find(".text-block-display-value").TextContent);
+    }
+
+    [Fact]
+    public void Submit_ShowsMessageWithTitleAndMarksInvalid()
+    {
+        var command = new Command();
+
+        var cut = Render(@<AdminForm Model="command">
+            <FormFieldText Title="Application Name" @bind-Value="command.ApplicationName" />
+        </AdminForm>);
+
+        cut.Find("form").Submit();
+
+        Assert.Equal("The Application Name field is required.", cut.Find(".field-validation-error").TextContent);
+        Assert.Contains("invalid", cut.Find(".control-group-area").ClassList);
+    }
+
+    [Fact]
+    public void Change_ClearsMessage()
+    {
+        var command = new Command();
+
+        var cut = Render(@<AdminForm Model="command">
+            <FormFieldText Title="Application Name" @bind-Value="command.ApplicationName" />
+        </AdminForm>);
+
+        cut.Find("form").Submit();
+        cut.Find("input").Change("Cofoundry");
+
+        Assert.Empty(cut.FindAll(".field-validation-error"));
+        Assert.DoesNotContain("invalid", cut.Find(".control-group-area").ClassList);
+    }
+
+    [Fact]
+    public void FieldIdPrefix_PrefixesId()
+    {
+        var command = new Command();
+
+        var cut = Render(@<AdminForm Model="command">
+            <CascadingValue Value="@("dialog-")" Name="FieldIdPrefix">
+                <FormFieldText Title="Application Name" @bind-Value="command.ApplicationName" />
+            </CascadingValue>
+        </AdminForm>);
+
+        Assert.Equal("dialog-ApplicationName", cut.Find("input").Id);
+        Assert.Equal("dialog-ApplicationName", cut.Find("label").GetAttribute("for"));
+    }
+}

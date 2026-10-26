@@ -1,0 +1,57 @@
+@inherits BunitContext
+
+@code {
+    private sealed class Command
+    {
+        public string? UrlPath { get; set; }
+    }
+
+    // FormStatus goes after the field here so the field has joined the form when the errors are filed. On a
+    // page the errors arrive after a save, by which time every field has.
+    private IRenderedComponent<AdminForm> RenderForm(Command command, params ValidationError[] errors)
+    {
+        return Render<AdminForm>(p => p
+            .Add(f => f.Model, command)
+            .AddChildContent(@<text>
+                <FormFieldText Title="URL Path" @bind-Value="command.UrlPath" />
+                <FormStatus Errors="errors" />
+            </text>));
+    }
+
+    [Fact]
+    public void ErrorForField_ShownUnderField()
+    {
+        var cut = RenderForm(new Command(), new ValidationError("The path is already in use.", nameof(Command.UrlPath)));
+
+        Assert.Equal("The path is already in use.", cut.Find(".controls .field-validation-error").TextContent);
+        Assert.Contains("Sorry, the changes could not be saved.", cut.Find(".form-message.error").TextContent);
+        Assert.Empty(cut.FindAll(".form-message li"));
+    }
+
+    [Fact]
+    public void ErrorWithoutField_Listed()
+    {
+        var cut = RenderForm(new Command(), new ValidationError("Something went wrong."));
+
+        Assert.Equal("Something went wrong.", cut.Find(".form-message li").TextContent);
+        Assert.Empty(cut.FindAll(".controls .field-validation-error"));
+    }
+
+    [Fact]
+    public void FieldChanged_ClearsItsError()
+    {
+        var cut = RenderForm(new Command(), new ValidationError("The path is already in use.", nameof(Command.UrlPath)));
+
+        cut.Find("input").Change("new-path");
+
+        Assert.Empty(cut.FindAll(".controls .field-validation-error"));
+    }
+
+    [Fact]
+    public void NoErrors_ShowsSuccessMessage()
+    {
+        var cut = Render(@<FormStatus SuccessMessage="Saved" />);
+
+        Assert.Equal("Saved", cut.Find(".form-message.success").TextContent);
+    }
+}

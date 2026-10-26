@@ -1,0 +1,138 @@
+@inherits BunitContext
+
+@code {
+    private sealed class Command
+    {
+    }
+
+    private sealed class Model
+    {
+        [Required]
+        public string? Title { get; set; }
+
+        public bool IsFeatured { get; set; }
+
+        [Range(1, 10)]
+        public int Count { get; set; } = 1;
+
+        public object? Video { get; set; }
+    }
+
+    private sealed class Schema : IDynamicDataModelSchema
+    {
+        public string DataTemplateName { get; set; } = string.Empty;
+
+        public IReadOnlyCollection<DynamicDataModelSchemaProperty> DataModelProperties { get; set; } = [];
+
+        public DynamicDataModelDefaultValue DefaultValue { get; set; } = new() { Value = new Model() };
+    }
+
+    public DataModelFieldSetTests()
+    {
+        Services.AddSingleton(new DataModelFieldComponentRegistry([new DefaultDataModelFieldComponentRegistration()]));
+    }
+
+    private static Schema CreateSchema(params DynamicDataModelSchemaProperty[] properties) => new() { DataModelProperties = properties };
+
+    private static DynamicDataModelSchemaProperty Property(string name, string template, string displayName, bool isRequired = false) => new()
+    {
+        Name = name,
+        DataTemplateName = template,
+        DisplayName = displayName,
+        IsRequired = isRequired
+    };
+
+    private IRenderedComponent<AdminForm> RenderFieldSet(Model model, Schema schema)
+    {
+        return Render<AdminForm>(p => p
+            .Add(f => f.Model, new Command())
+            .AddChildContent(@<DataModelFieldSet Model="model" Schema="schema" />));
+    }
+
+    [Fact]
+    public void RendersFieldPerProperty_ByTemplate()
+    {
+        var model = new Model { Title = "Hello", IsFeatured = true, Count = 3 };
+        var schema = CreateSchema(
+            Property(nameof(Model.Title), "String", "Main title"),
+            Property(nameof(Model.IsFeatured), "Boolean", "Featured"),
+            Property(nameof(Model.Count), "Int32", "Item count"));
+
+        var cut = RenderFieldSet(model, schema);
+
+        Assert.Equal("Hello", cut.Find("input#Title").GetAttribute("value"));
+        Assert.True(cut.Find("input#IsFeatured").HasAttribute("checked"));
+        Assert.Equal("3", cut.Find("input#Count").GetAttribute("value"));
+        Assert.Equal(["Main title:", "Featured:", "Item count:"], cut.FindAll("label.control-label").Select(l => l.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void Change_WritesToModel()
+    {
+        var model = new Model();
+        var schema = CreateSchema(
+            Property(nameof(Model.Title), "String", "Main title"),
+            Property(nameof(Model.Count), "Int32", "Item count"));
+
+        var cut = RenderFieldSet(model, schema);
+
+        cut.Find("input#Title").Change("Changed");
+        cut.Find("input#Count").Change("5");
+
+        Assert.Equal("Changed", model.Title);
+        Assert.Equal(5, model.Count);
+    }
+
+    [Fact]
+    public void Submit_ValidatesModelWithDisplayNames()
+    {
+        var model = new Model { Count = 20 };
+        var schema = CreateSchema(
+            Property(nameof(Model.Title), "String", "Main title", isRequired: true),
+            Property(nameof(Model.Count), "Int32", "Item count"));
+
+        var cut = RenderFieldSet(model, schema);
+
+        cut.Find("form").Submit();
+
+        Assert.Equal(
+            ["The Main title field is required.", "The field Item count must be between 1 and 10."],
+            cut.FindAll(".field-validation-error").Select(m => m.TextContent));
+    }
+
+    [Fact]
+    public void Change_RevalidatesField()
+    {
+        var model = new Model();
+        var schema = CreateSchema(Property(nameof(Model.Title), "String", "Main title", isRequired: true));
+
+        var cut = RenderFieldSet(model, schema);
+
+        cut.Find("form").Submit();
+        cut.Find("input#Title").Change("Hello");
+
+        Assert.Empty(cut.FindAll(".field-validation-error"));
+    }
+
+    [Fact]
+    public void UnknownTemplate_ShowsPlaceholder()
+    {
+        var schema = CreateSchema(Property(nameof(Model.Video), "Hologram", "Video"));
+
+        var cut = RenderFieldSet(new Model(), schema);
+
+        Assert.Contains("This field type (Hologram) can't be edited in this admin yet.", cut.Markup);
+    }
+
+    [Fact]
+    public void UnknownTemplate_RequiredStillValidates()
+    {
+        var schema = CreateSchema(Property(nameof(Model.Video), "Hologram", "Video", isRequired: true));
+
+        var cut = RenderFieldSet(new Model(), schema);
+
+        cut.Find("form").Submit();
+
+        Assert.Equal("The Video field is required.", cut.Find(".field-validation-error").TextContent);
+    }
+}

@@ -1,0 +1,178 @@
+@inherits BunitContext
+
+@code {
+    private sealed class Command
+    {
+        [Required]
+        public IFileSource? File { get; set; }
+    }
+
+    private sealed class FakeImageAssetRouteLibrary : IImageAssetRouteLibrary
+    {
+        public Task<string> ImageAssetAsync(int? imageAssetId, IImageResizeSettings? settings = null) => Task.FromResult(string.Empty);
+
+        public Task<string> ImageAssetAsync(int? imageAssetId, int? width, int? height = null) => Task.FromResult(string.Empty);
+
+        public string ImageAsset(IImageAssetRenderable? asset, IImageResizeSettings? settings = null) => ImageAsset(asset, null, null);
+
+        public string ImageAsset(IImageAssetRenderable? asset, int? width, int? height = null) => $"/assets/images/{asset?.ImageAssetId}?width={width}";
+    }
+
+    public UploadFieldTests()
+    {
+        // The image field reads the image's size in the browser; an unset call returns null, as for a TIFF.
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddSingleton<IImageAssetRouteLibrary, FakeImageAssetRouteLibrary>();
+        Services.AddSingleton(new ImageAssetsSettings());
+    }
+
+    private IRenderedComponent<AdminForm> RenderDocumentField(Command command, bool required, DocumentAssetSummary? currentAsset = null)
+    {
+        return Render<AdminForm>(p => p
+            .Add(f => f.Model, command)
+            .AddChildContent(@<FormFieldDocumentUpload Title="File" Required="required" CurrentAsset="currentAsset" @bind-Value="command.File" />));
+    }
+
+    private IRenderedComponent<AdminForm> RenderImageField(Command command, bool required, IImageAssetRenderable? currentAsset = null)
+    {
+        return Render<AdminForm>(p => p
+            .Add(f => f.Model, command)
+            .AddChildContent(@<FormFieldImageUpload Title="File" Required="required" CurrentAsset="currentAsset" @bind-Value="command.File" />));
+    }
+
+    private static InputFileContent TextFile() => InputFileContent.CreateFromText("Some text", "notes.txt", contentType: "text/plain");
+
+    private static InputFileContent ImageFile() => InputFileContent.CreateFromBinary([1, 2, 3], "photo.tif", contentType: "image/tiff");
+
+    // The test class isn't a component, so @bind doesn't re-render the form with the new value as a page would.
+    private static void Upload(IRenderedComponent<AdminForm> cut, InputFileContent file)
+    {
+        cut.FindComponent<InputFile>().UploadFiles(file);
+        cut.Render();
+    }
+
+    private static void Remove(IRenderedComponent<AdminForm> cut)
+    {
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Remove").Click();
+        cut.Render();
+    }
+
+    private static IReadOnlyList<string> ButtonTexts(IRenderedComponent<AdminForm> cut) =>
+        cut.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
+
+    /* DOCUMENT */
+
+    [Fact]
+    public void Document_Upload_SetsValueAndShowsFile()
+    {
+        var command = new Command();
+        var cut = RenderDocumentField(command, required: true);
+
+        Upload(cut, TextFile());
+
+        Assert.NotNull(command.File);
+        Assert.Equal("notes.txt", command.File.FileName);
+        Assert.Contains("notes.txt", cut.Find(".image-asset").TextContent);
+        Assert.Equal("Change", cut.Find("input[type=file]").GetAttribute("title"));
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void Document_Upload_RemoveOnlyWhenOptional(bool required, bool expectRemove)
+    {
+        var command = new Command();
+        var cut = RenderDocumentField(command, required);
+
+        Assert.DoesNotContain("Remove", ButtonTexts(cut));
+
+        Upload(cut, TextFile());
+
+        Assert.Equal(expectRemove, ButtonTexts(cut).Contains("Remove"));
+    }
+
+    [Fact]
+    public void Document_Remove_ClearsValueAndShowsSavedFile()
+    {
+        var command = new Command();
+        var saved = new DocumentAssetSummary { FileName = "saved", FileExtension = "pdf", FileSizeInBytes = 2048 };
+        var cut = RenderDocumentField(command, required: false, saved);
+
+        Assert.Contains("saved.pdf", cut.Find(".image-asset").TextContent);
+
+        Upload(cut, TextFile());
+        Remove(cut);
+
+        Assert.Null(command.File);
+        Assert.Contains("saved.pdf", cut.Find(".image-asset").TextContent);
+        Assert.DoesNotContain("notes.txt", cut.Find(".image-asset").TextContent);
+        Assert.DoesNotContain("Remove", ButtonTexts(cut));
+    }
+
+    [Fact]
+    public void Document_Upload_ClearsRequiredMessage()
+    {
+        var command = new Command();
+        var cut = RenderDocumentField(command, required: true);
+
+        cut.Find("form").Submit();
+        Assert.Equal("The File field is required.", cut.Find(".field-validation-error").TextContent);
+
+        Upload(cut, TextFile());
+
+        Assert.Empty(cut.FindAll(".field-validation-error"));
+    }
+
+    /* IMAGE */
+
+    [Fact]
+    public void Image_NoFile_ShowsUploadPrompt()
+    {
+        var cut = RenderImageField(new Command(), required: true);
+
+        Assert.Equal("Upload", cut.Find("input[type=file]").GetAttribute("title"));
+        Assert.NotEmpty(cut.FindAll(".image-upload-info"));
+        Assert.Empty(cut.FindAll("img"));
+    }
+
+    [Fact]
+    public void Image_SavedAsset_ShowsPreview()
+    {
+        var saved = new ImageAssetSummary { ImageAssetId = 7, FileName = "saved", FileExtension = "jpg" };
+        var cut = RenderImageField(new Command(), required: true, saved);
+
+        var image = cut.Find("img");
+        Assert.Equal("/assets/images/7?width=450", image.GetAttribute("src"));
+        Assert.Equal("saved.jpg", image.GetAttribute("alt"));
+        Assert.Equal("Change", cut.Find("input[type=file]").GetAttribute("title"));
+    }
+
+    [Fact]
+    public void Image_Upload_SetsValueAndShowsUnsupportedPreview()
+    {
+        var command = new Command();
+        var cut = RenderImageField(command, required: true);
+
+        Upload(cut, ImageFile());
+
+        Assert.NotNull(command.File);
+        Assert.Equal("photo.tif", command.File.FileName);
+        Assert.Equal(AdminAssetPaths.PreviewNotSupported, cut.Find("img").GetAttribute("src"));
+        Assert.DoesNotContain("Remove", ButtonTexts(cut));
+    }
+
+    [Fact]
+    public void Image_Remove_ClearsValueAndShowsSavedImage()
+    {
+        var command = new Command();
+        var saved = new ImageAssetSummary { ImageAssetId = 7, FileName = "saved", FileExtension = "jpg" };
+        var cut = RenderImageField(command, required: false, saved);
+
+        Upload(cut, ImageFile());
+        Remove(cut);
+
+        Assert.Null(command.File);
+        Assert.Equal("/assets/images/7?width=450", cut.Find("img").GetAttribute("src"));
+        Assert.DoesNotContain("Remove", ButtonTexts(cut));
+    }
+}

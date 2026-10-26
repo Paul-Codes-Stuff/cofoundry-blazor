@@ -309,7 +309,8 @@ grep "serves the admin API" "$TEMP/sandbox2.log"
 dotnet test test/Cofoundry.Web.Admin.Blazor.Tests
 ```
 
-Pure helpers only (no database or browser needed); everything else is covered by the steps above.
+Pure helpers and, with bUnit, the shared form components (no database or browser needed); pages are covered by
+the steps above.
 
 ## Stop
 

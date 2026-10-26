@@ -1,0 +1,44 @@
+@inherits BunitContext
+
+@code {
+    [Fact]
+    public void OnePage_RendersNothing()
+    {
+        var cut = Render(@<Pager PageNumber="1" PageCount="1" />);
+
+        Assert.Empty(cut.Markup.Trim());
+    }
+
+    [Fact]
+    public void FirstPage_DisablesPrevious()
+    {
+        var cut = Render(@<Pager PageNumber="1" PageCount="3" />);
+
+        Assert.True(cut.Find("button.previous").HasAttribute("disabled"));
+        Assert.False(cut.Find("button.next").HasAttribute("disabled"));
+        Assert.Equal("1 of 3", cut.Find(".info").TextContent);
+    }
+
+    [Fact]
+    public void LastPage_DisablesNext()
+    {
+        var cut = Render(@<Pager PageNumber="3" PageCount="3" />);
+
+        Assert.False(cut.Find("button.previous").HasAttribute("disabled"));
+        Assert.True(cut.Find("button.next").HasAttribute("disabled"));
+    }
+
+    [Theory]
+    [InlineData("button.previous", 1)]
+    [InlineData("button.next", 3)]
+    public void Click_RaisesPageNumber(string button, int expected)
+    {
+        int? requested = null;
+
+        var cut = Render(@<Pager PageNumber="2" PageCount="3" OnPageChanged="p => requested = p" />);
+
+        cut.Find(button).Click();
+
+        Assert.Equal(expected, requested);
+    }
+}

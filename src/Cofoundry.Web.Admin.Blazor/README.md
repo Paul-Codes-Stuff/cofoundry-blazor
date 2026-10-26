@@ -376,7 +376,9 @@ references both versions of each.
   search-as-you-type dropdown, as in the AngularJS admin
 * A role can't be deleted while any user references it, including soft-deleted users (a domain rule, the same
   in the AngularJS admin). Move users to another role before deleting them if the role should go too
-* Unit tests (`test/Cofoundry.Web.Admin.Blazor.Tests`) cover the pure helpers only (routes, string utilities,
+* Unit tests (`test/Cofoundry.Web.Admin.Blazor.Tests`) cover the pure helpers (routes, string utilities,
   the server-error field matching, nested item errors, message wording, video id parsing, image size
-  restrictions, the email links setting, the visual editor's html injection and filter swap). Components and pages are covered by
-  the browser steps in `.claude/skills/run-blazor-admin`
+  restrictions, the email links setting, the visual editor's html injection and filter swap) and, with bUnit, the
+  shared form components (text field, help toggle, server errors under fields, pager, the upload fields' Remove
+  button, the data model field set's fields and validation). Pages are covered by the browser steps in
+  `.claude/skills/run-blazor-admin`

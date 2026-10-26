@@ -1,0 +1,59 @@
+@inherits BunitContext
+
+@code {
+    private sealed class Command
+    {
+        public string? Title { get; set; }
+    }
+
+    [Fact]
+    public void NoHelpText_HidesHelpButton()
+    {
+        var command = new Command();
+
+        var cut = Render(@<AdminForm Model="command">
+            <FormSection Title="Main">
+                <FormFieldText Title="Title" @bind-Value="command.Title" />
+            </FormSection>
+        </AdminForm>);
+
+        Assert.DoesNotContain("show", cut.Find("button.toggle-helpers").ClassList);
+        Assert.Empty(cut.FindAll(".help-inline"));
+    }
+
+    [Fact]
+    public void HelpText_ShowsHelpButton()
+    {
+        var command = new Command();
+
+        var cut = Render(@<AdminForm Model="command">
+            <FormSection Title="Main">
+                <FormFieldText Title="Title" Description="The page title." @bind-Value="command.Title" />
+            </FormSection>
+        </AdminForm>);
+
+        Assert.Contains("show", cut.Find("button.toggle-helpers").ClassList);
+        Assert.Equal("The page title.", cut.Find(".help-inline").TextContent);
+    }
+
+    [Fact]
+    public void HelpButton_TogglesHelpers()
+    {
+        var command = new Command();
+
+        var cut = Render(@<AdminForm Model="command">
+            <FormSection Title="Main">
+                <FormFieldText Title="Title" Description="The page title." @bind-Value="command.Title" />
+            </FormSection>
+        </AdminForm>);
+
+        cut.Find("button.toggle-helpers").Click();
+
+        Assert.Contains("show-helpers", cut.Find("fieldset").ClassList);
+        Assert.Contains("active", cut.Find("button.toggle-helpers").ClassList);
+
+        cut.Find("button.toggle-helpers").Click();
+
+        Assert.DoesNotContain("show-helpers", cut.Find("fieldset").ClassList);
+    }
+}
