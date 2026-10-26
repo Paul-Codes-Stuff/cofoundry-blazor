@@ -98,6 +98,14 @@ public class FieldTestDataModel : ICustomEntityDataModel
     [PageDirectory]
     public int? Directory { get; set; }
 
+    [CustomEntityMultiTypeCollection(
+        CategoryCustomEntityDefinition.DefinitionCode,
+        AuthorCustomEntityDefinition.DefinitionCode,
+        IsOrderable = true,
+        TitleColumnHeader = "Name")]
+    [Display(Description = "Categories and authors in one orderable list.")]
+    public ICollection<CustomEntityIdentity> Related { get; set; } = new List<CustomEntityIdentity>();
+
     [Html(HtmlToolbarPreset.Headings, HtmlToolbarPreset.BasicFormatting, HtmlToolbarPreset.Media, HtmlToolbarPreset.Source, Rows = 8)]
     public string? Html { get; set; }
 

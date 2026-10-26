@@ -1,0 +1,327 @@
+@inherits DataModelFieldComponentBase
+@implements IDisposable
+@inject IAdminBlazorExecutor Executor
+
+@* [CustomEntityMultiTypeCollection] properties: cms-form-field-custom-entity-multi-type-collection. Like
+   DataModelCustomEntityCollectionField, but the items (CustomEntityIdentity) can be of several definitions:
+   the add menu has a picker per definition, and a Type column shows each item's. Orderable collections can
+   be reordered by dragging rows; others are kept sorted by title, as in the AngularJS field. *@
+<div class="control-group">
+    <div class="control-group-area @AreaCssClass">
+        <label class="control-label">@Field.Title:</label>
+        <div class="controls">
+            @if (_modules == null)
+            {
+                <div class="text-block-display-value">Loading...</div>
+            }
+            else
+            {
+                <TableContainer IsLoading="_isLoading">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                @if (_showImage)
+                                {
+                                    <th>@Header(ImageColumnHeader, string.Empty)</th>
+                                }
+                                <th>@Header(TypeColumnHeader, "Type")</th>
+                                <th>@Header(TitleColumnHeader, "Title")</th>
+                                @if (_showDescription)
+                                {
+                                    <th>@Header(DescriptionColumnHeader, "Description")</th>
+                                }
+                                @if (_showStatus)
+                                {
+                                    <th>Status</th>
+                                }
+                                @if (ShowInput)
+                                {
+                                    <th class="actions">Actions</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (_items.Count == 0)
+                            {
+                                <tr><td colspan="100" class="empty">None</td></tr>
+                            }
+                            @for (var i = 0; i < _items.Count; i++)
+                            {
+                                var item = _items[i];
+                                var index = i;
+                                var module = _modules.GetValueOrDefault(item.Identity.CustomEntityDefinitionCode);
+
+                                <tr @key="item.Identity.CustomEntityId"
+                                    draggable="@(CanReorder ? "true" : null)"
+                                    @ondragstart="() => _dragIndex = index"
+                                    @ondragover="() => { }"
+                                    @ondragover:preventDefault="CanReorder"
+                                    @ondrop="() => DropAsync(index)">
+                                    @if (_showImage)
+                                    {
+                                        <td><TableCellImage Image="module?.GetPreviewImage(_images, item.Entity)" /></td>
+                                    }
+                                    <td>@(module?.Definition.Name ?? item.Identity.CustomEntityDefinitionCode)</td>
+                                    <td>
+                                        <strong>
+                                            <a href="@AdminBlazorRoutes.CustomEntityDetails(item.Identity.CustomEntityDefinitionCode, item.Identity.CustomEntityId)" target="_blank">@item.Entity.Title</a>
+                                        </strong>
+                                    </td>
+                                    @if (_showDescription)
+                                    {
+                                        <td>@module?.GetPreviewDescription(item.Entity)</td>
+                                    }
+                                    @if (_showStatus)
+                                    {
+                                        <td>
+                                            <span>@CustomEntityLabels.PublishStatus(item.Entity.PublishStatus, item.Entity.PublishDate)</span>
+                                            <br />
+                                            @if (item.Entity.HasDraftVersion)
+                                            {
+                                                <span>(Pending Draft)</span>
+                                            }
+                                        </td>
+                                    }
+                                    @if (ShowInput)
+                                    {
+                                        <td class="actions">
+                                            <ButtonIcon Icon="trash-o" Title="Remove" OnClick="() => RemoveAsync(item)" />
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @if (ShowInput && _modules.Count > 0)
+                    {
+                        <div class="collection-actions">
+                            <Menu Icon="plus-circle">
+                                @foreach (var module in _modules.Values)
+                                {
+                                    <AdminButton Text="@($"Add or remove {module.Definition.Name}")" Disabled="_isLoading"
+                                                 OnClick="() => _pickerModule = module" />
+                                }
+                            </Menu>
+                        </div>
+                    }
+                </TableContainer>
+                <ValidationMessage For="() => _binding.Value" class="field-validation-error" />
+            }
+        </div>
+    </div>
+    <FieldHelp Text="@Field.Description" />
+</div>
+
+@if (_pickerModule != null)
+{
+    <CustomEntityPickerDialog Module="_pickerModule" MultiMode="true" SelectedIds="SelectedIds(_pickerModule.Code)"
+                              LocaleId="Field.Context.LocaleId"
+                              OnSelected="ids => OnPickedAsync(_pickerModule.Code, ids)" OnCancel="() => _pickerModule = null" />
+}
+
+@code {
+    private DataModelFieldBinding<IReadOnlyList<CustomEntityIdentity>?> _binding = default!;
+    private Dictionary<string, CustomEntityModule>? _modules;
+    private List<Item> _items = [];
+    private Dictionary<int, ImageAssetRenderDetails> _images = [];
+    private CustomEntityModule? _pickerModule;
+    private EditContext? _subscribedEditContext;
+    private int? _dragIndex;
+    private bool _isLoading;
+    private bool _showImage;
+    private bool _showDescription;
+    private bool _showStatus;
+
+    [CascadingParameter] public EditContext? EditContext { get; set; }
+
+    [CascadingParameter(Name = "EditMode")] public bool EditMode { get; set; } = true;
+
+    private const string ImageColumnHeader = "ImageColumnHeader";
+    private const string TypeColumnHeader = "TypeColumnHeader";
+    private const string TitleColumnHeader = "TitleColumnHeader";
+    private const string DescriptionColumnHeader = "DescriptionColumnHeader";
+
+    private IEnumerable<string> DefinitionCodes => (Field.GetAttribute<string>(CustomEntityFieldAttributes.DefinitionCodes) ?? string.Empty)
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private bool IsOrderable => Field.GetAttribute<bool>(CustomEntityFieldAttributes.Orderable);
+
+    private bool ShowInput => EditMode && !Field.IsReadOnly;
+
+    private bool CanReorder => ShowInput && IsOrderable;
+
+    private IReadOnlyList<CustomEntityIdentity> Identities => _binding.Value ?? [];
+
+    private string AreaCssClass => (EditMode ? "editmode " : string.Empty)
+        + (EditContext?.GetValidationMessages(_binding.FieldIdentifier).Any() == true ? "invalid" : string.Empty);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _binding = Field.Bind<IReadOnlyList<CustomEntityIdentity>?>();
+
+        if (!ReferenceEquals(_subscribedEditContext, EditContext))
+        {
+            if (_subscribedEditContext != null)
+            {
+                _subscribedEditContext.OnValidationStateChanged -= OnValidationStateChanged;
+            }
+
+            _subscribedEditContext = EditContext;
+
+            if (_subscribedEditContext != null)
+            {
+                _subscribedEditContext.OnValidationStateChanged += OnValidationStateChanged;
+            }
+        }
+
+        if (_modules == null)
+        {
+            var modules = new Dictionary<string, CustomEntityModule>(StringComparer.OrdinalIgnoreCase);
+            foreach (var code in DefinitionCodes)
+            {
+                // An unknown code gets no picker, as in the AngularJS field.
+                if (await CustomEntityModule.LoadAsync(Executor, code) is { } module)
+                {
+                    modules[module.Code] = module;
+                }
+            }
+
+            // As in the AngularJS field: the image and description columns show when any type has them,
+            // and the status column when any type isn't auto-published.
+            _showImage = modules.Values.Any(m => m.PreviewImageProperty != null);
+            _showDescription = modules.Values.Any(m => m.PreviewDescriptionProperty != null);
+            _showStatus = modules.Values.Any(m => !m.Definition.AutoPublish);
+            _modules = modules;
+        }
+
+        await LoadItemsIfChangedAsync();
+    }
+
+    private string Header(string attribute, string defaultValue) => Field.GetAttribute<string>(attribute) ?? defaultValue;
+
+    private IReadOnlyCollection<int> SelectedIds(string definitionCode)
+    {
+        return Identities
+            .Where(i => IsOfType(i, definitionCode))
+            .Select(i => i.CustomEntityId)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Reloads the table when the identities no longer match it, e.g. on first load or after picking.
+    /// </summary>
+    private async Task LoadItemsIfChangedAsync()
+    {
+        if (_modules == null || _items.Select(i => i.Identity.CustomEntityId).SequenceEqual(Identities.Select(i => i.CustomEntityId)))
+        {
+            return;
+        }
+
+        _isLoading = true;
+        try
+        {
+            var summaries = await CustomEntityModule.GetSummariesAsync(Executor, Identities.Select(i => i.CustomEntityId).ToList());
+            var byId = summaries.ToDictionary(s => s.CustomEntityId);
+
+            // Custom entity ids are unique across definitions; an item whose entity has gone, or is now of
+            // another type, is dropped.
+            var items = Identities
+                .Where(i => byId.TryGetValue(i.CustomEntityId, out var s) && IsOfType(i, s.CustomEntityDefinitionCode))
+                .Select(i => new Item(new CustomEntityIdentity(byId[i.CustomEntityId].CustomEntityDefinitionCode, i.CustomEntityId), byId[i.CustomEntityId]))
+                .ToList();
+
+            if (!IsOrderable)
+            {
+                items = items.OrderBy(i => i.Entity.Title, StringComparer.CurrentCultureIgnoreCase).ToList();
+            }
+
+            _items = items;
+            _images = new Dictionary<int, ImageAssetRenderDetails>();
+            foreach (var group in _items.GroupBy(i => i.Identity.CustomEntityDefinitionCode, StringComparer.OrdinalIgnoreCase))
+            {
+                if (_modules.TryGetValue(group.Key, out var module))
+                {
+                    foreach (var image in await module.LoadPreviewImagesAsync(Executor, group.Select(i => i.Entity)))
+                    {
+                        _images[image.Key] = image.Value;
+                    }
+                }
+            }
+
+            // Drops missing entities and applies the title order, as the AngularJS field did.
+            if (!_items.Select(i => i.Identity.CustomEntityId).SequenceEqual(Identities.Select(i => i.CustomEntityId)))
+            {
+                _binding.Value = _items.Select(i => i.Identity).ToList();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Applies a picker's selection for one type: that type's deselected items go, kept ones stay where they
+    /// are, and new ones are added at the end.
+    /// </summary>
+    private async Task OnPickedAsync(string definitionCode, IReadOnlyList<int> ids)
+    {
+        _pickerModule = null;
+
+        var kept = Identities
+            .Where(i => !IsOfType(i, definitionCode) || ids.Contains(i.CustomEntityId))
+            .ToList();
+        var added = ids
+            .Where(id => !kept.Any(i => IsOfType(i, definitionCode) && i.CustomEntityId == id))
+            .Select(id => new CustomEntityIdentity(definitionCode, id));
+
+        await SetIdentitiesAsync(kept.Concat(added).ToList());
+    }
+
+    private Task RemoveAsync(Item item)
+    {
+        return SetIdentitiesAsync(Identities.Where(i => i.CustomEntityId != item.Identity.CustomEntityId).ToList());
+    }
+
+    private Task DropAsync(int toIndex)
+    {
+        if (!CanReorder || _dragIndex is not int fromIndex || fromIndex == toIndex)
+        {
+            return Task.CompletedTask;
+        }
+
+        _dragIndex = null;
+        var item = _items[fromIndex];
+        _items.RemoveAt(fromIndex);
+        _items.Insert(toIndex, item);
+
+        return SetIdentitiesAsync(_items.Select(i => i.Identity).ToList());
+    }
+
+    private async Task SetIdentitiesAsync(List<CustomEntityIdentity> identities)
+    {
+        _binding.Value = identities;
+        await LoadItemsIfChangedAsync();
+        EditContext?.NotifyFieldChanged(_binding.FieldIdentifier);
+    }
+
+    private static bool IsOfType(CustomEntityIdentity identity, string definitionCode)
+    {
+        return string.Equals(identity.CustomEntityDefinitionCode, definitionCode, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        if (_subscribedEditContext != null)
+        {
+            _subscribedEditContext.OnValidationStateChanged -= OnValidationStateChanged;
+        }
+    }
+
+    private sealed record Item(CustomEntityIdentity Identity, CustomEntitySummary Entity);
+}

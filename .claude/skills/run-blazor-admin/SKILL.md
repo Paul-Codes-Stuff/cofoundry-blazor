@@ -124,7 +124,8 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   the AngularJS admin's api (`/admin/api/custom-entities/{id}`, `data.latestVersion.model`). It covers dates and
   times, option lists (enum, `IListOptionSource` and api sources), the asset pickers' preset filters and upload
   warnings, image/document uploads from the pickers, collections (multi-select, drag, remove), page and
-  directory fields, the TinyMCE html editor (typing into its iframe, inserting an uploaded image) and the
+  directory fields, the multi-type custom entity collection (Related: it creates two categories and an author,
+  picks both types from the add menu, drags, re-picks one type and removes, and deletes them at the end), the TinyMCE html editor (typing into its iframe, inserting an uploaded image) and the
   unsupported-field placeholder. Run it with `BROWSER_TZ` set to a zone that isn't UTC (the driver passes it to
   the browser as `timezoneId`), or the "Local" date fields don't actually convert. The page fields use existing
   pages, so run `smoke` once first on a fresh database. It deletes the entity and the assets it uploads.

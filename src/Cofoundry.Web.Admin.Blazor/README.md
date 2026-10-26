@@ -5,7 +5,7 @@ installed **alongside** the AngularJS admin while modules are migrated one at a 
 
 > **Status: first slice.** Builds cleanly. The Dashboard, Pages (list, filter, create, details/edit, publish,
 > unpublish, change URL, duplicate, access rules), Directories, Page Templates, Images, Documents, Site Settings, Roles, Users
-> and Custom Entities (phases 1 to 4: every data-model field type except page blocks' multi-type collection)
+> and Custom Entities (phases 1 to 4: every data-model field type)
 > modules and the visual editor have been smoke-tested in `Dev.Sandbox`.
 
 ## Installing side-by-side
@@ -182,7 +182,10 @@ chosen by the schema's data template name:
   PageSelector, PageCollection, DirectorySelector, CustomEntitySelector (a search-as-you-type
   `FormFieldFilteredDropdown` with an "Add" button that creates one in a dialog), CustomEntityCollection (a
   table filled from `CustomEntityPickerDialog`, which filters, pages and can also create; orderable
-  collections reorder by dragging rows), NestedDataModelCollection and NestedDataModelMultiTypeCollection.
+  collections reorder by dragging rows), CustomEntityMultiTypeCollection (the same table for items of several
+  definitions, stored as `CustomEntityIdentity`, with a Type column and an "Add or remove {type}" picker per
+  definition in its add menu; a picker's selection replaces only that type's items, keeping the others'
+  places), NestedDataModelCollection and NestedDataModelMultiTypeCollection.
   Anything else shows a "can't be edited in this admin yet" placeholder that keeps the value and still shows
   its validation messages.
 * Dates and times: `Field.Bind<T>()` converts between the property's type (DateTime, DateTimeOffset, TimeSpan
@@ -331,8 +334,6 @@ references both versions of each.
 
 * The YouTube field's lookup with an API key hasn't been tested (the sandbox has no key), and the preview shows
   YouTube's "Error 153" in headless Chrome. The AngularJS field embeds the same url
-* `[CustomEntityMultiTypeCollection]` (only used by page blocks) isn't ported. The visual editor's block forms
-  show the unsupported-field placeholder for it (e.g. the sandbox's Content Section "Entities" field)
 * The page picker (page collection field) is multi-select only, since the single page field is a
   search-as-you-type dropdown, as in the AngularJS admin
 * Upload fields have no "Remove" button. The AngularJS field only shows it when the field is optional, and every

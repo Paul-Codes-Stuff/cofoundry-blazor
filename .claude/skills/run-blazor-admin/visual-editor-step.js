@@ -100,8 +100,10 @@ module.exports = async (page, c) => {
       // Save without the required text first: the dialog stays open with a message.
       await modal().locator('input[type=submit][value="Save"]').click(); await page.waitForTimeout(800);
       if (!/The Text field is required/.test(await modal().innerText())) throw new Error('no required message');
-      // Content Section's [CustomEntityMultiTypeCollection] isn't ported (see the README's known gaps).
-      if (!/can't be edited in this admin yet/.test(await modal().innerText())) throw new Error('no placeholder for the Entities field');
+      // Content Section's [CustomEntityMultiTypeCollection]: a picker per type in its add menu.
+      const entities = modal().locator('.control-group:has(label:text-is("Entities:"))');
+      const pickers = await entities.locator('.menu-options button').allTextContents();
+      if (pickers.map(t => t.trim()).join('|') !== 'Add or remove Category|Add or remove Blog Post') throw new Error('entities pickers: ' + pickers.join('|'));
       await modal().getByLabel('Title:', { exact: true }).fill(`First ${stamp}`);
       await modal().getByLabel('Title:', { exact: true }).blur();
       await typeHtml(`First text ${stamp}`);

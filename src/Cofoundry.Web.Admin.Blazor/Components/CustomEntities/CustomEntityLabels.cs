@@ -71,5 +71,6 @@ public static class CustomEntityUrls
 public static class CustomEntityFieldAttributes
 {
     public const string DefinitionCode = "CustomEntityDefinitionCode";
+    public const string DefinitionCodes = "CustomEntityDefinitionCodes";
     public const string Orderable = "Orderable";
 }

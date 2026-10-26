@@ -295,6 +295,72 @@ module.exports = async (page, c) => {
     if (m.page != null || m.pages.length !== 1 || m.directory != null) throw new Error(JSON.stringify({ page: m.page, pages: m.pages, directory: m.directory }));
   });
 
+  // [CustomEntityMultiTypeCollection] (Related: categories and authors, orderable). Creates two categories and
+  // an author, deleted at the end.
+  const related = { categories: [`Fld cat A ${stamp}`, `Fld cat B ${stamp}`], author: `Fld author ${stamp}`, urls: [] };
+  const relatedRows = async () => (await control('Related:').locator('tbody tr').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim());
+  const pickRelated = async (type, names) => {
+    await control('Related:').locator('.collection-actions .menu').hover(); await page.waitForTimeout(300);
+    await control('Related:').locator(`.menu-options button:text-is("Add or remove ${type}")`).click(); await page.waitForTimeout(1500);
+    if (!new RegExp(`Find ${type}`, 'i').test(await top().locator('.modal-title').innerText())) throw new Error(`no ${type} picker`);
+    for (const name of names) {
+      await top().locator(`tr:has(a:text-is("${name}"))`).click({ position: { x: 5, y: 5 } }); await page.waitForTimeout(300);
+    }
+    await topBtn('Ok').click(); await page.waitForTimeout(1500);
+  };
+
+  await c.step('multi-type collection: pick both types, save', async () => {
+    for (const name of related.categories) {
+      await page.goto('/admin-next/custom-entities/SIMCAT/new'); await c.settle();
+      await c.field('.page-body', 'Title:').fill(name); await c.field('.page-body', 'Title:').blur();
+      await control('Short Description:').locator('textarea').fill(`About ${name}`); await control('Short Description:').locator('textarea').blur();
+      await c.btn('.page-actions', 'Save').click(); await c.settle(2000);
+      if (!/\/SIMCAT\/\d+$/.test(page.url())) throw new Error('category not saved');
+      related.urls.push(new URL(page.url()).pathname);
+    }
+    await page.goto('/admin-next/custom-entities/SIMAUT/new'); await c.settle();
+    await c.field('.page-body', 'Name:').fill(related.author); await c.field('.page-body', 'Name:').blur();
+    await c.btn('.page-actions', 'Save').click(); await c.settle(2000);
+    if (!/\/SIMAUT\/\d+$/.test(page.url())) throw new Error('author not saved');
+    related.urls.push(new URL(page.url()).pathname);
+
+    await page.goto(`${list}/${id}`); await c.settle();
+    await c.btn('.page-actions', 'Edit').click(); await page.waitForTimeout(1500);
+    const headers = (await control('Related:').locator('thead th').allInnerTexts()).map(t => t.trim().toLowerCase());
+    // Categories have a preview image and description; neither type has a status (both auto-publish).
+    if (headers.join('|') !== '|type|name|description|actions') throw new Error('headers: ' + headers.join('|'));
+    await pickRelated('Category', related.categories);
+    await pickRelated('Author', [related.author]);
+    const rows = await relatedRows();
+    if (rows.length !== 3 || !rows[0].startsWith(`Category ${related.categories[0]}`) || !rows[2].startsWith(`Author ${related.author}`)) throw new Error('rows: ' + rows.join(' | '));
+    if (!rows[0].includes(`About ${related.categories[0]}`)) throw new Error('no description: ' + rows[0]);
+    if ((await control('Related:').locator('tbody tr[draggable=true]').count()) !== 3) throw new Error('orderable rows not draggable');
+    await c.shot('fields-5b-related');
+    await c.btn('.page-actions', 'Save').click(); await c.settle(2000);
+    const m = await stored();
+    const codes = (m.related || []).map(r => r.customEntityDefinitionCode).join(',');
+    if (codes !== 'SIMCAT,SIMCAT,SIMAUT' || m.related.some(r => !(r.customEntityId > 0))) throw new Error(JSON.stringify(m.related));
+  });
+
+  await c.step('multi-type collection: reorder, re-pick one type, remove', async () => {
+    await c.btn('.page-actions', 'Edit').click(); await page.waitForTimeout(1500);
+    const rows = control('Related:').locator('tbody tr');
+    await rows.nth(2).dragTo(rows.nth(0)); await page.waitForTimeout(800);
+    let texts = await relatedRows();
+    if (!texts[0].startsWith('Author')) throw new Error('not reordered: ' + texts.join(' | '));
+    // Deselect category A in its picker: the author keeps its place and category B stays.
+    await pickRelated('Category', [related.categories[0]]);
+    texts = await relatedRows();
+    if (texts.length !== 2 || !texts[0].startsWith('Author') || !texts[1].includes(related.categories[1])) throw new Error('after picker: ' + texts.join(' | '));
+    await icon(control('Related:').locator('tbody tr').first(), 'Remove').click(); await page.waitForTimeout(500);
+    await c.btn('.page-actions', 'Save').click(); await c.settle(2000);
+    const m = await stored();
+    if (m.related.length !== 1 || m.related[0].customEntityDefinitionCode !== 'SIMCAT') throw new Error(JSON.stringify(m.related));
+    // Read-only view: the title links to the entity, no actions column.
+    if (!(await control('Related:').locator(`a:text-is("${related.categories[1]}")`).count())) throw new Error('read-only link missing');
+    if (await control('Related:').locator('.collection-actions').count()) throw new Error('add menu in read-only view');
+  });
+
   // The html editor (TinyMCE): type, insert an uploaded image with the image button, save.
   let htmlImageId;
   await c.step('html field: type, insert an image, save', async () => {
@@ -341,6 +407,15 @@ module.exports = async (page, c) => {
     await c.btn('.page-actions', 'Delete').click(); await page.waitForTimeout(800);
     await page.click('.modal .main-cta'); await c.settle(2000);
     if (!page.url().endsWith(list)) throw new Error('delete failed: ' + (await body()).slice(0, 300));
+  });
+
+  await c.step('cleanup related entities', async () => {
+    for (const url of related.urls) {
+      await page.goto(url); await c.settle();
+      await c.btn('.page-actions', 'Delete').click(); await page.waitForTimeout(800);
+      await page.click('.modal .main-cta'); await c.settle(1500);
+      if (/\/\d+$/.test(page.url())) throw new Error(`delete ${url} failed`);
+    }
   });
 
   await c.step('cleanup assets', async () => {

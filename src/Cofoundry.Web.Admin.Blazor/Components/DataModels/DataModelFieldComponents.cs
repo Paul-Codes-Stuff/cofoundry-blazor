@@ -78,6 +78,7 @@ public class DefaultDataModelFieldComponentRegistration : IDataModelFieldCompone
 
         yield return new("CustomEntitySelector", typeof(DataModelCustomEntitySelectorField));
         yield return new("CustomEntityCollection", typeof(DataModelCustomEntityCollectionField));
+        yield return new("CustomEntityMultiTypeCollection", typeof(DataModelCustomEntityMultiTypeCollectionField));
 
         yield return new("NestedDataModelCollection", typeof(DataModelNestedDataModelCollectionField));
         yield return new("NestedDataModelMultiTypeCollection", typeof(DataModelNestedDataModelMultiTypeCollectionField));

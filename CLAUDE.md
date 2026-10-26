@@ -133,8 +133,9 @@ Agreed direction:
   (permissions editor), Users (per user area: list, create, edit, reset password, delete), Directories (list,
   create, details, change URL, delete), page/directory access rules (`Components/AccessRules`) and Page
   Templates (read-only list and details), Custom Entities phases 1 to 4 (list, create, details, versions,
-  Change Ordering, with the dynamic data-model form in `Components/DataModels`: every field type except
-  `[CustomEntityMultiTypeCollection]`, which only page blocks use. That includes dates/times in the browser's
+  Change Ordering, with the dynamic data-model form in `Components/DataModels`: every field type, including
+  `[CustomEntityMultiTypeCollection]` (`DataModelCustomEntityMultiTypeCollectionField`, mostly used by page
+  blocks; the Field Tests entity has one too). That includes dates/times in the browser's
   time zone (`BrowserTimeZone`), option lists (api sources fetched in the browser), image/document/page
   collections and pickers with preset filters, directory selector, the TinyMCE html editor (AngularJS admin's
   4.4.3 build, `wwwroot/lib/tinymce`), an unsupported-field placeholder, and the
@@ -185,7 +186,7 @@ Agreed direction:
   commands and then reload the page. `AdminBlazorVisualEditorStateService` replaces the AngularJS
   `?mode=`/`?version=` parsing.
 - **Next:** the remaining known gaps in the README. Every plugin with an AngularJS admin part now has a Blazor
-  package. `[CustomEntityMultiTypeCollection]` (page blocks only) still shows the unsupported-field placeholder.
+  package.
 - **Unit tests:** `test/Cofoundry.Web.Admin.Blazor.Tests` (xunit v3, like the repo's other test projects) covers
   pure helpers only: routes, `StringUtilities`, `AdminFormFields`, `FieldValidationMessage.UseTitle`,
   `ImageAssetFilter`, `CommandValidationErrors`, `AdminBlazorMailTemplateBuilder` (with and without `UseForEmailLinks`),
