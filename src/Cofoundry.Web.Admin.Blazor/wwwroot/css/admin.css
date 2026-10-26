@@ -5950,7 +5950,7 @@ footer a {
   font-weight: bold;
   background: white;
   padding: 10px;
-  border-top: 2px solid #413851;
+  border-top: 2px solid #1d4e5b;
 }
 .dashboard-item:nth-of-type(1), .dashboard-item:nth-of-type(2) {
   margin-top: 80px;
@@ -6048,7 +6048,7 @@ footer a {
   font-family: Tahoma, Geneva, sans-serif;
   float: left;
   position: relative;
-  background: #413851;
+  background: #1d4e5b;
   width: 228px;
   height: 100vh;
   z-index: 999;
@@ -6062,7 +6062,7 @@ footer a {
   padding: 0;
   list-style: none;
   position: relative;
-  background: #2c263d;
+  background: #123540;
 }
 .main-nav ol li, .main-nav ul li {
   z-index: 1;
@@ -6074,7 +6074,7 @@ footer a {
   background-image: url("img/icons/retina/logo.png");
   background-size: 80px auto;
   background-repeat: no-repeat;
-  background-color: #413851;
+  background-color: #1d4e5b;
   display: block;
   text-align: center;
   color: #fff;
@@ -6096,7 +6096,7 @@ footer a {
   transition: all 0.3s;
   top: 80px;
   position: relative;
-  background-color: #413851;
+  background-color: #1d4e5b;
   border: none;
   padding-top: 42px;
   z-index: 2;
@@ -6110,7 +6110,7 @@ footer a {
   display: block;
   font-size: 80%;
   text-decoration: none;
-  border-left: 4px solid #413851;
+  border-left: 4px solid #1d4e5b;
 }
 .main-nav .category .main-button i {
   transition: opacity 0.3s;
@@ -6127,7 +6127,7 @@ footer a {
 .main-nav .category .sub-nav {
   transition: width 0.3s;
   position: absolute;
-  background: #2c263d;
+  background: #123540;
   top: 0;
   margin-left: 80px;
   height: 100vh;
@@ -6136,7 +6136,7 @@ footer a {
 }
 .main-nav .category:hover .main-button, .main-nav .category.selected .main-button {
   color: #fff;
-  background-color: #2c263d;
+  background-color: #123540;
   border-left: 3px solid #4af386;
 }
 .main-nav .category:hover .main-button i, .main-nav .category.selected .main-button i {
@@ -6285,11 +6285,11 @@ h3 {
 }
 
 a {
-  color: #413851;
+  color: #1d4e5b;
 }
 
 a:hover {
-  color: #2c263d;
+  color: #123540;
 }
 
 /*===============================
@@ -6313,16 +6313,16 @@ a:hover {
   position: relative;
 }
 .btn:hover {
-  border-color: #413851;
+  border-color: #1d4e5b;
 }
 .main-cta.btn {
-  background-color: #413851;
+  background-color: #1d4e5b;
   color: #fff;
-  border-color: #413851;
+  border-color: #1d4e5b;
 }
 .main-cta.btn:hover {
-  background-color: #2c263d;
-  border-color: #2c263d;
+  background-color: #123540;
+  border-color: #123540;
 }
 @media screen and (min-width: 1200px) {
   .btn {
@@ -6733,7 +6733,7 @@ input[type=color] {
   text-decoration: none;
 }
 .page-header a:hover {
-  color: #413851;
+  color: #1d4e5b;
   text-decoration: underline;
 }
 
@@ -6749,7 +6749,7 @@ input[type=color] {
   background: #fff;
 }
 .page-sub-header a {
-  color: #413851;
+  color: #1d4e5b;
 }
 .page-sub-header:hover {
   opacity: 1;
@@ -6814,7 +6814,7 @@ input[type=color] {
 }
 
 .help-inline {
-  color: #413851;
+  color: #1d4e5b;
   font-style: italic;
   display: block;
   padding-top: 10px;
@@ -6868,7 +6868,7 @@ input[type=color] {
 }
 .page-body.form fieldset legend:before {
   transition: all 0.2s;
-  border-top: 3px solid #413851;
+  border-top: 3px solid #1d4e5b;
   content: "";
   position: absolute;
   top: 0;
@@ -6939,10 +6939,10 @@ input[type=color] {
   text-align: right;
 }
 .page-body fieldset legend button.show:hover {
-  color: #2c263d;
+  color: #123540;
 }
 .page-body fieldset legend button.show.active {
-  color: #2c263d;
+  color: #123540;
 }
 .page-body fieldset .help-inline {
   display: none;
@@ -7432,7 +7432,7 @@ form.loading > *, table.loading > *, div.loading > *, fieldset.loading > * {
 
 .table-wrap {
   margin-bottom: 10px;
-  border-top: 3px solid #413851;
+  border-top: 3px solid #1d4e5b;
   position: relative;
 }
 .control-group-area .table-wrap {

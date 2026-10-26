@@ -5,8 +5,9 @@ $color-primary:         #4af386;
 $color-primary-dark:    #003399;
 $color-primary-light:   #6699ff;
 
-$color-secondary:       #413851;
-$color-secondary-dark:  #2c263d;
+// Teal rather than the AngularJS admin's purple (#413851, #2c263d), so the two admins are easy to tell apart.
+$color-secondary:       #1d4e5b;
+$color-secondary-dark:  #123540;
 
 // Greys
 $color-lightgrey:       #ebebeb;

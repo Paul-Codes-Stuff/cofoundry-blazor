@@ -95,6 +95,8 @@ npm run build      # or: npm run watch
 
 The SCSS started as a copy of the AngularJS admin's `Shared/Sass` and its `UIComponents` partials (same folder
 names, under `Styles/Components`), so the two admins look the same, and the copy now belongs to this project.
+The one deliberate difference is the colour: `$color-secondary` (`Config/_colors.scss`) is teal instead of the
+AngularJS admin's purple, so it is clear which admin (and which visual editor toolbar) you are in.
 The AngularJS build used Ruby Compass mixins, which Dart Sass can't compile: `Base/_reset.scss` holds the reset
 as plain CSS and `Libs/_compass.scss` the few mixins still used, without vendor prefixes or IE filters. The
 third-party CSS (Font Awesome 4.3, TinyMCE's skin, ui-select and selectize) is in `Styles/ThirdParty` and
