@@ -15,10 +15,17 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- -p:CofoundryPackageVersion swaps in the released packages, as in Cofoundry.Web.Admin.Blazor.csproj. -->
+  <ItemGroup Condition="'$(CofoundryPackageVersion)' == ''">
     <ProjectReference Include="..\Cofoundry.Core\Cofoundry.Core.csproj" />
     <ProjectReference Include="..\Cofoundry.Domain\Cofoundry.Domain.csproj" />
     <ProjectReference Include="..\Cofoundry.Web\Cofoundry.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(CofoundryPackageVersion)' != ''">
+    <PackageReference Include="Cofoundry.Core" Version="$(CofoundryPackageVersion)" />
+    <PackageReference Include="Cofoundry.Domain" Version="$(CofoundryPackageVersion)" />
+    <PackageReference Include="Cofoundry.Web" Version="$(CofoundryPackageVersion)" />
   </ItemGroup>
 
   <ItemGroup>

@@ -11,6 +11,9 @@ public class AdminBlazorDependencyRegistration : IDependencyRegistration
         var sessionServiceOptions = RegistrationOptions.Override();
         sessionServiceOptions.Lifetime = InstanceLifetime.Scoped;
 
+        // Above Cofoundry.Web's default, below Cofoundry.Web.Admin's low-priority SetupPageActionFactory.
+        var setupPageOptions = RegistrationOptions.Override((RegistrationOverridePriority)((int)RegistrationOverridePriority.Low - 1));
+
         container
             .Register<AdminBlazorScopeUser>(RegistrationOptions.Scoped())
             .Register<IUserSessionService, CircuitAwareUserSessionService>(sessionServiceOptions)
@@ -25,6 +28,7 @@ public class AdminBlazorDependencyRegistration : IDependencyRegistration
             .Register<VisualEditorScriptGenerator>()
             .RegisterAll<IVisualEditorRequestExclusionRule>()
             // Above Cofoundry.Web.Admin's low-priority AdminVisualEditorStateService, which does the same.
-            .Register<IVisualEditorStateService, AdminBlazorVisualEditorStateService>(RegistrationOptions.Override());
+            .Register<IVisualEditorStateService, AdminBlazorVisualEditorStateService>(RegistrationOptions.Override())
+            .Register<ISetupPageActionFactory, AdminBlazorSetupPageActionFactory>(setupPageOptions);
     }
 }

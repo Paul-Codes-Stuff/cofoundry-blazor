@@ -225,9 +225,12 @@ NODE_PATH="$TEMP/blazor-admin-pw/node_modules" node .claude/skills/run-blazor-ad
 sqlcmd -S <server> -E -C -Q "DROP DATABASE CofoundryBlazorSetupTest"
 ```
 
-Cofoundry installs its tables on startup. The test checks sign in sends you to setup, validation (required
-fields, mismatched and too-short passwords), completing setup, signing in as the new admin (a throwaway
-`setup-<stamp>@example.com`), and that setup then redirects to the dashboard.
+Cofoundry installs its tables on startup. The test checks the site's home page and sign in send you to setup
+(the home page goes to the AngularJS admin's `/admin/setup` while that's installed, which the test accepts),
+validation (required fields, mismatched and too-short passwords), completing setup, signing in as the new admin (a
+throwaway `setup-<stamp>@example.com`), and that setup then redirects to the dashboard. `ADMIN_ROOT=/admin` (with
+`MSYS_NO_PATHCONV=1`) for an admin at `/admin`; `SETUP_EMAIL` and `SETUP_PASS` choose the new admin's sign-in, to
+run `driver.js` steps as it afterwards.
 
 ## Directory name (non-default prefix)
 
@@ -294,11 +297,36 @@ node .claude/skills/run-blazor-admin/nuget-compat-check.js 0.13.2   # a given re
 ```
 
 It reads the commit the release was built from (its nuspec's `repository commit`) and fails if those projects
-differ from it here, then copies the new projects' tracked files to a temp folder, swaps every reference to
-another project for that project's package at the same version, and builds each. `KEEP=1` keeps the copy and
-prints its path. A release whose commit isn't in this clone skips the source half: fetch
+differ from it here, then copies the new projects' tracked files to a temp folder and builds each with
+`-p:CofoundryPackageVersion=<version>`, the switch packing uses (see "Packaging" in the admin's README). Only
+tracked files are copied, so `git add -N` a new file first or the build fails on its missing type. `KEEP=1` keeps
+the copy and prints its path. A release whose commit isn't in this clone skips the source half: fetch
 `cofoundry-cms/cofoundry` first. Checked: 0.13.2 passes both; 0.13.1 fails the source half (its csproj package
 versions differ) and still builds.
+
+### Packed packages in a test site
+
+To check the packages themselves, pack them from a copy (packing swaps references, which would leave the repo's
+`obj` folders out of step), make a site from the `cofoundry-web` template that installs them from that folder, and
+run it on an empty database. `$S` is any scratch folder outside the repo:
+
+```bash
+mkdir -p "$S/packsrc" "$S/feed" "$S/site"
+git ls-files -z -- src eng Cofoundry.sln | tar --null -T - -cf - | tar -xf - -C "$S/packsrc"
+cd "$S/packsrc" && for p in src/Cofoundry.Web.Admin.Blazor src/Cofoundry.Plugins/Cofoundry.Plugins.ErrorLogging/Cofoundry.Plugins.ErrorLogging.Admin.Blazor; do
+  dotnet pack "$p" -c Release -o "$S/feed" -p:CofoundryPackageVersion=0.13.2 -p:Version=0.13.2-blazor.1; done
+cd templates/Cofoundry.Templates/Cofoundry.Templates.Web && git ls-files -z . | tar --null -T - -cf - | tar -xf - -C "$S/site"
+```
+
+Then in `$S/site`: follow "Using the Blazor admin in a new project" in the README with `PackageReference`s
+(`Cofoundry.Web.Admin.Blazor` and `Cofoundry.Plugins.ErrorLogging.Admin.Blazor` at the packed version,
+`Cofoundry.Plugins.Imaging.SkiaSharp` and `Cofoundry.Plugins.SiteMap` at 0.13.2), add a `nuget.config` with
+`$S/feed` and nuget.org as sources and a `globalPackagesFolder` inside `$S` (so a repack at the same version isn't
+served from the cache), `dotnet build`, and run it on an empty database as in "First-run setup", e.g. on port 5009.
+`setup-test.js` with `ADMIN_ROOT=/admin`, then the `driver.js` steps with `BASE_URL`, after restarting the site
+with `Cofoundry__AdminBlazor__DirectoryName=admin-next` (most steps assume that prefix). Expect
+`page-templates-step.js`'s filter check to fail: the template has one page template, so filtering can't shorten
+the list. On the fork (not upstream), `.github/workflows/fork-pack.yml` packs all five in GitHub Actions.
 
 ## Admin API base url collision
 

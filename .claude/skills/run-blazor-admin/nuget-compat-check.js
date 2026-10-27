@@ -5,8 +5,9 @@
 //   KEEP=1 node ...                                                        # keep the copy, for a look
 // 1. Compares the repo's Core, Domain and Web (and the plugins' non-Blazor projects) with the commit the
 //    package was built from (its nuspec's repository commit): any difference is code the packages lack.
-// 2. Copies the new projects (git-tracked files only) to a temp folder, swaps every reference to a project
-//    outside that set for the package of the same name and version, and builds each one.
+// 2. Copies the new projects (git-tracked files only) to a temp folder and builds each one with
+//    -p:CofoundryPackageVersion, which swaps their references to the published projects for those packages,
+//    as packing does (see "Packaging" in the admin's README).
 // Needs the .NET SDK, git and internet access. Exits 1 on any failure.
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -84,25 +85,10 @@ const git = (...args) => execFileSync('git', args, { cwd: repo, encoding: 'utf8'
 </Project>
 `);
 
-  const local = new Set(projects.map(p => path.resolve(out, p).toLowerCase()));
-  for (const project of projects) {
-    const file = path.join(out, project);
-    const swapped = [];
-    const xml = fs.readFileSync(file, 'utf8').replace(/<ProjectReference Include="([^"]+)" \/>/g, (tag, include) => {
-      const target = path.resolve(path.dirname(file), include.replace(/\\/g, '/'));
-      if (local.has(target.toLowerCase())) return tag;
-      const id = path.basename(target, '.csproj');
-      swapped.push(id);
-      return `<PackageReference Include="${id}" Version="${version}" />`;
-    });
-    fs.writeFileSync(file, xml);
-    console.log(`       ${path.basename(project, '.csproj')}: ${swapped.join(', ') || 'no'} packages`);
-  }
-
   for (const project of projects) {
     const name = path.basename(project, '.csproj');
     try {
-      execFileSync('dotnet', ['build', path.join(out, project), '--nologo', '-v', 'q', '-clp:ErrorsOnly'], { encoding: 'utf8', stdio: 'pipe' });
+      execFileSync('dotnet', ['build', path.join(out, project), `-p:CofoundryPackageVersion=${version}`, '--nologo', '-v', 'q', '-clp:ErrorsOnly'], { encoding: 'utf8', stdio: 'pipe' });
       console.log(`[PASS] build: ${name}`);
     } catch (e) {
       const errors = [...new Set(((e.stdout || '') + (e.stderr || '')).split('\n').filter(l => /error/i.test(l)).map(l => l.replace(/\s*\[[^\]]*\]\s*$/, '').trim()))];

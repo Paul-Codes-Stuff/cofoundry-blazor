@@ -94,6 +94,9 @@ API clients don't change. What changes without the AngularJS package:
   the AngularJS package's module registrations. `BuiltInAdminModules` describes them instead, used only for codes
   no other registration has, so it does nothing while that package is installed.
 * **Visual editor:** the Blazor editor is always used (`UseVisualEditor` only matters beside the AngularJS one).
+* **Setup:** until the site is set up, its pages redirect to the Blazor admin's setup page
+  (`AdminBlazorSetupPageActionFactory`). Cofoundry's default throws instead. While the AngularJS package is installed
+  its setup page is used, as before.
 * **API antiforgery token:** the AngularJS admin rendered one into its pages for its scripts. A client now gets
   one from the site (`IAntiforgery`, e.g. the `__RequestVerificationToken` field of any form, including the
   Blazor admin's static SSR ones) and sends it in ASP.NET Core's default header, `RequestVerificationToken`.
@@ -116,11 +119,34 @@ dotnet new cofoundry-web -n ExampleApp
 3. In `appsettings.json`, add `"AdminBlazor": { "DirectoryName": "admin" }` to the `Cofoundry` section so the
    admin is at `/admin`.
 
-`Program.cs` doesn't change. The Blazor packages aren't on NuGet yet, so for now reference the projects from a
-clone of this repository, as `samples/src/Dev/Dev.Sandbox` does with `-p:BlazorAdminOnly=true`. Project references
-build Cofoundry itself from the clone too, so point the template's other Cofoundry references at the clone as well,
-rather than mixing in NuGet packages. Once the Blazor packages are published they will run on the released
-Cofoundry packages (0.13.2 so far), and every reference can be a package.
+`Program.cs` doesn't change. The Blazor packages aren't on NuGet yet. Either install them from a feed you've packed
+them to (see "Packaging"), at the version you packed, or reference the projects from a clone of this repository, as
+`samples/src/Dev/Dev.Sandbox` does with `-p:BlazorAdminOnly=true`. Project references build Cofoundry itself from
+the clone too, so in that case point the template's other Cofoundry references at the clone as well, rather than
+mixing in NuGet packages.
+
+## Packaging
+
+The packages are `Cofoundry.Web.Admin.Blazor`, `Cofoundry.Web.Admin.Api` (optional, see its README) and one
+`*.Admin.Blazor` package per plugin. In the repo they reference Cofoundry's projects, so a normal `dotnet pack`
+makes them depend on Cofoundry at the version being packed. To make them install on a site with the released
+Cofoundry packages, pack them with `CofoundryPackageVersion`, which swaps those project references for the
+packages at that version (`Cofoundry.Core`, `Cofoundry.Domain`, `Cofoundry.Web` and the plugins' own packages, as
+`>=` dependencies):
+
+```
+dotnet pack src/Cofoundry.Web.Admin.Blazor -c Release -o artifacts -p:CofoundryPackageVersion=0.13.2 -p:Version=0.13.2-blazor.1
+```
+
+Pack each project on its own (`dotnet pack` takes one project at a time), from a clean clone or a copy: the switch
+restores the project against different references, so it would leave the working copy's `obj` folders out of step
+with the solution build. Packed with the rest of Cofoundry instead (its own build), the property is unset and the
+packages depend on that release, like the others.
+
+Checked with 0.13.2: the packages restore `Cofoundry.Web` 0.13.2 and the plugins' 0.13.2 packages from nuget.org, and a
+site made from the `cofoundry-web` template as in "Using the Blazor admin in a new project" passes the skill's
+`setup-test.js` and its Pages, Images and Documents, Site Settings, Roles and Users and Page Templates steps. The static files (`_content/Cofoundry.Web.Admin.Blazor/...`) come from the package's static
+web assets, so nothing needs copying.
 
 The sandbox checks this with a `BlazorAdminOnly` build (`dotnet build -p:BlazorAdminOnly=true`; see "Blazor
 admin only" in the `run-blazor-admin` skill), which passes every browser step.

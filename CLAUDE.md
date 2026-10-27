@@ -43,6 +43,11 @@ Read `src/Cofoundry.Web.Admin.Blazor/README.md` first: it has the status, what i
   needs goes in the admin, even if a core change would be neater. `nuget-compat-check.js` in the skill checks
   both halves (no source changes since the release's commit, and a build against the packages); run it before
   committing anything that touches those projects or the new projects' references, and against each new release.
+  **Packing:** the new projects' references to Cofoundry's (and the plugins') published projects sit in an
+  `ItemGroup` that `-p:CofoundryPackageVersion=x.y.z` swaps for the packages, so packed they depend on the release
+  (see "Packaging" in the README). A new reference to a published project goes in that pair of groups. Upstream
+  is a possible future destination: keep shared files (templates, `eng/`, CI) unchanged. The fork-only
+  `.github/workflows/fork-pack.yml` stays out of any upstream pull request.
 
 ## Backwards compatibility (open, revisit before retiring the AngularJS admin)
 
@@ -191,6 +196,8 @@ Agreed direction:
   modules' nav entries came from `Cofoundry.Web.Admin`'s registrations, so `BuiltInAdminModules` describes them
   too, used only for codes no other registration has. Keep the two in step. Steps must work on both builds:
   read data through `/admin-next/api`, never `/admin/api`, and use `BASE_URL`, not a hard-coded port.
+  Before setup, the site's pages redirect to the Blazor setup page (`AdminBlazorSetupPageActionFactory`,
+  registered just below the AngularJS admin's, so that one still wins while it's installed).
 - **Visual editor:** the site's pages get the Blazor editor when `Cofoundry:AdminBlazor:UseVisualEditor` is on
   (Dev.Sandbox sets it) or `Cofoundry.Web.Admin` isn't installed. `VisualEditorInstallation` then swaps the
   AngularJS `VisualEditorContentFilter` (matched by type name) for ours, which injects `visual-editor.css/js`, the

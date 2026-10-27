@@ -1,16 +1,19 @@
 // First-run setup against an EMPTY database, so it doesn't use driver.js (which signs in first). Start a
 // second sandbox pointed at an empty database (see SKILL.md, "Setup"), then:
 //   node .claude/skills/run-blazor-admin/setup-test.js http://localhost:5007
-// It checks the auth pages send you to setup, the form validates, setup completes, the new admin can sign
-// in, and setup then redirects to the dashboard. The admin it creates uses a throwaway email and password.
+// It checks the site's pages and the auth pages send you to setup, the form validates, setup completes, the new
+// admin can sign in, and setup then redirects to the dashboard. The admin it creates uses a throwaway email and
+// password, or SETUP_EMAIL and SETUP_PASS, to sign in as it afterwards. ADMIN_ROOT=/admin for an admin at /admin.
 const path = require('path');
 const { chromium } = require('playwright-core');
 
 const base = process.argv[2] || 'http://localhost:5007';
 const outDir = process.env.OUT_DIR || path.join(require('os').tmpdir(), 'blazor-admin-run');
 const stamp = Date.now().toString(36);
-const email = `setup-${stamp}@example.com`;
-const password = `Setup-${stamp}-pw`;
+const email = process.env.SETUP_EMAIL || `setup-${stamp}@example.com`;
+const password = process.env.SETUP_PASS || `Setup-${stamp}-pw`;
+const root = process.env.ADMIN_ROOT || '/admin-next';
+const at = suffix => page => new URL(page.url()).pathname === root + suffix;
 let failures = 0;
 
 (async () => {
@@ -27,9 +30,17 @@ let failures = 0;
     catch (e) { failures++; console.log(`[FAIL] ${name}: ${e.message}`); await shot('fail-' + name.replace(/\W+/g, '-')).catch(() => {}); }
   };
 
+  // To the setup page of whichever admin handles setup: the AngularJS one while it's installed.
+  await step('site pages send you to setup', async () => {
+    await page.goto('/');
+    const landed = new URL(page.url()).pathname;
+    if (!/\/setup$/.test(landed)) throw new Error('went to ' + page.url());
+    console.log('        ' + landed);
+  });
+
   await step('sign in sends you to setup', async () => {
-    await page.goto('/admin-next/auth/login');
-    if (!/\/admin-next\/setup$/.test(page.url())) throw new Error('went to ' + page.url());
+    await page.goto(root + '/auth/login');
+    if (!at('/setup')(page)) throw new Error('went to ' + page.url());
     const t = await text();
     if (!/Site setup/i.test(t) || !/Default User Account/i.test(t)) throw new Error(t.slice(0, 300));
     await shot('setup-1-form');
@@ -65,7 +76,7 @@ let failures = 0;
     if (!/Setup complete/i.test(t)) throw new Error(t.slice(0, 500));
     await shot('setup-3-complete');
     await Promise.all([page.waitForNavigation(), page.click('a:text-is("Login")')]);
-    if (!/\/admin-next\/auth\/login/.test(page.url())) throw new Error('login link went to ' + page.url());
+    if (!at('/auth/login')(page)) throw new Error('login link went to ' + page.url());
   });
 
   await step('new admin signs in', async () => {
@@ -79,9 +90,9 @@ let failures = 0;
   });
 
   await step('setup redirects once set up', async () => {
-    await page.goto('/admin-next/setup');
+    await page.goto(root + '/setup');
     await page.waitForTimeout(1500);
-    if (!/\/admin-next\/dashboard$/.test(page.url())) throw new Error('setup went to ' + page.url());
+    if (!at('/dashboard')(page)) throw new Error('setup went to ' + page.url());
   });
 
   await browser.close();

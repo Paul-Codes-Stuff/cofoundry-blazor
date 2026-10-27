@@ -16,14 +16,27 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- Packing with -p:CofoundryPackageVersion=x.y.z (see "Packaging" in the README) swaps the repo's Cofoundry
+       projects for the released packages, so the package depends on those rather than on this build's version. -->
+  <ItemGroup Condition="'$(CofoundryPackageVersion)' == ''">
     <ProjectReference Include="..\Cofoundry.Core\Cofoundry.Core.csproj" />
     <ProjectReference Include="..\Cofoundry.Domain\Cofoundry.Domain.csproj" />
     <ProjectReference Include="..\Cofoundry.Web\Cofoundry.Web.csproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(CofoundryPackageVersion)' != ''">
+    <PackageReference Include="Cofoundry.Core" Version="$(CofoundryPackageVersion)" />
+    <PackageReference Include="Cofoundry.Domain" Version="$(CofoundryPackageVersion)" />
+    <PackageReference Include="Cofoundry.Web" Version="$(CofoundryPackageVersion)" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+  <!-- The SCSS build's npm files (see "Styles" in the README), which the SDK would pack as content for sites. -->
+  <ItemGroup>
+    <Content Update="Styles/**" Pack="false" />
   </ItemGroup>
 
 </Project>
