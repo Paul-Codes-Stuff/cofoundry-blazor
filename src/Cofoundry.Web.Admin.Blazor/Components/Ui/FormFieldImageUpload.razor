@@ -86,6 +86,7 @@
     private IJSObjectReference? _module;
     private IFileSource? _selectedFile;
     private IImageAssetRenderable? _shownAsset;
+    private string? _shownImageUrl;
     private bool _isInitialised;
     private string? _previewUrl;
     private string? _fileName;
@@ -98,6 +99,18 @@
     /// The image already saved, shown until a new file is chosen. Null when adding a new image.
     /// </summary>
     [Parameter] public IImageAssetRenderable? CurrentAsset { get; set; }
+
+    /// <summary>
+    /// The url of the image already saved, for images that aren't Cofoundry image assets (e.g. a custom module
+    /// that stores its own). Shown as given, so include any resizing in it. Only used when
+    /// <see cref="CurrentAsset"/> is null.
+    /// </summary>
+    [Parameter] public string? CurrentImageUrl { get; set; }
+
+    /// <summary>
+    /// The file name of the image at <see cref="CurrentImageUrl"/>, used as its alt text.
+    /// </summary>
+    [Parameter] public string? CurrentFileName { get; set; }
 
     /// <summary>
     /// Size restrictions the image must meet, e.g. from the image picker that opened the upload dialog.
@@ -115,7 +128,7 @@
     public static bool IsSvg(IFileSource file) =>
         file.MimeType == SvgMimeType || file.FileName.EndsWith(".svg", StringComparison.OrdinalIgnoreCase);
 
-    private bool HasFile => Value != null || CurrentAsset != null;
+    private bool HasFile => Value != null || CurrentAsset != null || CurrentImageUrl != null;
 
     private string ButtonText => HasFile ? "Change" : "Upload";
 
@@ -135,7 +148,10 @@
 
         // Show the saved image on first render, and again when the parent clears the chosen file (e.g. edit
         // cancelled) or reloads the asset after saving.
-        if (!_isInitialised || !ReferenceEquals(Value, _selectedFile) || !ReferenceEquals(CurrentAsset, _shownAsset))
+        if (!_isInitialised
+            || !ReferenceEquals(Value, _selectedFile)
+            || !ReferenceEquals(CurrentAsset, _shownAsset)
+            || CurrentImageUrl != _shownImageUrl)
         {
             _isInitialised = true;
             ShowCurrentAsset();
@@ -145,11 +161,21 @@
     private void ShowCurrentAsset()
     {
         _shownAsset = CurrentAsset;
+        _shownImageUrl = CurrentImageUrl;
         _selectedFile = null;
         _resizeSize = null;
         _error = null;
-        _previewUrl = CurrentAsset != null ? ImageRouteLibrary.ImageAsset(CurrentAsset, PreviewWidth) : AdminAssetPaths.ImageReplacement;
-        _fileName = CurrentAsset != null ? $"{CurrentAsset.FileName}.{CurrentAsset.FileExtension}" : null;
+
+        if (CurrentAsset != null)
+        {
+            _previewUrl = ImageRouteLibrary.ImageAsset(CurrentAsset, PreviewWidth);
+            _fileName = $"{CurrentAsset.FileName}.{CurrentAsset.FileExtension}";
+        }
+        else
+        {
+            _previewUrl = CurrentImageUrl ?? AdminAssetPaths.ImageReplacement;
+            _fileName = CurrentImageUrl != null ? CurrentFileName : null;
+        }
     }
 
     /// <summary>

@@ -40,6 +40,14 @@
             .AddChildContent(@<FormFieldImageUpload Title="File" Required="required" CurrentAsset="currentAsset" @bind-Value="command.File" />));
     }
 
+    private IRenderedComponent<AdminForm> RenderImageUrlField(Command command, bool required, string? currentImageUrl, string? currentFileName)
+    {
+        return Render<AdminForm>(p => p
+            .Add(f => f.Model, command)
+            .AddChildContent(@<FormFieldImageUpload Title="File" Required="required" CurrentImageUrl="@currentImageUrl"
+                                                    CurrentFileName="@currentFileName" @bind-Value="command.File" />));
+    }
+
     private static InputFileContent TextFile() => InputFileContent.CreateFromText("Some text", "notes.txt", contentType: "text/plain");
 
     private static InputFileContent ImageFile() => InputFileContent.CreateFromBinary([1, 2, 3], "photo.tif", contentType: "image/tiff");
@@ -174,5 +182,44 @@
         Assert.Null(command.File);
         Assert.Equal("/assets/images/7?width=450", cut.Find("img").GetAttribute("src"));
         Assert.DoesNotContain("Remove", ButtonTexts(cut));
+    }
+
+    /* IMAGE BY URL (images that aren't Cofoundry image assets) */
+
+    [Fact]
+    public void ImageUrl_Saved_ShowsPreviewAsGiven()
+    {
+        var cut = RenderImageUrlField(new Command(), required: true, "/gallery/12/photo.jpg?width=450", "photo.jpg");
+
+        var image = cut.Find("img");
+        Assert.Equal("/gallery/12/photo.jpg?width=450", image.GetAttribute("src"));
+        Assert.Equal("photo.jpg", image.GetAttribute("alt"));
+        Assert.Equal("Change", cut.Find("input[type=file]").GetAttribute("title"));
+    }
+
+    [Fact]
+    public void ImageUrl_Remove_ClearsValueAndShowsSavedImage()
+    {
+        var command = new Command();
+        var cut = RenderImageUrlField(command, required: false, "/gallery/12/photo.jpg", "photo.jpg");
+
+        Upload(cut, ImageFile());
+        Assert.Equal(AdminAssetPaths.PreviewNotSupported, cut.Find("img").GetAttribute("src"));
+
+        Remove(cut);
+
+        Assert.Null(command.File);
+        Assert.Equal("/gallery/12/photo.jpg", cut.Find("img").GetAttribute("src"));
+    }
+
+    [Fact]
+    public void ImageUrl_AssetTakesPrecedence()
+    {
+        var saved = new ImageAssetSummary { ImageAssetId = 7, FileName = "saved", FileExtension = "jpg" };
+        var cut = Render<AdminForm>(p => p
+            .Add(f => f.Model, new Command())
+            .AddChildContent(@<FormFieldImageUpload Title="File" CurrentAsset="saved" CurrentImageUrl="/gallery/12/photo.jpg" />));
+
+        Assert.Equal("/assets/images/7?width=450", cut.Find("img").GetAttribute("src"));
     }
 }

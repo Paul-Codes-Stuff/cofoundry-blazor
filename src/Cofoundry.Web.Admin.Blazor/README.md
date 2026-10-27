@@ -340,6 +340,8 @@ Uploads go through `InputFile` over the SignalR circuit and are buffered in memo
 limit is 30MB (`BufferedFileSource.MaxFileSize`), matching the request size limit the AngularJS admin's api had.
 As in the AngularJS admin, images larger than `ImageAssetsSettings.MaxUploadWidth`/`MaxUploadHeight` are resized
 to a JPEG in the browser first (`wwwroot/js/image-upload.js`), and the title defaults to the file name.
+`FormFieldImageUpload` shows the saved image from `CurrentAsset`, or, for a module that stores images outside
+Cofoundry's image assets (such as a custom gallery), from `CurrentImageUrl` and `CurrentFileName`.
 
 ### Visual editor
 
