@@ -110,6 +110,11 @@ Agreed direction:
   `<table>`). Read the directive's JS, not just its `.html`, and put that markup in the Razor directly.
 - **Never use `[Authorize(AuthenticationSchemes = ...)]` on components**: `AuthorizeRouteView` throws. The
   admin scheme lives in the `AdminBlazorAuthorizeAttribute.PolicyName` policy instead.
+- **Nothing in a circuit may query through the circuit's own DI scope.** Blazor disposes it, with Cofoundry's
+  shared `SqlConnection`, the moment the tab navigates away, so an in-flight query fails ("The connection is
+  closed") and logs a circuit crash. That's why the admin policy has its own requirement and
+  `AdminBlazorAuthorizationHandler` (a seeded scope per check) instead of Cofoundry's `UserAreaAuthorizationRequirement`.
+  It only shows with a slow (remote) database: navigate away just as each circuit's WebSocket opens to reproduce it.
 - Dialogs render through a `SectionOutlet` outside `.content` (see `AdminLayout`), else the nav covers them.
   There's one outlet per `ModalDialogStack` level, so a dialog opened from inside another dialog's content
   stacks on top. With one outlet only the newest dialog renders and the older dialog's content is disposed.

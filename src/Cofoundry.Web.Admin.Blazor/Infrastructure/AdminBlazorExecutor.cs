@@ -131,17 +131,8 @@ public class AdminBlazorExecutor : IAdminBlazorExecutor
     private async Task<int?> GetSignedInAdminUserIdAsync()
     {
         var state = await _authenticationStateProvider.GetAuthenticationStateAsync();
-        var user = state.User;
 
-        var areaCode = user.FindFirst(CofoundryClaimTypes.UserAreaCode)?.Value;
-        if (areaCode != CofoundryAdminUserArea.Code)
-        {
-            return null;
-        }
-
-        var userIdClaim = user.FindFirst(CofoundryClaimTypes.UserId)?.Value;
-
-        return int.TryParse(userIdClaim, out var userId) && userId > 0 ? userId : null;
+        return AdminBlazorAuthorizationHandler.GetAdminUserId(state.User);
     }
 
     private static ValidationError MapValidationException(ValidationException ex)

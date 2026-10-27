@@ -1,7 +1,7 @@
-using Cofoundry.Web.Auth.Internal;
 using Cofoundry.Web.Internal;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -27,12 +27,15 @@ public class AdminBlazorServiceConfigurationTask : IStartupServiceConfigurationT
             .AddOptions<MvcOptions>()
             .PostConfigure<AdminSettings, PagesSettings, AdminBlazorSettings>(VisualEditorInstallation.ConfigureFilters);
 
+        // The requirement is the admin's own rather than Cofoundry's UserAreaAuthorizationRequirement, so that
+        // AdminBlazorAuthorizationHandler checks the user in its own scope (see its remarks).
         mvcBuilder.Services.AddAuthorization(options =>
         {
             options.AddPolicy(AdminBlazorAuthorizeAttribute.PolicyName, policy => policy
                 .AddAuthenticationSchemes(AuthenticationSchemeNames.UserArea(CofoundryAdminUserArea.Code))
-                .AddRequirements(new UserAreaAuthorizationRequirement(CofoundryAdminUserArea.Code)));
+                .AddRequirements(new AdminBlazorAuthorizationRequirement()));
         });
+        mvcBuilder.Services.AddTransient<IAuthorizationHandler, AdminBlazorAuthorizationHandler>();
 
         // The admin cookie scheme challenges to the AngularJS admin's login page. Send requests for the
         // Blazor admin to its own login instead, keeping the original handler (which also handles ajax).
