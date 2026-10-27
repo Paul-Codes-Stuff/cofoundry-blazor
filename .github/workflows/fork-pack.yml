@@ -18,7 +18,7 @@ on:
         required: true
         default: 0.13.2
       version:
-        description: Package version (blank for <cofoundry-version>-blazor.<run number>)
+        description: Package version (blank for <cofoundry-version>.<run number>, e.g. 0.13.2.4)
         required: false
       push:
         description: Push to GitHub Packages
@@ -47,7 +47,7 @@ jobs:
         PACKAGE_VERSION: ${{ inputs.version }}
         RUN_NUMBER: ${{ github.run_number }}
       run: |
-        version="${PACKAGE_VERSION:-$COFOUNDRY_VERSION-blazor.$RUN_NUMBER}"
+        version="${PACKAGE_VERSION:-$COFOUNDRY_VERSION.$RUN_NUMBER}"
         echo "Packing $version against Cofoundry $COFOUNDRY_VERSION"
         for project in \
           src/Cofoundry.Web.Admin.Blazor \
