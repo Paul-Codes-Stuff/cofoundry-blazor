@@ -1,0 +1,72 @@
+###################################################################################
+# Fork only, not part of upstream Cofoundry: leave this file out of any pull request
+# to cofoundry-cms/cofoundry. Run manually from the Actions tab.
+#
+# Tests and packs the Blazor admin packages (Cofoundry.Web.Admin.Blazor, Cofoundry.Web.Admin.Api
+# and the plugins' *.Admin.Blazor packages) against the released Cofoundry packages, so they
+# install on a site without upgrading Cofoundry (see "Packaging" in the admin's README). The
+# packages are saved as a run artifact and, optionally, pushed to this repository owner's
+# GitHub Packages feed. Installing from that feed needs a token with read:packages.
+###################################################################################
+name: fork-pack
+
+on:
+  workflow_dispatch:
+    inputs:
+      cofoundry-version:
+        description: Released Cofoundry version the packages depend on (at least)
+        required: true
+        default: 0.13.2
+      version:
+        description: Package version (blank for <cofoundry-version>-blazor.<run number>)
+        required: false
+      push:
+        description: Push to GitHub Packages
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  pack:
+    if: github.repository != 'cofoundry-cms/cofoundry'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+    - name: Test
+      run: dotnet test test/Cofoundry.Web.Admin.Blazor.Tests --configuration Release --nologo
+    - name: Pack
+      env:
+        COFOUNDRY_VERSION: ${{ inputs.cofoundry-version }}
+        PACKAGE_VERSION: ${{ inputs.version }}
+        RUN_NUMBER: ${{ github.run_number }}
+      run: |
+        version="${PACKAGE_VERSION:-$COFOUNDRY_VERSION-blazor.$RUN_NUMBER}"
+        echo "Packing $version against Cofoundry $COFOUNDRY_VERSION"
+        for project in \
+          src/Cofoundry.Web.Admin.Blazor \
+          src/Cofoundry.Web.Admin.Api \
+          src/Cofoundry.Plugins/Cofoundry.Plugins.ErrorLogging/Cofoundry.Plugins.ErrorLogging.Admin.Blazor \
+          src/Cofoundry.Plugins/Cofoundry.Plugins.YouTube/Cofoundry.Plugins.YouTube.Admin.Blazor \
+          src/Cofoundry.Plugins/Cofoundry.Plugins.Vimeo/Cofoundry.Plugins.Vimeo.Admin.Blazor
+        do
+          dotnet pack "$project" --configuration Release --output artifacts --nologo \
+            -p:CofoundryPackageVersion="$COFOUNDRY_VERSION" -p:Version="$version"
+        done
+    - name: Save packages
+      uses: actions/upload-artifact@v4
+      with:
+        name: packages
+        path: artifacts/*
+    - name: Push to GitHub Packages
+      if: inputs.push
+      env:
+        FEED: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+        TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: dotnet nuget push "artifacts/*.nupkg" --source "$FEED" --api-key "$TOKEN" --no-symbols --skip-duplicate
