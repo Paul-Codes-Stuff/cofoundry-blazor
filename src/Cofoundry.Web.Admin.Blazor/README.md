@@ -98,6 +98,30 @@ API clients don't change. What changes without the AngularJS package:
   one from the site (`IAntiforgery`, e.g. the `__RequestVerificationToken` field of any form, including the
   Blazor admin's static SSR ones) and sends it in ASP.NET Core's default header, `RequestVerificationToken`.
 
+## Using the Blazor admin in a new project
+
+The `cofoundry-web` project template (`templates/Cofoundry.Templates`) still sets up the AngularJS admin. To start
+a new site on the Blazor admin, create it from the template and then change it as in "Installing without the
+AngularJS admin":
+
+```
+dotnet new cofoundry-web -n ExampleApp
+```
+
+1. In `ExampleApp.csproj`, replace `Cofoundry.Web.Admin` with `Cofoundry.Web.Admin.Blazor` (and
+   `Cofoundry.Web.Admin.Api` if anything will call `/admin/api`), and `Cofoundry.Plugins.ErrorLogging.Admin` with
+   `Cofoundry.Plugins.ErrorLogging.Admin.Blazor`. Keep the other references.
+2. In the same file, add `<RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>` to the `PropertyGroup`
+   (see "Installing side-by-side").
+3. In `appsettings.json`, add `"AdminBlazor": { "DirectoryName": "admin" }` to the `Cofoundry` section so the
+   admin is at `/admin`.
+
+`Program.cs` doesn't change. The Blazor packages aren't on NuGet yet, so for now reference the projects from a
+clone of this repository, as `samples/src/Dev/Dev.Sandbox` does with `-p:BlazorAdminOnly=true`. Project references
+build Cofoundry itself from the clone too, so point the template's other Cofoundry references at the clone as well,
+rather than mixing in NuGet packages. Once the Blazor packages are published they will run on the released
+Cofoundry packages (0.13.2 so far), and every reference can be a package.
+
 The sandbox checks this with a `BlazorAdminOnly` build (`dotnet build -p:BlazorAdminOnly=true`; see "Blazor
 admin only" in the `run-blazor-admin` skill), which passes every browser step.
 
