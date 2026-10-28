@@ -35,6 +35,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
+    # The Blazor projects are only on blazor-admin-port. From main (the default in "Use workflow from") the
+    # tests would fail on a missing project, so stop early and say why.
+    - name: Check the branch has the Blazor admin
+      run: |
+        if [ ! -d src/Cofoundry.Web.Admin.Blazor ]; then
+          echo "::error::$GITHUB_REF_NAME has no Blazor admin projects. Run fork-pack from blazor-admin-port (\"Use workflow from\" on the Actions tab)."
+          exit 1
+        fi
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
