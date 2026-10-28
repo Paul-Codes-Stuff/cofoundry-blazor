@@ -36,7 +36,7 @@ module.exports = async (page, c) => {
     ['roles-new', '/admin-next/roles/new'],
     ['users', '/admin-next/users/COF'],
     ['account', '/admin-next/account'],
-    ['field-tests-new', '/admin-next/custom-entities/SIMFLD/new'],
+    ['field-tests-new', '/admin-next/field-tests/new'],
   ];
 
   const take = async (name, target) => {
@@ -52,7 +52,7 @@ module.exports = async (page, c) => {
     await page.goto(await firstLink('/admin-next/pages')); await c.settle();
     await c.btn('.page-actions', 'Duplicate').click(); await page.waitForTimeout(1200);
     await page.screenshot({ path: path.join(dir, 'dialog.png'), fullPage: true });
-    await page.goto('/admin-next/custom-entities/SIMBLP/new'); await c.settle();
+    await page.goto('/admin-next/blog-posts/new'); await c.settle();
     await page.locator('.control-group:has(label:text-is("Author:")) input.ui-select-search').click(); await page.waitForTimeout(1200);
     await page.screenshot({ path: path.join(dir, 'filtered-dropdown.png'), fullPage: true });
 

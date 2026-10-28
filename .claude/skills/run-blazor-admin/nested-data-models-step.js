@@ -27,7 +27,7 @@ module.exports = async (page, c) => {
     await fill(); await modalBtn('OK').click(); await page.waitForTimeout(800);
   };
   const deleteExample = async title => {
-    const list = '/admin-next/custom-entities/SIMEXA';
+    const list = '/admin-next/examples';
     await page.goto(list); await c.settle();
     if (!(await page.locator(`table.table a:text-is("${title}")`).count())) return;
     await page.click(`table.table a:text-is("${title}")`); await c.settle();
@@ -45,12 +45,12 @@ module.exports = async (page, c) => {
   });
 
   await c.step('collection min items is validated', async () => {
-    await page.goto('/admin-next/custom-entities/SIMEXA/new'); await c.settle();
+    await page.goto('/admin-next/examples/new'); await c.settle();
     await c.field('.page-body', 'Title:').fill(titles[0]); await c.field('.page-body', 'Title:').blur();
     if ((await rowsOf(blocks)).join() !== 'None') throw new Error('blocks: ' + (await rowsOf(blocks)).join(' | '));
     await c.btn('.page-actions', 'Save').click(); await page.waitForTimeout(1000);
     if (!/Blocks must have at least 2 items/i.test(await messages())) throw new Error('messages: ' + await messages());
-    if (!/\/SIMEXA\/new$/.test(page.url())) throw new Error('saved without blocks');
+    if (!/\/examples\/new$/.test(page.url())) throw new Error('saved without blocks');
   });
 
   await c.step('add a block with an image picked from inside the dialog', async () => {
@@ -112,7 +112,7 @@ module.exports = async (page, c) => {
 
   await c.step('save and view', async () => {
     await c.btn('.page-actions', 'Save').click(); await c.settle(2000);
-    if (!/\/SIMEXA\/\d+$/.test(page.url())) throw new Error('not saved: ' + (await messages()) + ' ' + (await body()).slice(0, 400));
+    if (!/\/examples\/\d+$/.test(page.url())) throw new Error('not saved: ' + (await messages()) + ' ' + (await body()).slice(0, 400));
     if ((await control(blocks).locator('tbody tr').count()) !== 2) throw new Error('blocks not saved');
     if (await control(blocks).locator('button[title="Edit"]').count()) throw new Error('actions shown in view mode');
     const rows = await rowsOf(collection);
@@ -143,7 +143,7 @@ module.exports = async (page, c) => {
     await c.field('.modal', 'Title:').fill(titles[1]); await c.field('.modal', 'Title:').blur();
     await c.btn('.modal', 'Create duplicate').click(); await c.settle(2000);
     if ((await control(blocks).locator('tbody tr').count()) !== 2) throw new Error('copy lost the blocks');
-    await page.goto('/admin-next/custom-entities/SIMEXA'); await c.settle();
+    await page.goto('/admin-next/examples'); await c.settle();
     const listOrder = async () => (await c.rows()).map(r => titles.findIndex(t => r.includes(t))).filter(i => i >= 0);
     const before = await listOrder();
     if (before.length !== 2) throw new Error('list: ' + (await c.rows()).join(' | '));

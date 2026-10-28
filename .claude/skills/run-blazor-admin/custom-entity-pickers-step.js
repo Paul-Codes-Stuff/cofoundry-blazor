@@ -19,14 +19,15 @@ module.exports = async (page, c) => {
     const ctx = cv.getContext('2d'); ctx.fillStyle = colour; ctx.fillRect(0, 0, w, h);
     return cv.toDataURL('image/png').split(',')[1];
   }, [w, h, colour]), 'base64');
+  const slugs = { SIMAUT: 'authors', SIMCAT: 'categories', SIMBLP: 'blog-posts' };
   const createEntity = async (code, titleLabel, title) => {
-    await page.goto(`/admin-next/custom-entities/${code}/new`); await c.settle();
+    await page.goto(`/admin-next/${slugs[code]}/new`); await c.settle();
     await c.field('.page-body', titleLabel).fill(title); await c.field('.page-body', titleLabel).blur();
     await c.btn('.page-actions', 'Save').click(); await c.settle(2000);
-    if (!new RegExp(`/${code}/\\d+$`).test(page.url())) throw new Error(`${title} not saved: ` + (await body()).slice(0, 300));
+    if (!new RegExp(`/${slugs[code]}/\\d+$`).test(page.url())) throw new Error(`${title} not saved: ` + (await body()).slice(0, 300));
   };
   const deleteEntity = async (code, title) => {
-    const list = `/admin-next/custom-entities/${code}`;
+    const list = `/admin-next/${slugs[code]}`;
     await page.goto(list); await c.settle();
     if (!(await page.locator(`table.table a:text-is("${title}")`).count())) return;
     await page.click(`table.table a:text-is("${title}")`); await c.settle();
@@ -53,7 +54,7 @@ module.exports = async (page, c) => {
   });
 
   await c.step('author selector searches as you type', async () => {
-    await page.goto('/admin-next/custom-entities/SIMBLP/new'); await c.settle();
+    await page.goto('/admin-next/blog-posts/new'); await c.settle();
     const search = control('Author:').locator('input.ui-select-search');
     await search.click(); await search.type(`Author B ${stamp}`); await page.waitForTimeout(1200);
     const options = (await control('Author:').locator('.ui-select-choices-row').allInnerTexts()).map(s => s.trim());
@@ -74,7 +75,7 @@ module.exports = async (page, c) => {
     await control('Author:').locator('.ui-select-match').click(); await search.type(`Author A ${stamp}`); await page.waitForTimeout(1200);
     await search.press('Enter'); await page.waitForTimeout(600);
     if ((await control('Author:').locator('.ui-select-match').innerText()).trim() !== authors[0]) throw new Error('Enter did not select');
-    if (!/\/SIMBLP\/new$/.test(page.url())) throw new Error('Enter submitted the form');
+    if (!/\/blog-posts\/new$/.test(page.url())) throw new Error('Enter submitted the form');
   });
 
   await c.step('categories picker adds several', async () => {
@@ -107,7 +108,7 @@ module.exports = async (page, c) => {
     await dialog.locator('.page-actions button:text-is("Select")').click(); await page.waitForTimeout(1000);
     await c.shot('pick-3-blog-form');
     await c.btn('.page-actions', 'Save Draft').click(); await c.settle(2000);
-    if (!/\/SIMBLP\/\d+$/.test(page.url())) throw new Error('not saved: ' + (await body()).slice(0, 500));
+    if (!/\/blog-posts\/\d+$/.test(page.url())) throw new Error('not saved: ' + (await body()).slice(0, 500));
     postUrl = new URL(page.url()).pathname;
     const text = await body();
     if (!text.includes(authors[0])) throw new Error('author not shown: ' + text.slice(0, 500));
@@ -163,9 +164,9 @@ module.exports = async (page, c) => {
   // IOrderableCustomEntityDefinition), and Examples need nested blocks, which phase 3 adds. So this only
   // opens the dialog; drag-reordering itself is covered on the collection field above.
   await c.step('change ordering dialog opens', async () => {
-    await page.goto('/admin-next/custom-entities/SIMCAT'); await c.settle();
+    await page.goto('/admin-next/categories'); await c.settle();
     if (await page.locator('.page-actions button:has-text("Change Ordering")').count()) throw new Error('unordered type offers ordering');
-    await page.goto('/admin-next/custom-entities/SIMEXA'); await c.settle();
+    await page.goto('/admin-next/examples'); await c.settle();
     const listed = (await c.rows()).filter(r => !/no example could be found/i.test(r)).length;
     await c.btn('.page-actions', 'Change Ordering').click(); await c.settle(1500);
     if ((await modal().locator('.modal-title').innerText()).trim() !== 'Update Ordering') throw new Error('no dialog');

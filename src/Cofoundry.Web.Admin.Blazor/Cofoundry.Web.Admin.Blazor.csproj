@@ -16,6 +16,10 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Cofoundry.Web.Admin.Blazor.Tests" />
+  </ItemGroup>
+
   <!-- Packing with -p:CofoundryPackageVersion=x.y.z (see "Packaging" in the README) swaps the repo's Cofoundry
        projects for the released packages, so the package depends on those rather than on this build's version. -->
   <ItemGroup Condition="'$(CofoundryPackageVersion)' == ''">

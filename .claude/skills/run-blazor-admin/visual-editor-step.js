@@ -320,13 +320,13 @@ module.exports = async (page, c) => {
 
   try {
     await c.step('custom entity: create an author, a blog post and its details page', async () => {
-      await page.goto('/admin-next/custom-entities/SIMAUT/new'); await c.settle();
+      await page.goto('/admin-next/authors/new'); await c.settle();
       await c.field('.page-body', 'Name:').fill(`VisEd author ${stamp}`); await c.field('.page-body', 'Name:').blur();
       await c.btn('.page-actions', 'Save').click(); await c.settle(2000);   // authors aren't versioned
-      if (!/\/SIMAUT\/\d+$/.test(page.url())) throw new Error('author not saved');
+      if (!/\/authors\/\d+$/.test(page.url())) throw new Error('author not saved');
       authorUrl = new URL(page.url()).pathname;
 
-      await page.goto('/admin-next/custom-entities/SIMBLP/new'); await c.settle();
+      await page.goto('/admin-next/blog-posts/new'); await c.settle();
       await c.field('.page-body', 'Title:').fill(postTitle); await c.field('.page-body', 'Title:').blur();
       const desc = control('Short description:').locator('textarea');
       await desc.fill('Visual editor test.'); await desc.blur();
@@ -339,7 +339,7 @@ module.exports = async (page, c) => {
       await search.click(); await search.type(`VisEd author ${stamp}`); await page.waitForTimeout(1200);
       await control('Author:').locator('.ui-select-choices-row').first().dispatchEvent('mousedown'); await page.waitForTimeout(600);
       await c.btn('.page-actions', 'Save Draft').click(); await c.settle(2000);
-      if (!/\/SIMBLP\/\d+$/.test(page.url())) throw new Error('post not saved');
+      if (!/\/blog-posts\/\d+$/.test(page.url())) throw new Error('post not saved');
       postUrl = new URL(page.url()).pathname;
       const postId = postUrl.split('/').pop();
 

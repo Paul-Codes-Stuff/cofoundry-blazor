@@ -1,3 +1,4 @@
+@page "/{CustomEntityDefinitionCode}/{CustomEntityId:int}"
 @page "/custom-entities/{CustomEntityDefinitionCode}/{CustomEntityId:int}"
 @inject IAdminBlazorExecutor Executor
 @inject NavigationManager Navigation
@@ -309,6 +310,9 @@ else
     private bool _notFound;
     private bool _deleted;
 
+    /// <summary>
+    /// The definition's slug or code (see <see cref="CustomEntityRoute"/>).
+    /// </summary>
     [Parameter] public string CustomEntityDefinitionCode { get; set; } = string.Empty;
 
     [Parameter] public int CustomEntityId { get; set; }
@@ -317,9 +321,14 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        if (_module?.Code.Equals(CustomEntityDefinitionCode, StringComparison.OrdinalIgnoreCase) != true)
+        var definitionCode = CustomEntityRoute.GetDefinitionCode(Navigation, CustomEntityDefinitionCode);
+        if (definitionCode == null)
         {
-            _module = await CustomEntityModule.LoadAsync(Executor, CustomEntityDefinitionCode);
+            _module = null;
+        }
+        else if (_module?.Code.Equals(definitionCode, StringComparison.OrdinalIgnoreCase) != true)
+        {
+            _module = await CustomEntityModule.LoadAsync(Executor, definitionCode);
         }
 
         if (_module == null)

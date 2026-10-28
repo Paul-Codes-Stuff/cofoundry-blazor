@@ -80,7 +80,7 @@ module.exports = async (page, c) => {
 
   // YouTube
 
-  const list = '/admin-next/custom-entities/SIMFLD';
+  const list = '/admin-next/field-tests';
   const title = `YouTube ${stamp}`;
   let id;
   const stored = async () => {
@@ -132,7 +132,7 @@ module.exports = async (page, c) => {
 
   await c.step('youtube: save', async () => {
     await c.btn('.page-actions', 'Save').click(); await c.settle(2000);
-    id = (page.url().match(/\/SIMFLD\/(\d+)$/) || [])[1];
+    id = (page.url().match(/\/field-tests\/(\d+)$/) || [])[1];
     if (!id) throw new Error('not saved: ' + (await body()).slice(0, 300));
     const v = await stored();
     if (!v || v.id !== '9bZkp7q19f0' || v.title !== `Video ${stamp}` || v.description !== 'A test video') throw new Error(JSON.stringify(v));

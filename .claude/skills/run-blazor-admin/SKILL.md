@@ -102,7 +102,8 @@ node .claude/skills/run-blazor-admin/driver.js run path/to/step.js              
   hides Access Control. It deletes the directory (and with it the child and the page) and the role.
 - **`page-templates-step.js`** checks the read-only Page Templates list, name filter, details and the page count
   link to the filtered pages list. It creates nothing.
-- **`custom-entities-step.js`** covers the sandbox's Authors, Categories, Blog Posts and Examples: the custom
+- **`custom-entities-step.js`** covers the sandbox's Authors, Categories, Blog Posts and Examples: their urls
+  (`/admin-next/authors`; code urls such as `/admin-next/custom-entities/SIMAUT` move there), the custom
   title term, create/edit/cancel/duplicate/delete with dynamic text, text area and image fields, data-model
   validation (`[Required]` and the schema's required non-nullable image id), [PreviewImage]/[PreviewDescription]
   list columns. Field labels come from MVC metadata, so their casing varies ("Short description:"); the step

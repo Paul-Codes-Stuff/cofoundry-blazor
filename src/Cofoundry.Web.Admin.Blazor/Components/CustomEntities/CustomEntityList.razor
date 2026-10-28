@@ -1,5 +1,7 @@
+@page "/{CustomEntityDefinitionCode}"
 @page "/custom-entities/{CustomEntityDefinitionCode}"
 @inject IAdminBlazorExecutor Executor
+@inject NavigationManager Navigation
 @inject AdminLookups Lookups
 
 <PageTitle>@(_module?.Definition.NamePlural ?? "Custom Entities") | Admin</PageTitle>
@@ -185,12 +187,17 @@ else
     private bool _isLoading;
     private bool _notFound;
 
+    /// <summary>
+    /// The definition's slug or code (see <see cref="CustomEntityRoute"/>).
+    /// </summary>
     [Parameter] public string CustomEntityDefinitionCode { get; set; } = string.Empty;
 
     protected override async Task OnParametersSetAsync()
     {
+        var definitionCode = CustomEntityRoute.GetDefinitionCode(Navigation, CustomEntityDefinitionCode);
+
         // The same component instance is reused when the nav switches between custom entity types.
-        if (_module?.Code.Equals(CustomEntityDefinitionCode, StringComparison.OrdinalIgnoreCase) == true)
+        if (definitionCode != null && _module?.Code.Equals(definitionCode, StringComparison.OrdinalIgnoreCase) == true)
         {
             return;
         }
@@ -199,7 +206,7 @@ else
         _result = null;
         _filter = new EntityFilter();
         _isFilterVisible = false;
-        _module = await CustomEntityModule.LoadAsync(Executor, CustomEntityDefinitionCode);
+        _module = definitionCode == null ? null : await CustomEntityModule.LoadAsync(Executor, definitionCode);
         _notFound = _module == null;
 
         if (_module == null)

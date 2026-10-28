@@ -69,10 +69,64 @@ public static class AdminBlazorRoutes
     public static string DirectoryDetails(int pageDirectoryId) => $"{Directories}/{pageDirectoryId}";
 
     /// <summary>
-    /// Each custom entity definition is its own module, keyed by its 6 character definition code,
-    /// e.g. "/admin-next/custom-entities/SIMBLP".
+    /// The path segment of the code-based custom entity urls, e.g. "/admin-next/custom-entities/SIMBLP".
     /// </summary>
-    public static string CustomEntities(string customEntityDefinitionCode) => $"{Root}/custom-entities/{customEntityDefinitionCode}";
+    public const string CustomEntitiesByCodeSegment = "custom-entities";
+
+    private static Dictionary<string, string> _customEntitySlugsByCode = new(StringComparer.OrdinalIgnoreCase);
+    private static Dictionary<string, string> _customEntityCodesBySlug = new(StringComparer.OrdinalIgnoreCase);
+    private static HashSet<string> _reservedSegments = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Gives each custom entity definition a url from its plural name, as the AngularJS admin does: Blog Posts
+    /// is at "/admin-next/blog-posts". A definition keeps its code url ("/admin-next/custom-entities/SIMBLP")
+    /// if its slug is the first segment of another admin route (<paramref name="reservedSegments"/>), or
+    /// another definition's slug, since the router would send that url elsewhere.
+    /// </summary>
+    internal static void SetCustomEntitySlugs(IEnumerable<ICustomEntityDefinition> definitions, IEnumerable<string> reservedSegments)
+    {
+        var reserved = new HashSet<string>(reservedSegments, StringComparer.OrdinalIgnoreCase) { CustomEntitiesByCodeSegment };
+        var slugs = definitions
+            .Select(d => (d.CustomEntityDefinitionCode, Slug: SlugFormatter.ToSlug(d.NamePlural)))
+            .Where(d => d.Slug.Length > 0 && !reserved.Contains(d.Slug))
+            .GroupBy(d => d.Slug, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() == 1)
+            .Select(g => g.Single())
+            .ToList();
+
+        _customEntitySlugsByCode = slugs.ToDictionary(d => d.CustomEntityDefinitionCode, d => d.Slug, StringComparer.OrdinalIgnoreCase);
+        _customEntityCodesBySlug = slugs.ToDictionary(d => d.Slug, d => d.CustomEntityDefinitionCode, StringComparer.OrdinalIgnoreCase);
+        _reservedSegments = reserved;
+    }
+
+    /// <summary>
+    /// True if <paramref name="segment"/> is the first segment of an admin route other than the custom entities'
+    /// slug urls (see <see cref="SetCustomEntitySlugs"/>).
+    /// </summary>
+    public static bool IsReservedSegment(string segment)
+    {
+        return _reservedSegments.Contains(segment);
+    }
+
+    /// <summary>
+    /// The definition code whose url is "/{Root}/<paramref name="slug"/>", or null.
+    /// </summary>
+    public static string? GetCustomEntityDefinitionCode(string slug)
+    {
+        return _customEntityCodesBySlug.GetValueOrDefault(slug);
+    }
+
+    /// <summary>
+    /// Each custom entity definition is its own module, at a url from its plural name, e.g.
+    /// "/admin-next/blog-posts", or else keyed by its 6 character definition code, e.g.
+    /// "/admin-next/custom-entities/SIMBLP" (see <see cref="SetCustomEntitySlugs"/>). Code urls always work.
+    /// </summary>
+    public static string CustomEntities(string customEntityDefinitionCode)
+    {
+        return _customEntitySlugsByCode.TryGetValue(customEntityDefinitionCode, out var slug)
+            ? $"{Root}/{slug}"
+            : $"{Root}/{CustomEntitiesByCodeSegment}/{customEntityDefinitionCode}";
+    }
 
     public static string CustomEntityNew(string customEntityDefinitionCode) => CustomEntities(customEntityDefinitionCode) + "/new";
 

@@ -1,3 +1,4 @@
+﻿using System.Reflection;
 using Cofoundry.Web.Internal;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -77,16 +78,19 @@ public class AdminBlazorStartupConfigurationTask
     private readonly AdminSettings _adminSettings;
     private readonly AdminBlazorSettings _adminBlazorSettings;
     private readonly AdminBlazorModuleRegistry _moduleRegistry;
+    private readonly IEnumerable<ICustomEntityDefinition> _customEntityDefinitions;
 
     public AdminBlazorStartupConfigurationTask(
         AdminSettings adminSettings,
         AdminBlazorSettings adminBlazorSettings,
-        AdminBlazorModuleRegistry moduleRegistry
+        AdminBlazorModuleRegistry moduleRegistry,
+        IEnumerable<ICustomEntityDefinition> customEntityDefinitions
         )
     {
         _adminSettings = adminSettings;
         _adminBlazorSettings = adminBlazorSettings;
         _moduleRegistry = moduleRegistry;
+        _customEntityDefinitions = customEntityDefinitions;
     }
 
     public int Ordering => (int)StartupTaskOrdering.Early;
@@ -101,6 +105,7 @@ public class AdminBlazorStartupConfigurationTask
     {
         // Before anything reads the routes.
         AdminBlazorRoutes.SetPrefix(_adminBlazorSettings.DirectoryName);
+        AdminBlazorRoutes.SetCustomEntitySlugs(_customEntityDefinitions, GetReservedRouteSegments());
 
         if (_adminSettings.Disabled)
         {
@@ -167,6 +172,23 @@ public class AdminBlazorStartupConfigurationTask
                 });
             });
         });
+    }
+
+    /// <summary>
+    /// The first segments of the admin's routes, which a custom entity's url can't use: every page's (those
+    /// starting with a literal), and the endpoints' that aren't pages.
+    /// </summary>
+    private IEnumerable<string> GetReservedRouteSegments()
+    {
+        var pageSegments = _moduleRegistry.AdditionalAssemblies
+            .Prepend(typeof(App).Assembly)
+            .SelectMany(a => a.GetExportedTypes())
+            .Where(t => typeof(Microsoft.AspNetCore.Components.IComponent).IsAssignableFrom(t))
+            .SelectMany(t => t.GetCustomAttributes<Microsoft.AspNetCore.Components.RouteAttribute>())
+            .Select(r => r.Template.Trim('/').Split('/')[0])
+            .Where(s => s.Length > 0 && !s.StartsWith('{'));
+
+        return pageSegments.Concat([AdminBlazorRoutes.ApiRoute.Trim('/'), "_blazor"]);
     }
 
     private static bool IsAdminRequest(HttpContext context)

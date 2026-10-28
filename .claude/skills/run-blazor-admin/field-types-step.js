@@ -7,7 +7,7 @@
 module.exports = async (page, c) => {
   const stamp = Date.now().toString(36);
   const title = `Fields ${stamp}`;
-  const list = '/admin-next/custom-entities/SIMFLD';
+  const list = '/admin-next/field-tests';
   const body = async () => (await page.locator('.page-body').innerText()).replace(/\s+/g, ' ').trim();
   const messages = async () => (await page.locator('.field-validation-error, .validation-message').allInnerTexts()).join(' / ');
   const control = label => page.locator(`.page-body .control-group:has(label:text-matches("^${label}$", "i"))`).first();
@@ -55,7 +55,7 @@ module.exports = async (page, c) => {
     await choose('Enum radio:', 'Red');
     await c.shot('fields-1-dates');
     await c.btn('.page-actions', 'Save').click(); await c.settle(2000);
-    if (!/\/SIMFLD\/\d+$/.test(page.url())) throw new Error('not saved: ' + await messages());
+    if (!/\/field-tests\/\d+$/.test(page.url())) throw new Error('not saved: ' + await messages());
     id = page.url().match(/(\d+)$/)[1];
     const text = await body();
     // Dates use the server's culture ("06 May 2024" or "May 6, 2024"), so only check the parts.
@@ -311,17 +311,17 @@ module.exports = async (page, c) => {
 
   await c.step('multi-type collection: pick both types, save', async () => {
     for (const name of related.categories) {
-      await page.goto('/admin-next/custom-entities/SIMCAT/new'); await c.settle();
+      await page.goto('/admin-next/categories/new'); await c.settle();
       await c.field('.page-body', 'Title:').fill(name); await c.field('.page-body', 'Title:').blur();
       await control('Short Description:').locator('textarea').fill(`About ${name}`); await control('Short Description:').locator('textarea').blur();
       await c.btn('.page-actions', 'Save').click(); await c.settle(2000);
-      if (!/\/SIMCAT\/\d+$/.test(page.url())) throw new Error('category not saved');
+      if (!/\/categories\/\d+$/.test(page.url())) throw new Error('category not saved');
       related.urls.push(new URL(page.url()).pathname);
     }
-    await page.goto('/admin-next/custom-entities/SIMAUT/new'); await c.settle();
+    await page.goto('/admin-next/authors/new'); await c.settle();
     await c.field('.page-body', 'Name:').fill(related.author); await c.field('.page-body', 'Name:').blur();
     await c.btn('.page-actions', 'Save').click(); await c.settle(2000);
-    if (!/\/SIMAUT\/\d+$/.test(page.url())) throw new Error('author not saved');
+    if (!/\/authors\/\d+$/.test(page.url())) throw new Error('author not saved');
     related.urls.push(new URL(page.url()).pathname);
 
     await page.goto(`${list}/${id}`); await c.settle();

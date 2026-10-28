@@ -1,3 +1,4 @@
+@page "/{CustomEntityDefinitionCode}/new"
 @page "/custom-entities/{CustomEntityDefinitionCode}/new"
 @inject IAdminBlazorExecutor Executor
 @inject NavigationManager Navigation
@@ -28,13 +29,17 @@ else
     private CustomEntityModule? _module;
     private bool _notFound;
 
+    /// <summary>
+    /// The definition's slug or code (see <see cref="CustomEntityRoute"/>).
+    /// </summary>
     [Parameter] public string CustomEntityDefinitionCode { get; set; } = string.Empty;
 
     private string? ListUrl => _module == null ? null : AdminBlazorRoutes.CustomEntities(_module.Code);
 
     protected override async Task OnParametersSetAsync()
     {
-        _module = await CustomEntityModule.LoadAsync(Executor, CustomEntityDefinitionCode);
+        var definitionCode = CustomEntityRoute.GetDefinitionCode(Navigation, CustomEntityDefinitionCode);
+        _module = definitionCode == null ? null : await CustomEntityModule.LoadAsync(Executor, definitionCode);
         _notFound = _module == null;
     }
 

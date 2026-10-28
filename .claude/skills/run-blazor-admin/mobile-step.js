@@ -6,8 +6,8 @@ const ROOT = process.env.ADMIN_ROOT || '/admin-next';
 
 module.exports = async (page, c) => {
   const pages = ['/dashboard', '/pages', '/pages/new', '/images', '/images/new', '/documents', '/directories',
-    '/settings', '/roles', '/roles/new', '/users/COF', '/users/COF/new', '/page-templates', '/custom-entities/SIMFLD',
-    '/custom-entities/SIMFLD/new', '/account', '/account?edit=true'];
+    '/settings', '/roles', '/roles/new', '/users/COF', '/users/COF/new', '/page-templates', '/field-tests',
+    '/field-tests/new', '/account', '/account?edit=true'];
 
   // The page's own width: a table may be wider, inside its scrolling .table-wrap.
   const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -75,7 +75,7 @@ module.exports = async (page, c) => {
     const form = await page.locator('.page-body').boundingBox();
     if (actions.y + actions.height > form.y) throw new Error('actions not above the form');
     await c.shot('mobile-pages-new');
-    await page.goto(ROOT + '/custom-entities/SIMFLD/new'); await c.settle();
+    await page.goto(ROOT + '/field-tests/new'); await c.settle();
     await c.shot('mobile-field-tests');
   });
 

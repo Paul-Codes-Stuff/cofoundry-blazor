@@ -250,7 +250,11 @@ sideways. `Blazor/_mobile.scss`, imported last, changes the layout below 950px o
   default action. As in the AngularJS admin, "Access Control" only appears once the site has a user area
   besides the Cofoundry admin one, and is read-only without the manage access rules permission
 
-* Custom Entities: one module per definition at `/admin-next/custom-entities/{DefinitionCode}`, with list (filter
+* Custom Entities: one module per definition at a url from its plural name, as the AngularJS admin's
+  (`/admin-next/blog-posts`, `/admin-next/blog-posts/new`, `/admin-next/blog-posts/12`). A definition whose
+  slug is another admin route's first segment (e.g. a type called "Pages"), or another definition's, stays at
+  `/admin-next/custom-entities/{DefinitionCode}`; those code urls work for every definition and move to the
+  friendly url. With list (filter
   by text/created dates/market, paging, [PreviewImage] and [PreviewDescription] columns), create (Save, Save &
   Publish, Save Draft, Save & Edit Content), details (edit, publish/unpublish, versions, discard draft, copy to
   draft, change URL, duplicate, delete, template regions) and Change Ordering (market step, drag to reorder,

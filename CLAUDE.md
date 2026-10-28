@@ -141,6 +141,11 @@ Agreed direction:
   outside those paths gets it: `Cofoundry.Web.Admin.Api` removes it from its actions
   (`AdminApiActionDescriptorProvider`). Blazor components aren't MVC results, so the admin isn't affected. With
   `UseVisualEditor` on, our filter replaces it and writes no BOM.
+- **Custom entity urls** are `/{slug of NamePlural}/...` like the AngularJS admin's, set at startup
+  (`AdminBlazorRoutes.SetCustomEntitySlugs`); build them with `AdminBlazorRoutes.CustomEntities(code)`, never by
+  hand. The pages' `/{CustomEntityDefinitionCode}` routes match any first segment, so a static SSR page (not in
+  the interactive router's table) would land on them: `CustomEntityRoute` reloads from the server when the segment
+  is another route's. A new page with its own first segment is reserved automatically (its `@page` is scanned).
 - The Blazor admin's pipeline branch skips `/{prefix}/api` (`AdminBlazorRoutes.ApiRoute`), where
   `Cofoundry.Web.Admin.Api` lives by default once the Blazor admin takes the `admin` directory.
 

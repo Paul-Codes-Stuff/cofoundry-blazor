@@ -10,7 +10,7 @@ module.exports = async (page, c) => {
   const fileInput = () => upload().locator('.form-field-image-upload input[type=file]');
 
   await c.step('too small an image is rejected', async () => {
-    await page.goto('/admin-next/custom-entities/SIMBLP/new'); await c.settle();
+    await page.goto('/admin-next/blog-posts/new'); await c.settle();
     await page.locator('.control-group:has(label:text-is("Thumbnail Image:")) button[title="Select"]').first().click(); await page.waitForTimeout(1500);
     await page.locator('.modal:has(.modal-title:text-is("Find an image")) a[title="Upload"]').click(); await page.waitForTimeout(1200);
     const text = await upload().innerText();

@@ -30,11 +30,21 @@ module.exports = async (page, c) => {
   await c.step('nav links custom entities to the Blazor module', async () => {
     await page.goto('/admin-next/dashboard'); await c.settle();
     const href = await page.locator('.main-nav a:text-is("Authors")').getAttribute('href');
-    if (href !== '/admin-next/custom-entities/SIMAUT') throw new Error('Authors nav link is ' + href);
+    if (href !== '/admin-next/authors') throw new Error('Authors nav link is ' + href);
+  });
+
+  await c.step('code urls move to the friendly urls; unknown names are not found', async () => {
+    for (const [from, to] of [['/admin-next/custom-entities/SIMAUT', '/admin-next/authors'], ['/admin-next/custom-entities/SIMBLP/new', '/admin-next/blog-posts/new'], ['/admin-next/custom-entities/simcat?pageNumber=1', '/admin-next/categories?pageNumber=1']]) {
+      await page.goto(from); await c.settle();
+      const now = new URL(page.url());
+      if (now.pathname + now.search !== to) throw new Error(`${from} went to ${now.pathname + now.search}`);
+    }
+    await page.goto('/admin-next/no-such-type'); await c.settle();
+    if (!(await body()).includes('could not be found')) throw new Error('unknown name: ' + (await body()).slice(0, 300));
   });
 
   await c.step('authors list uses the custom title term', async () => {
-    await page.goto('/admin-next/custom-entities/SIMAUT'); await c.settle();
+    await page.goto('/admin-next/authors'); await c.settle();
     const headers = await page.locator('table.table thead th').allInnerTexts();
     if (!headers.map(h => h.trim().toUpperCase()).includes('NAME')) throw new Error('headers: ' + headers.join(' | '));
     if (headers.some(h => /status/i.test(h))) throw new Error('auto-publish entity shows a status column');
@@ -42,7 +52,7 @@ module.exports = async (page, c) => {
   });
 
   await c.step('create author validates the title', async () => {
-    await page.goto('/admin-next/custom-entities/SIMAUT/new'); await c.settle();
+    await page.goto('/admin-next/authors/new'); await c.settle();
     if (await page.locator('.page-body label:text-is("Url Slug:")').count()) throw new Error('slug field shown for an auto-generated slug');
     if (await c.btn('.page-actions', 'Save Draft').count()) throw new Error('Save Draft shown for an auto-publish entity');
     await c.btn('.page-actions', 'Save').click(); await page.waitForTimeout(800);
@@ -58,7 +68,7 @@ module.exports = async (page, c) => {
     if (!(await control('Profile Image:').locator('button[title="Select"]').count())) throw new Error('no image picker field');
     await c.shot('ce-2-author-new');
     await c.btn('.page-actions', 'Save').click(); await c.settle(2000);
-    if (!/\/admin-next\/custom-entities\/SIMAUT\/\d+$/.test(page.url())) throw new Error('not on details: ' + (await body()).slice(0, 300));
+    if (!/\/admin-next\/authors\/\d+$/.test(page.url())) throw new Error('not on details: ' + (await body()).slice(0, 300));
     authorUrl = new URL(page.url()).pathname;
     const text = await body();
     if (!text.includes('Writes things.') || /Versions/.test(text)) throw new Error(text.slice(0, 400));
@@ -91,12 +101,12 @@ module.exports = async (page, c) => {
     const title = await c.field('.modal', 'Name:').inputValue();
     if (title !== `Copy of ${authorName}`) throw new Error('duplicate title ' + title);
     await c.btn('.modal', 'Create duplicate').click(); await c.settle(2000);
-    if (new URL(page.url()).pathname === authorUrl || !/\/SIMAUT\/\d+$/.test(page.url())) throw new Error('not on the copy: ' + page.url());
+    if (new URL(page.url()).pathname === authorUrl || !/\/authors\/\d+$/.test(page.url())) throw new Error('not on the copy: ' + page.url());
     if (!(await body()).includes('Writes other things.')) throw new Error('copy lost the data model');
   });
 
   await c.step('blog post validates data model annotations', async () => {
-    await page.goto('/admin-next/custom-entities/SIMBLP/new'); await c.settle();
+    await page.goto('/admin-next/blog-posts/new'); await c.settle();
     if (!(await c.btn('.page-actions', 'Save Draft').count())) throw new Error('no Save Draft for a non auto-publish entity');
     if (!(await page.locator('.page-body label:text-is("Url Slug:")').count())) throw new Error('no slug field');
     if (!(await control('Author:').locator('input.ui-select-search').count())) throw new Error('no author selector');
@@ -123,7 +133,7 @@ module.exports = async (page, c) => {
   });
 
   await c.step('create category with preview image and description', async () => {
-    await page.goto('/admin-next/custom-entities/SIMCAT/new'); await c.settle();
+    await page.goto('/admin-next/categories/new'); await c.settle();
     await c.field('.page-body', 'Title:').fill(categoryName); await c.field('.page-body', 'Title:').blur();
     const desc = control('Short Description:').locator('textarea');
     await desc.fill(`About ${stamp}`); await desc.blur();
@@ -133,12 +143,12 @@ module.exports = async (page, c) => {
     await dialog.locator('.page-actions button:text-is("Select")').click(); await page.waitForTimeout(1000);
     if (await control('Thumbnail Image:').locator('img').getAttribute('title') !== imageTitle) throw new Error('image not picked');
     await c.btn('.page-actions', 'Save').click(); await c.settle(2000);
-    if (!/\/SIMCAT\/\d+$/.test(page.url())) throw new Error('not on details: ' + (await body()).slice(0, 300));
+    if (!/\/categories\/\d+$/.test(page.url())) throw new Error('not on details: ' + (await body()).slice(0, 300));
     if (await control('Thumbnail Image:').locator('img').getAttribute('title') !== imageTitle) throw new Error('image not saved');
   });
 
   await c.step('category list shows preview columns', async () => {
-    await page.goto('/admin-next/custom-entities/SIMCAT'); await c.settle();
+    await page.goto('/admin-next/categories'); await c.settle();
     const headers = (await page.locator('table.table thead th').allInnerTexts()).map(h => h.trim());
     if (!headers.some(h => /short description/i.test(h))) throw new Error('headers: ' + headers.join(' | '));
     const row = page.locator(`table.table tbody tr:has(a:text-is("${categoryName}"))`);
@@ -156,9 +166,9 @@ module.exports = async (page, c) => {
   });
 
   await c.step('cleanup: delete entities and image', async () => {
-    await deleteEntity('/admin-next/custom-entities/SIMCAT', categoryName);
-    await deleteEntity('/admin-next/custom-entities/SIMAUT', `Copy of ${authorName}`);
-    await deleteEntity('/admin-next/custom-entities/SIMAUT', authorName);
+    await deleteEntity('/admin-next/categories', categoryName);
+    await deleteEntity('/admin-next/authors', `Copy of ${authorName}`);
+    await deleteEntity('/admin-next/authors', authorName);
     await page.goto('/admin-next/images'); await c.settle();
     await page.click(`table.table a:text-is("${imageTitle}")`); await c.settle();
     await c.btn('.page-actions', 'Delete').click(); await page.waitForTimeout(800);
