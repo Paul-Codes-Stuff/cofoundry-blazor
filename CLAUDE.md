@@ -23,7 +23,7 @@ Read `src/Cofoundry.Web.Admin.Blazor/README.md` first: it has the status, what i
   circuit (it used to throw "Headers are read-only" after saving). So anything that changes the signed-in
   user's security stamp (email, username, password, "Require Password Change", verification) must be on a
   static SSR page: "Edit" on your own user opens `UserEditSelfPage`, an SSR form sharing `UserFormFields`. A circuit also keeps its user, so
-  `js/session-check.js` checks `/admin-next/auth/session` when the tab is shown and reloads if signed out.
+  `js/session-check.js` checks `/admin-next/auth/session` when the tab is shown or the router moves to another page, and reloads if signed out.
 - **Data access:** components call the domain layer in-process through `IAdminBlazorExecutor`
   (`Infrastructure/AdminBlazorExecutor.cs`), not the `/admin/api` controllers. Each call runs in its own DI
   scope seeded with the circuit's signed-in user (`CircuitAwareUserSessionService`), because Cofoundry's
