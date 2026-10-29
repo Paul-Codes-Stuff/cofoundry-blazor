@@ -27,6 +27,7 @@ public class AdminBlazorDependencyRegistration : IDependencyRegistration
             .Register<DataModelFieldComponentRegistry>(RegistrationOptions.SingletonScope())
             .Register<VisualEditorScriptGenerator>()
             .RegisterAll<IVisualEditorRequestExclusionRule>()
+            .RegisterAll<IAdminBlazorErrorHandler>(RegistrationOptions.Scoped())
             // Above Cofoundry.Web.Admin's low-priority AdminVisualEditorStateService, which does the same.
             .Register<IVisualEditorStateService, AdminBlazorVisualEditorStateService>(RegistrationOptions.Override())
             .Register<ISetupPageActionFactory, AdminBlazorSetupPageActionFactory>(setupPageOptions);

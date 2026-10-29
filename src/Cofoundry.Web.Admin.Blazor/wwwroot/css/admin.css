@@ -7590,6 +7590,15 @@ fieldset .table thead {
   white-space: pre-wrap;
 }
 
+/* A dialog's error message (ModalDialog's error boundary): stops above the Close button and scrolls. */
+.modal-body.modal-body-error {
+  bottom: 70px;
+  overflow: auto;
+}
+.modal-body.modal-body-error .developer-exception {
+  max-height: none;
+}
+
 /*===============================
     SMALL SCREENS
     Last, so it overrides the layouts above below their breakpoints.

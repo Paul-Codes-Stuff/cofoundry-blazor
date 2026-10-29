@@ -1,31 +1,23 @@
 @implements IDisposable
+@inject DebugSettings DebugSettings
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnvironment
 
 @* Mirrors the modal markup and class behaviour of the AngularJS cmsModalDialogContainer directive.
    Rendered into the layout's outlet for this dialog's level in the ModalDialogStack, so a dialog
-   opened from inside another stacks on top of it. *@
+   opened from inside another stacks on top of it. The outlet is outside the layout's error boundary,
+   so the dialog has its own for exceptions while its content renders (which would otherwise end the
+   circuit): they show in the dialog, are logged (see IAdminBlazorErrorHandler) and leave the page
+   behind as it was. An event handler's exception goes to the component that handles it instead (e.g.
+   ConfirmDialog, in the page), so the layout's boundary shows those. *@
 <SectionContent SectionName="@ModalDialogStack.GetSectionName(_level)">
-<div class="modal @SizeCssClass @StackCssClass @ShowCssClass">
-    <div class="modal-dialog">
-        <div class="modal-content">
-
-            @if (!string.IsNullOrEmpty(Title))
-            {
-                <div class="modal-header">
-                    <a href="" class="close btn-icon" aria-hidden="true" @onclick="OnClose" @onclick:preventDefault>
-                        <i class="fa fa-times"></i>
-                    </a>
-                    <h4 class="modal-title">@Title</h4>
-                </div>
-            }
-
-            <CascadingValue Name="FieldIdPrefix" Value="_fieldIdPrefix" IsFixed="true">
-                @ChildContent
-            </CascadingValue>
-
-        </div>
-    </div>
-</div>
-<div class="modal-background @SizeCssClass @ShowCssClass" @onclick="OnClose"></div>
+<AdminErrorBoundary>
+    <ChildContent>
+        @RenderDialog(ChildContent)
+    </ChildContent>
+    <ErrorContent Context="exception">
+        @RenderDialog(RenderError(exception))
+    </ErrorContent>
+</AdminErrorBoundary>
 </SectionContent>
 
 @code {
@@ -52,6 +44,46 @@
     [Parameter] public EventCallback OnClose { get; set; }
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private RenderFragment RenderDialog(RenderFragment? content) => __builder =>
+    {
+        <div class="modal @SizeCssClass @StackCssClass @ShowCssClass">
+            <div class="modal-dialog">
+                <div class="modal-content">
+
+                    @if (!string.IsNullOrEmpty(Title))
+                    {
+                        <div class="modal-header">
+                            <a href="" class="close btn-icon" aria-hidden="true" @onclick="OnClose" @onclick:preventDefault>
+                                <i class="fa fa-times"></i>
+                            </a>
+                            <h4 class="modal-title">@Title</h4>
+                        </div>
+                    }
+
+                    <CascadingValue Name="FieldIdPrefix" Value="_fieldIdPrefix" IsFixed="true">
+                        @content
+                    </CascadingValue>
+
+                </div>
+            </div>
+        </div>
+        <div class="modal-background @SizeCssClass @ShowCssClass" @onclick="OnClose"></div>
+    };
+
+    private RenderFragment RenderError(Exception exception) => __builder =>
+    {
+        <div class="modal-actions">
+            <AdminButton Text="Close" Class="main-cta" OnClick="OnClose" />
+        </div>
+        <div class="modal-body modal-body-error">
+            <p>Sorry, an unexpected error has occurred.</p>
+            @if (DebugSettings.CanShowDeveloperExceptionPage(HostEnvironment))
+            {
+                <pre class="developer-exception">@exception</pre>
+            }
+        </div>
+    };
 
     private string SizeCssClass => Size == "large" ? "modal-lg" : string.Empty;
 

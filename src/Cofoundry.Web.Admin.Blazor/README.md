@@ -337,6 +337,14 @@ dialog opened from inside another (the image picker in a nested item dialog) sta
 (`is-child-modal`), as the AngularJS modal service did. With a single outlet only the newest dialog would
 render, and the older dialog's content, including the field that opened the new dialog, would be disposed.
 
+Because the outlets sit outside the layout's error boundary, `ModalDialog` has its own (`AdminErrorBoundary`)
+around the dialog: an exception while the dialog's content renders shows in the dialog with a Close button and
+leaves the page as it was. Without it, such an exception would end the circuit. An exception from an event
+handler (e.g. a confirm dialog's OK) goes to the component that handles the event instead, which is in the page,
+so the layout's boundary replaces the page with its error message, as for any page error.
+
+The visual editor's frame layout wraps its page in a boundary too: there the error dialog reloads the page.
+
 ### File uploads
 
 Uploads go through `InputFile` over the SignalR circuit and are buffered in memory on the server
@@ -404,6 +412,11 @@ assembly scanning, so an extension only needs to be referenced by the site.
 * **Services:** inject `IAdminBlazorExecutor` for domain queries and commands (it runs them as the signed-in
   user), `AdminLookups` for shared dropdown data, and use the permission records in `AdminPermissions.cs`.
   These replace the AngularJS shared services (`shared.serviceBase`, `permissionValidationService`, ...).
+* **Unexpected errors:** implement `IAdminBlazorErrorHandler` to be told about each exception the admin's error
+  boundaries (`AdminErrorBoundary`: pages, dialogs, the visual editor's frame) catch, after it is logged with
+  `ILogger`. They happen in a circuit, not a request, so request middleware never sees them. The Error Logging
+  plugin's Blazor package uses this to add them to its log. Handlers are resolved from the circuit's scope;
+  query through `IAdminBlazorExecutor`, and an exception a handler throws is logged and otherwise ignored.
 * **Static files:** a Razor class library's `wwwroot` is served at `_content/<AssemblyName>/`.
 * **Razor namespaces:** a project whose folders include `Cofoundry` (e.g. a site's `Cofoundry/Admin/...`) gets
   component namespaces like `MySite.Cofoundry.Admin`, which hide the real `Cofoundry` namespaces. Use
@@ -422,7 +435,10 @@ references both versions of each.
   (`AdminBlazorModule.Module`), so it works without the AngularJS package. Compared with the AngularJS pages,
   the third details section is titled "Other" (the AngularJS template repeated "Stack Trace"), the date is
   formatted (UTC), and a long stack trace scrolls instead of spilling out of its section. The plugin's own
-  query maps `Session` from the query string (a domain bug, left as it is).
+  query maps `Session` from the query string (a domain bug, left as it is). The plugin's middleware only sees
+  exceptions in requests, so the package also logs the Blazor admin's own (`ErrorLogAdminBlazorErrorHandler`, an
+  `IAdminBlazorErrorHandler`). Their url is the circuit's (`/admin-next/_blazor?id=...`), not the admin page's,
+  since that's the request the plugin finds, and the error email names the signed-in admin user.
 * **YouTube** (`Cofoundry.Plugins.YouTube.Admin.Blazor`): the `[YouTube]` field ("Youtube" template hint) with
   its picker dialog. The video is looked up with the YouTube Data API **on the server** (`YouTubeVideoInfoService`)
   rather than in the browser, so the API key (`YouTubeSettings.ApiKey`) is no longer sent to the

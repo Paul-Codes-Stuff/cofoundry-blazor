@@ -1,0 +1,71 @@
+@using Cofoundry.Web.Admin.Blazor.Components.Layout
+@inherits BunitContext
+
+@code {
+    [Fact]
+    public void Exception_ShowsErrorContentAndCallsEachHandler()
+    {
+        var first = new RecordingHandler();
+        var second = new RecordingHandler();
+        Services.AddSingleton<IAdminBlazorErrorHandler>(first);
+        Services.AddSingleton<IAdminBlazorErrorHandler>(second);
+
+        var cut = Render(
+            @<AdminErrorBoundary>
+                <ChildContent>@Throw()</ChildContent>
+                <ErrorContent>failed</ErrorContent>
+            </AdminErrorBoundary>);
+
+        Assert.Equal("failed", cut.Markup.Trim());
+        Assert.Equal("Boundary test", Assert.Single(first.Exceptions).Message);
+        Assert.Equal("Boundary test", Assert.Single(second.Exceptions).Message);
+    }
+
+    [Fact]
+    public void FailingHandler_DoesNotStopTheOthers()
+    {
+        var recorder = new RecordingHandler();
+        Services.AddSingleton<IAdminBlazorErrorHandler>(new FailingHandler());
+        Services.AddSingleton<IAdminBlazorErrorHandler>(recorder);
+
+        var cut = Render(
+            @<AdminErrorBoundary>
+                <ChildContent>@Throw()</ChildContent>
+                <ErrorContent>failed</ErrorContent>
+            </AdminErrorBoundary>);
+
+        Assert.Equal("failed", cut.Markup.Trim());
+        Assert.Single(recorder.Exceptions);
+    }
+
+    [Fact]
+    public void NoHandlers_StillShowsErrorContent()
+    {
+        var cut = Render(
+            @<AdminErrorBoundary>
+                <ChildContent>@Throw()</ChildContent>
+                <ErrorContent>failed</ErrorContent>
+            </AdminErrorBoundary>);
+
+        Assert.Equal("failed", cut.Markup.Trim());
+    }
+
+    private static string Throw() => throw new InvalidOperationException("Boundary test");
+
+    private sealed class RecordingHandler : IAdminBlazorErrorHandler
+    {
+        public List<Exception> Exceptions { get; } = [];
+
+        public Task HandleAsync(Exception exception)
+        {
+            Exceptions.Add(exception);
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FailingHandler : IAdminBlazorErrorHandler
+    {
+        public Task HandleAsync(Exception exception) => throw new InvalidOperationException("Handler failed");
+    }
+}

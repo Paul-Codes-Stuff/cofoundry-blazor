@@ -1,33 +1,69 @@
 @page "/test/error"
 @namespace Dev.Sandbox
+@using global::Cofoundry.Web.Admin.Blazor.Components.Dialogs
 
-@* Dev-only page that throws, so the Blazor admin's error boundary (AdminLayout) can be tested.
-   ?onload=true throws while the page initializes; the button throws from an event handler. *@
+@* Dev-only page that throws, so the Blazor admin's error boundaries (AdminLayout, ModalDialog) can be tested.
+   ?onload=true throws while the page initializes; "Throw" throws from an event handler, "Throw in dialog"
+   from a dialog's button and "Throw in dialog content" while a dialog's content renders. ?stamp= is added to
+   the messages, so a test can find its errors in the error log. *@
 <PageTitle>Error Test | Admin</PageTitle>
 
 <PageHeader Title="Error Test" />
 
 <PageActions>
     <AdminButton Text="Throw" Class="main-cta" OnClick="Throw" />
+    <AdminButton Text="Throw in dialog" OnClick="() => _isDialogOpen = true" />
+    <AdminButton Text="Throw in dialog content" OnClick="() => _isContentDialogOpen = true" />
 </PageActions>
 
 <PageBody ContentType="form">
     <p>Click "Throw" to raise an unhandled exception.</p>
 </PageBody>
 
+@if (_isDialogOpen)
+{
+    <ConfirmDialog Title="Error Test" Message="Click OK to raise an unhandled exception."
+                   OnOk="ThrowInDialog"
+                   OnClosed="() => _isDialogOpen = false" />
+}
+
+@if (_isContentDialogOpen)
+{
+    <ModalDialog Title="Error Test" OnClose="() => _isContentDialogOpen = false">
+        <div class="modal-body">@ThrowWhileRendering()</div>
+    </ModalDialog>
+}
+
 @code {
+    private bool _isDialogOpen;
+    private bool _isContentDialogOpen;
+
     [SupplyParameterFromQuery] private bool OnLoad { get; set; }
+
+    [SupplyParameterFromQuery] private string? Stamp { get; set; }
 
     protected override void OnInitialized()
     {
         if (OnLoad)
         {
-            throw new InvalidOperationException("Error boundary test (on load)");
+            throw new InvalidOperationException(Message("Error boundary test (on load)"));
         }
     }
 
     private void Throw()
     {
-        throw new InvalidOperationException("Error boundary test");
+        throw new InvalidOperationException(Message("Error boundary test"));
     }
+
+    private Task ThrowInDialog()
+    {
+        throw new InvalidOperationException(Message("Error boundary test (dialog)"));
+    }
+
+    private string ThrowWhileRendering()
+    {
+        throw new InvalidOperationException(Message("Error boundary test (dialog content)"));
+    }
+
+    private string Message(string message) => string.IsNullOrEmpty(Stamp) ? message : $"{message} {Stamp}";
 }

@@ -22,9 +22,10 @@
                this wrapper, which is what pushes the fixed .page-actions column below the header. *@
             <div>
                 <CascadingValue Value="_modalDialogStack" IsFixed="true">
-                    @* An unexpected exception in a page shows here (and is logged) instead of ending the
-                       circuit, as the AngularJS admin's error dialog did. Navigating away recovers. *@
-                    <ErrorBoundary @ref="_errorBoundary">
+                    @* An unexpected exception in a page shows here (and is logged, see IAdminBlazorErrorHandler)
+                       instead of ending the circuit, as the AngularJS admin's error dialog did. Navigating away
+                       recovers. Dialogs render outside this boundary, so ModalDialog has its own. *@
+                    <AdminErrorBoundary @ref="_errorBoundary">
                         <ChildContent>
                             @Body
                         </ChildContent>
@@ -40,7 +41,7 @@
                                 </div>
                             </PageBody>
                         </ErrorContent>
-                    </ErrorBoundary>
+                    </AdminErrorBoundary>
                 </CascadingValue>
             </div>
         </div>
@@ -65,7 +66,7 @@
 
 @code {
     private readonly ModalDialogStack _modalDialogStack = new();
-    private ErrorBoundary? _errorBoundary;
+    private AdminErrorBoundary? _errorBoundary;
 
     // As the AngularJS layout: the version of Cofoundry.Web, the assembly of its ICofoundryHelper.
     private static readonly Version? CofoundryVersion = typeof(ICofoundryHelper).Assembly.GetName().Version;

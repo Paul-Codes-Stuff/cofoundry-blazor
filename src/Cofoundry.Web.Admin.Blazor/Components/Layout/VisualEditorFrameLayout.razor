@@ -3,7 +3,20 @@
 @* The layout of the visual editor's frame (Components/VisualEditor), which shows dialogs over the site's page,
    so it has no nav or footer, and a transparent background (cofoundry-visual-editor-frame on the body). *@
 <CascadingValue Value="_modalDialogStack" IsFixed="true">
-    @Body
+    @* Dialogs have their own error boundary (ModalDialog). This one catches the rest of the frame, e.g. while it
+       starts: the error is logged and shown in a dialog that reloads the page, as the frame can't recover. *@
+    <AdminErrorBoundary>
+        <ChildContent>
+            @Body
+        </ChildContent>
+        <ErrorContent>
+            <ModalDialog Title="Sorry, an unexpected error has occurred">
+                <div class="modal-actions">
+                    <button type="button" class="btn main-cta" onclick="window.parent.location.reload()">Reload the page</button>
+                </div>
+            </ModalDialog>
+        </ErrorContent>
+    </AdminErrorBoundary>
 
     @for (var level = 0; level < ModalDialogStack.MaxDepth; level++)
     {

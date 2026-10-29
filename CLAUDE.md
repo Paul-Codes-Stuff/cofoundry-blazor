@@ -118,6 +118,12 @@ Agreed direction:
 - Dialogs render through a `SectionOutlet` outside `.content` (see `AdminLayout`), else the nav covers them.
   There's one outlet per `ModalDialogStack` level, so a dialog opened from inside another dialog's content
   stacks on top. With one outlet only the newest dialog renders and the older dialog's content is disposed.
+- **Which error boundary catches an exception:** one from an event handler goes to the component that handles
+  the event (the receiver of the `EventCallback`, e.g. `ConfirmDialog`, which is in the page), so the layout's
+  boundary shows it even when the button is in a dialog. One while rendering goes up the render tree, where a
+  dialog's content sits under the outlet, outside the layout's boundary: `ModalDialog`'s own boundary catches
+  those. Use `AdminErrorBoundary`, never a bare `ErrorBoundary`, so `IAdminBlazorErrorHandler`s (the Error
+  Logging plugin) hear about it: a circuit's exceptions never reach request middleware.
 - The host needs `<RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>` or `blazor.web.js` 404s.
 - Field help text goes through `FieldHelp`, which registers with the enclosing `FormSection` so its "Help"
   button appears and toggles `show-helpers`. Don't hand-write `<p class="help-inline">`: it would stay hidden.
@@ -178,7 +184,7 @@ Agreed direction:
   empty database, see SKILL.md) for first-run setup; `directory-name-test.js` (standalone, a second sandbox
   with `Cofoundry__AdminBlazor__DirectoryName=cms`, see SKILL.md) for a non-default prefix; `account-step.js` for My Account and editing yourself
   in Users; `error-boundary-step.js` (uses the sandbox's dev-only `/admin-next/test/error` page) for the error
-  boundary; `session-step.js` for the session check; `image-upload-size-step.js` for picker upload size rules;
+  boundaries and their entries in the error log; `session-step.js` for the session check; `image-upload-size-step.js` for picker upload size rules;
   `upload-remove-step.js` (uses the dev-only `/admin-next/test/upload-fields` page) for optional upload fields; `mobile-step.js` for small screens;
   `admin-api-step.js` for `Cofoundry.Web.Admin.Api` (compares its GETs with the original's, writes through it);
   `smoke` also deletes the page it duplicates). The steps that open a page's details need at least one page.
@@ -224,7 +230,7 @@ Agreed direction:
   and `Components/DataModels` tests: `FormFieldText`, `FormSection`/`FieldHelp`, `FormStatus`, `Pager`, the
   upload fields' Required/Remove, `DataModelFieldSet`) and pure helpers: routes, `StringUtilities`, `AdminFormFields`, `FieldValidationMessage.UseTitle`,
   `ImageAssetFilter`, `CommandValidationErrors`, `AdminBlazorMailTemplateBuilder` (with and without `UseForEmailLinks`),
-  `HtmlDocumentScriptInjector`, `VisualEditorInstallation` and the plugins' `ParseVideoId`. Run `dotnet test test/Cofoundry.Web.Admin.Blazor.Tests`. Pages are covered by the skill's
+  `HtmlDocumentScriptInjector`, `VisualEditorInstallation`, `AdminErrorBoundary` and the plugins' `ParseVideoId`. Run `dotnet test test/Cofoundry.Web.Admin.Blazor.Tests`. Pages are covered by the skill's
   browser steps. A test that binds with `@bind-Value` has no parent component to re-render, so call
   `cut.Render()` after an event that sets the value outside an `Input*` component (see `UploadFieldTests`).
 
